@@ -6,10 +6,10 @@ import arlpy.plot as plt
 import numpy as np
 
 
-env = pm.create_env2d()
-rays = pm.compute_eigenrays(env, model='bellhop')
-pm.plot_rays(rays, env=env, width=900)
-exit(1)
+#env = pm.create_env2d()
+#rays = pm.compute_eigenrays(env, model='bellhop')
+#pm.plot_rays(rays, env=env, width=900)
+#exit(1)
 
 
 #pm.models()
@@ -47,7 +47,7 @@ env = pm.create_env2d(
     frequency=2000
 )
 
-pm.print_env(env)
+#pm.print_env(env)
 #pm.plot_env(env, width=900)
 
 #rays = pm.compute_eigenrays(env)
@@ -55,5 +55,5 @@ pm.print_env(env)
 
 env['rx_range'] = np.linspace(0, 2000, 2001)
 env['rx_depth'] = np.linspace(0, 30, 301)
-tloss = pm.compute_transmission_loss(env,mode='incoherent')
-pm.plot_transmission_loss(tloss, env=env, clim=[-60,-30], width=900)
+#tloss = pm.compute_transmission_loss(env,mode='incoherent')
+#pm.plot_transmission_loss(tloss, env=env, clim=[-60,-30], width=900)

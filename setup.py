@@ -1,6 +1,6 @@
 from setuptools import setup
 
-setup(name='mafmlib',
+setup(name='pyost',
       version='0.0.1',
       description="MERIDIAN's Ocean Soundscape Toolbox (OST) written in Python",
       url='https://data.meridian.cs.dal.ca/gitlab/data_analytics_dal/packages/pyost',

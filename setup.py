@@ -7,7 +7,7 @@ setup(name='pyost',
       author='Mark Thomas, Oliver Kirsebom',
       author_email='markthomas@dal.ca, oliver.kirsebom@dal.ca',
       license='GNU General Public License v3.0',
-      packages=['mafmlib'],
+      packages=['pyost'],
       install_requires=[
           'numpy',
           'arlpy',

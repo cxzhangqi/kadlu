@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(name='mafmlib',
       version='0.0.1',
-      description="Python toolbox for the MERIDIAN Acoustic Field Model",
-      url='https://data.meridian.cs.dal.ca/gitlab/data_analytics_dal/packages/mafmlib',
+      description="MERIDIAN's Ocean Soundscape Toolbox (OST) written in Python",
+      url='https://data.meridian.cs.dal.ca/gitlab/data_analytics_dal/packages/pyost',
       author='Mark Thomas, Oliver Kirsebom',
       author_email='markthomas@dal.ca, oliver.kirsebom@dal.ca',
       license='GNU General Public License v3.0',

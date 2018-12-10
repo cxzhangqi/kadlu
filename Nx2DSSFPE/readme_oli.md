@@ -10,7 +10,9 @@ in the form of three 153 x 145 matrices:
   3. **mat**: Height of seafloor at each point of the grid (in negative meters)
 
 The rows correspond to fixed latitudes, while the columns correspond 
-to fixed longitutedes.
+to fixed longitudes. The binning is roughly 0.03 deg, corresponding 
+to a separation of roughly 3 km. The are covered is therefore close 
+to 500 x 500 km^2.
 
 *Sound speed profile (SSP)*
 
@@ -36,7 +38,7 @@ it into a format suitable for the transmission loss calculation.
  1. Convert the longitude/latitude values (LL) into position coordinates (XY)
  2. Interpolate the bathymetry grid using the Matlab function `ScatteredInterpolant`.
  3. Create a new XY grid
- 4. Compute the bathymetry at each point of the new grid using the interpolator.
+ 4. Compute the bathymetry at each point of the new grid using the interpolator F(X,Y).
 
 
 ### fRunNx2D_Mariana.m 

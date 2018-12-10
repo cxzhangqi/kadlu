@@ -17,7 +17,7 @@ to fixed longitutedes.
 The data needed to compute the sound speed are stored in the file `WaterColumnProfiles_Mariana_Fake.mat` 
 in the form of seven 1 x 54834 matrices (vectors):
 
-  1. pressuret: ?
+  1. **pressuret**: ?
   2. pressure: Pressure at given depth (in ?)
   3. c: ? (perhaps sound speed in meters/second)
   4. svx: ? (related to the sound speed ...)

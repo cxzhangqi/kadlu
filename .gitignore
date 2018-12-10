@@ -2,3 +2,4 @@ docs/build/*
 pyost/__pycache__/*
 docs/build/doctrees/environment.pickle
 .pytest_cache/*
+res/*

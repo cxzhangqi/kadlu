@@ -28,9 +28,15 @@ in the form of seven 1 x 54834 matrices (vectors):
 
 ### create_ENV_models.m 
 
-This script takes bathymetry data and sound-speed profile (SSP) data from 
-the `env_database` folder as input and outputs `Mariana_ENV.mat`, which serves 
-as input for the main program.
+This script pre-processes the bathymetry and SSP data (see above) and converts 
+it into a format suitable for the transmission loss calculation.
+
+*Pre-processing of bathymetry data*
+
+ 1. Convert the longitude/latitude values (LL) into position coordinates (XY)
+ 2. Interpolate the bathymetry grid using the Matlab function `ScatteredInterpolant`.
+ 3. Create a new XY grid
+ 4. Compute the bathymetry at each point of the new grid using the interpolator.
 
 
 ### fRunNx2D_Mariana.m 

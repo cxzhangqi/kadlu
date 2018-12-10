@@ -21,8 +21,8 @@ in the form of seven 1 x 54834 matrices (vectors):
 
   1. **pressuret**: ?
   2. **pressure**: Pressure at given depth (in ?)
-  3. **c**: ? (perhaps sound speed in meters/second)
-  4. **svx**: ? (related to the sound speed ...)
+  3. **c**: Sound speed at given depth (in meters/second)
+  4. **svx**: ?
   5. **Salinity**: Salinity at given depth (in ?)
   6. **Temperature**: Temperature at given depth (in degrees C)
   7. **Depth**: Depth in meters below sea surface (in positive meters)
@@ -39,6 +39,11 @@ it into a format suitable for the transmission loss calculation.
  2. Interpolate the bathymetry grid using the Matlab function `ScatteredInterpolant`.
  3. Create a new XY grid
  4. Compute the bathymetry at each point of the new grid using the interpolator F(X,Y).
+
+*Pre-processing of sound-speed data*
+
+ 1. Smoothen the sound-speed profile using a running window of 10 m.
+ 1. Make a 1D interpolation of smoothened sound speed vs. depth using the Matlab function `interp1`.
 
 
 ### fRunNx2D_Mariana.m 

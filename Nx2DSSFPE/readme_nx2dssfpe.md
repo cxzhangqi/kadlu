@@ -20,13 +20,13 @@ The sound speed profile data (along with other environmental variables)
 are stored in the file `WaterColumnProfiles_Mariana_Fake.mat` 
 in the form of seven 1 x 54834 matrices (vectors):
 
-  1. **pressuret**: ?
-  2. **pressure**: Pressure at given depth (in ?)
-  3. **c**: Sound speed at given depth (in meters/second)
-  4. **svx**: ?
-  5. **Salinity**: Salinity at given depth (in ?)
-  6. **Temperature**: Temperature at given depth (in degrees C)
-  7. **Depth**: Depth in meters below sea surface (in positive meters)
+  1. **pressuret**: Time (in minutes)
+  2. **pressure**: Measured pressure (in ?)
+  3. **c**: Sound speed (in meters/second) computed from temperature and salinity using [TEOS-10](http://www.teos-10.org/)
+  4. **svx**: Measured sound speed (in meters/second)
+  5. **Salinity**: Measured salinity (in ?)
+  6. **Temperature**: Measured temperature (in degrees C)
+  7. **Depth**: Depth below sea surface (in meters)
 
 
 ### create_ENV_models.m 

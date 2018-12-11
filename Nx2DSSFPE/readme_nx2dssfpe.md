@@ -32,7 +32,7 @@ in the form of seven 1 x 54834 matrices (vectors):
 ### create_ENV_models.m 
 
 This script pre-processes the bathymetry and SSP data (see above) and converts 
-it into a format suitable for the transmission loss calculation.
+them into a format suitable for the transmission loss calculation.
 
 *Pre-processing of bathymetry data*
 
@@ -44,18 +44,29 @@ it into a format suitable for the transmission loss calculation.
 *Pre-processing of sound-speed data*
 
  1. Smoothen the sound-speed profile using a running window of 10 m.
- 1. Make a 1D interpolation of smoothened sound speed vs. depth using the Matlab function `interp1`.
+ 2. Make a 1D interpolation of smoothened sound speed vs. depth using the Matlab function `interp1`.
+
+The script outputs a file called `Mariana_ENV.mat` containing the two fields `WD` (Water Depth) 
+and `SSP` (Sound Speed Profile).
 
 
 ### fRunNx2D_Mariana.m 
 
 This is the main program, which sets up the environment and calculates the 
-transmission loss using the PE solver.
-
+transmission loss using the Parabolic Equation (PE) solver. The structure of the program is 
+summarized below.
+ 
+ 1. Load the fields `WD` and `SSP`
+ 2. Specify some additional environmental parameters such as bottom sound speed, 
+    bottom attenuation, and bottom density.
+ 3. Specify source depth and frequency.
+ 4. Specify a number of settings for the PE solver. 
+ 5. Run the PE solver (`propNx2DWAPE`)
+ 6. Save the results and make some nice plots
 
 ### subroutines/propNx2DWAPE.m
 
-This is the PE solver script.
+This is the PE solver.
 
 
 ### calculate_noise_fields.m

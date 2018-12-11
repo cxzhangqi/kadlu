@@ -57,18 +57,25 @@ transmission loss using the Parabolic Equation (PE) solver `propNx2DWAPE`.
 The structure of the program is summarized below.
  
  1. Load the fields `WD` and `SSP`
- 2. Specify some additional environmental parameters such as bottom sound speed, 
+ 2. From the sound speed profile, `SSP`, calculate the refractive index squared, `NSQ`
+ 3. Specify some additional environmental parameters such as bottom sound speed, 
     bottom attenuation, and bottom density.
- 3. Specify source depth and frequency.
- 4. Specify a number of settings for the PE solver. 
- 5. Run the PE solver.
- 6. Save the results and make some nice plots.
+ 4. Specify source depth and frequency.
+ 5. Specify a number of settings for the PE solver. 
+ 6. Run the PE solver.
+ 7. Save the results and make some nice plots.
 
 
 ### subroutines/propNx2DWAPE.m
 
-This is the PE solver.
+This is the PE solver. The implementation is fairly technical. 
+The script calls a number of functions:
+ 
+ * **sub_envInput_Nx2D.m**: Creates bathymetry and NSQ profiles for each angular bin.
+  * **sub_SeafloorDepth.m**: Interpolation of the bathymetry field.
+  * **sub_NSQ.m**: Interpolation of the NSQ field.
 
+ * **sub_CylindPEStarter.m**: Computes the starting displacement potential (`$psi_0$`) for the PE solver.
 
 ### calculate_noise_fields.m
 

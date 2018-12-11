@@ -16,7 +16,8 @@ to 500 x 500 km^2.
 
 *Sound speed profile (SSP)*
 
-The data needed to compute the sound speed are stored in the file `WaterColumnProfiles_Mariana_Fake.mat` 
+The sound speed profile data (along with other environmental variables) 
+are stored in the file `WaterColumnProfiles_Mariana_Fake.mat` 
 in the form of seven 1 x 54834 matrices (vectors):
 
   1. **pressuret**: ?

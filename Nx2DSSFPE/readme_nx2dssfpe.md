@@ -37,7 +37,7 @@ them into a format suitable for the transmission loss calculation.
 *Pre-processing of bathymetry data*
 
  1. Convert the longitude/latitude values (LL) into position coordinates (XY) 
-    (see function `sub_transfer_LL_to_XY.m` in the subroutines folder).
+    (cf. `sub_transfer_LL_to_XY.m`).
  2. Interpolate the bathymetry grid using the Matlab function `ScatteredInterpolant`.
  3. Create a new XY grid
  4. Compute the bathymetry at each point of the new grid using the interpolator F(X,Y).

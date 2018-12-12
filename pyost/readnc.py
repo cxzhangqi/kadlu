@@ -24,3 +24,7 @@ print(d.dimensions['lon'])
 b = d.variables['elevation']
 print(b.shape)
 print(b[0:10])
+
+import matplotlib.pyplot as plt
+plt.plot(d.variables['elevation'][int(1.5*10800),:])
+plt.show()

@@ -95,7 +95,76 @@ class BathyNetCDFReader(BathyReader):
         ind_lon = np.squeeze(ind_lon)
         lon = lon[ind_lon]
 
-        bathy = d.variables[self.bathy_name][ind_lat, ind_lon]
+        ind = np.ix_(ind_lat, ind_lon)       
+
+        bathy = d.variables[self.bathy_name]
+        bathy = np.array(bathy)
+        bathy = bathy[ind]
+
+        return lat, lon, bathy
+
+
+import scipy.io as sio
+
+class BathyMatReader(BathyReader):
+    """ Class for reading bathymetry data from MATLAB files (*.mat).
+
+        Attributes: 
+            path: str
+                File name including path.
+            lat_name: str
+                Name of the variable in the MATLAB file that contains the latitue values.
+            lon_name: str
+                Name of the variable in the MATLAB file that contains the longitude values.
+            bathy_name: str
+                Name of the variable in the MATLAB file that contains the bathymetry values.
+    """
+    def __init__(self, path, lat_name='lat', lon_name='lon', bathy_name='elevation'):
+        super().__init__(path, lat_name, lon_name, bathy_name) # initialize parent class
+
+    def read(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
+        """ Read longitude, latitude, and bathymetry matrices from file.
+
+            Args: 
+                latlon_NW: LatLon
+                    North-western (NW) boundary of the region of interest.
+                latlon_SE: LatLon
+                    South-eastern (SE) boundary of the region of interest.
+
+            Returns:
+                lat: 1d or 2d numpy array
+                    Latitude values
+                lon: 1d or 2d numpy array
+                    Longitude values
+                bathy: 2d numpy array
+                    Bathymetry values
+        """
+
+        m = sio.loadmat(self.path)
+
+        lat = np.array(m[self.lat_name])
+        lat = np.squeeze(lat)
+        ind_lat = np.argwhere((lat >= latlon_SW.latitude) & (lat <= latlon_NE.latitude))
+        ind_lat = np.squeeze(ind_lat)
+        lat = lat[ind_lat]
+
+        lon = np.array(m[self.lon_name])
+        lon = np.squeeze(lon)
+        ind_lon = np.argwhere((lon >= latlon_SW.longitude) & (lon <= latlon_NE.longitude))
+        ind_lon = np.squeeze(ind_lon)
+        lon = lon[ind_lon]
+
+        if np.ndim(ind_lat) == 2:
+            latc = ind_lat[:,0] + 1j * ind_lat[:,1]
+            lonc = ind_lon[:,0] + 1j * ind_lon[:,1]
+            x = np.intersect1d(latc, lonc)
+            xr = np.real(x)
+            xi = np.real(x)
+            ind = [xr, xi]
+        else:
+            ind = np.ix_(ind_lat, ind_lon)       
+    
+        bathy = m[self.bathy_name][ind]
         bathy = np.array(bathy)
 
         return lat, lon, bathy

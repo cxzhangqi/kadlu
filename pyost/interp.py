@@ -53,6 +53,9 @@ lat,lon,bathy = reader.read(latlon_SW=LatLon(54.95,14.55), latlon_NE=LatLon(55.3
 print(np.min(bathy), np.max(bathy))
 print(np.min(lat), np.max(lat))
 
+
+# save to net-CDF file
+
 rootgrp = Dataset("bornholm.nc", "w", format="NETCDF4")
 lat_dim = rootgrp.createDimension("lat", lat.shape[0])
 lon_dim = rootgrp.createDimension("lon", lon.shape[0])
@@ -68,6 +71,17 @@ bathymetries[:,:] = bathy
 rootgrp.description = "Bathymetry for the island of Bornholm, Denmark."
 
 rootgrp.close()
+
+
+
+# save to matlab file
+
+import scipy.io as sio
+
+sio.savemat("bornholm.mat", {'lat': lat, 'lon': lon, 'bathy': bathy})
+
+
+
 
 exit(1)
 

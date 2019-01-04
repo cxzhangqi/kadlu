@@ -3,3 +3,5 @@ pyost/__pycache__/*
 docs/build/doctrees/environment.pickle
 .pytest_cache/*
 res/*
+.vscode/*
+pyost/tests/__pycache__/*

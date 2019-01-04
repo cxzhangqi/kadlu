@@ -46,6 +46,28 @@ print(zi.shape)
 print('call time: ', end - start)
 
 
+from bathy_reader import BathyNetCDFReader, LatLon
+
+reader = BathyNetCDFReader(path='../res/GEBCO_2014_2D.nc')
+lat,lon,bathy = reader.read(latlon_SW=LatLon(54.95,14.55), latlon_NE=LatLon(55.35,15.25))
+print(np.min(bathy), np.max(bathy))
+print(np.min(lat), np.max(lat))
+
+rootgrp = Dataset("bornholm.nc", "w", format="NETCDF4")
+lat_dim = rootgrp.createDimension("lat", lat.shape[0])
+lon_dim = rootgrp.createDimension("lon", lon.shape[0])
+
+latitudes = rootgrp.createVariable("lat","f4",("lat",))
+longitudes = rootgrp.createVariable("lon","f4",("lon",))
+bathymetries = rootgrp.createVariable("bathy","f4",("lat","lon",))
+
+latitudes[:] = lat
+longitudes[:] = lon
+bathymetries[:,:] = bathy
+
+rootgrp.description = "Bathymetry for the island of Bornholm, Denmark."
+
+rootgrp.close()
 
 exit(1)
 

@@ -14,13 +14,13 @@
 import pytest
 import os
 import numpy as np
-from pyost.bathy_reader import BathyNetCDFReader, BathyMatReader, LatLon
+from bathy_reader import BathyReader, LatLon
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
 
 def test_can_read_bathymetry_from_netcdf_file(one):
     path = path_to_assets + '/bornholm.nc'
-    reader = BathyNetCDFReader(path=path, bathy_name='bathy')
+    reader = BathyReader(path=path, bathy_name='bathy')
     lat, lon, bathy = reader.read()
     assert np.min(bathy) == -100
     assert np.max(bathy) == 159
@@ -29,7 +29,7 @@ def test_can_read_bathymetry_from_netcdf_file(one):
 
 def test_can_read_bathymetry_from_matlab_file(one):
     path = path_to_assets + '/bornholm.mat'
-    reader = BathyMatReader(path=path, bathy_name='bathy')
+    reader = BathyReader(path=path, bathy_name='bathy')
     lat, lon, bathy = reader.read()
     assert np.min(bathy) == -100
     assert np.max(bathy) == 159
@@ -38,7 +38,7 @@ def test_can_read_bathymetry_from_matlab_file(one):
 
 def test_can_read_bathymetry_from_gridded_matlab_file(one):
     path = path_to_assets + '/bathy_grid_test.mat'
-    reader = BathyMatReader(path=path, bathy_name='bathy')
+    reader = BathyReader(path=path, bathy_name='bathy')
     # read without lat-lon constraints
     lat, lon, bathy = reader.read()
     assert np.min(bathy) == -200

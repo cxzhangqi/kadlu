@@ -175,6 +175,4 @@ class BathyMatReader(BathyReader):
         bathy = m[self.bathy_name][ind]
         bathy = np.array(bathy)
 
-        print(bathy)
-
         return lat, lon, bathy

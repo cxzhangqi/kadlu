@@ -14,7 +14,7 @@
 import pytest
 import os
 import numpy as np
-from bathy_reader import BathyNetCDFReader, BathyMatReader, LatLon
+from pyost.bathy_reader import BathyNetCDFReader, BathyMatReader, LatLon
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
 

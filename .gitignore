@@ -5,3 +5,7 @@ docs/build/doctrees/environment.pickle
 res/*
 .vscode/*
 pyost/tests/__pycache__/*
+.eggs/*
+dist/*
+docs/demo_notebooks/.ipynb_checkpoints/*
+pyost.egg-info/*

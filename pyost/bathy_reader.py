@@ -146,25 +146,35 @@ class BathyMatReader(BathyReader):
         lat = np.squeeze(lat)
         ind_lat = np.argwhere((lat >= latlon_SW.latitude) & (lat <= latlon_NE.latitude))
         ind_lat = np.squeeze(ind_lat)
-        lat = lat[ind_lat]
 
         lon = np.array(m[self.lon_name])
         lon = np.squeeze(lon)
         ind_lon = np.argwhere((lon >= latlon_SW.longitude) & (lon <= latlon_NE.longitude))
         ind_lon = np.squeeze(ind_lon)
-        lon = lon[ind_lon]
 
         if np.ndim(ind_lat) == 2:
             latc = ind_lat[:,0] + 1j * ind_lat[:,1]
             lonc = ind_lon[:,0] + 1j * ind_lon[:,1]
             x = np.intersect1d(latc, lonc)
             xr = np.real(x)
-            xi = np.real(x)
-            ind = [xr, xi]
+            xi = np.imag(x)
+            xr = xr.astype(int)
+            xi = xi.astype(int)
+            ind_lat = np.arange(np.min(xr), np.max(xr)+1)
+            ind_lon = np.arange(np.min(xi), np.max(xi)+1)
+            lat = lat[:,0]
+            lon = lon[0,:]
+            ind = np.ix_(ind_lat, ind_lon)       
         else:
             ind = np.ix_(ind_lat, ind_lon)       
     
+
+        lat = lat[ind_lat]
+        lon = lon[ind_lon]
+
         bathy = m[self.bathy_name][ind]
         bathy = np.array(bathy)
+
+        print(bathy)
 
         return lat, lon, bathy

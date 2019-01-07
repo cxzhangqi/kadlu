@@ -81,6 +81,12 @@ import scipy.io as sio
 sio.savemat("bornholm.mat", {'lat': lat, 'lon': lon, 'bathy': bathy})
 
 
+# save to matlab file with gridded format
+
+lat1 = np.array([[45.0, 45.0, 45.0],[46.0, 46.0, 46.0],[47.0, 47.0, 47.0]])
+lon1 = np.array([[5.0, 6.0, 7.0],[5.0, 6.0, 7.0],[5.0, 6.0, 7.0]])
+bathy1 = np.array([[-100.0, -150.0, -200.0],[-133.0, -33.0, 133.0],[400.0, 800.0, 1200.0]])
+sio.savemat("bathy_grid_test.mat", {'lat': lat1, 'lon': lon1, 'bathy': bathy1})
 
 
 exit(1)

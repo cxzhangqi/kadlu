@@ -35,3 +35,19 @@ def test_can_read_bathymetry_from_matlab_file(one):
     assert np.max(bathy) == 159
     assert bathy.shape[0] == lat.shape[0]
     assert bathy.shape[1] == lon.shape[0]
+
+def test_can_read_bathymetry_from_gridded_matlab_file(one):
+    path = path_to_assets + '/bathy_grid_test.mat'
+    reader = BathyMatReader(path=path, bathy_name='bathy')
+    # read without lat-lon constraints
+    lat, lon, bathy = reader.read()
+    assert np.min(bathy) == -200
+    assert np.max(bathy) == 1200
+    assert bathy.shape[0] == lat.shape[0]
+    assert bathy.shape[1] == lon.shape[0]
+    # read with lat-lon constraints
+    lat, lon, bathy = reader.read(latlon_SW=LatLon(45.5,4.5), latlon_NE=LatLon(47.5,6.5))
+    assert np.min(bathy) == -133
+    assert np.max(bathy) == 800
+    assert bathy.shape[0] == lat.shape[0]
+    assert bathy.shape[1] == lon.shape[0]

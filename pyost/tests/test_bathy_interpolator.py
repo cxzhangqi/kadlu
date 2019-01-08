@@ -49,9 +49,20 @@ def test_can_interpolate_bornholm():
     zmax = max(bathy[2,0], bathy[3,0])
     assert z[1] >= zmin
     assert z[1] <= zmax
+    # interpolate with grid = True/False
+    x1 = (lat[1]+lat[2])/2
+    x2 = (lat[2]+lat[3])/2
+    y1 = (lon[1]+lon[2])/2
+    y2 = (lon[2]+lon[3])/2
+    z = interp.eval_ll(lat=[x1,x2], lon=[y1,y2], grid=False)
+    assert np.ndim(z) == 1
+    assert z.shape[0] == 2 
+    z = interp.eval_ll(lat=[x1,x2], lon=[y1,y2], grid=True) 
+    assert np.ndim(z) == 2
+    assert z.shape[0] == 2 
+    assert z.shape[1] == 2 
     # interpolate with lat-lon constraints
     interp = BathyInterpolator(bathy_reader=reader, latlon_SW=LatLon(55.10,14.80), latlon_NE=LatLon(55.30,15.10))
-    # interpolate at single grid point
     m = len(lat)
     lat = lat[lat >= 55.10]
     m1 = m - len(lat)

@@ -13,32 +13,67 @@
 
 import numpy as np
 from collections import namedtuple
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from pyost.bathy_reader import BathyReader, LatLon
+from pyost.util import deg2rad, XYtoLL, LLtoXY
 
 
 class BathyInterpolator():
     """ Class for interpolating bathymetry data.
 
-        Args: 
+        Attributes: 
             bathy_reader: BathyReader
                 Bathymetry data file reader
             latlon_SW: LatLon
                 South-western (SW) boundary of the interpolation region.
             latlon_NE: LatLon
                 North-eastern (SE) boundary of the interpolation region.
+            latlon_ref: LatLon
+                Reference location (origo of XY coordinate system).
     """
     def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None):
+        
+        if origin is None:
+            lat_ref = (latlon_SW.latitude + latlon_NE.latitude) / 2
+            lon_ref = (latlon_SW.longitude + latlon_NE.longitude) / 2
+            origin = LatLon(lat_ref, lon_ref)
+
         self.origin = origin
     
+        # read bathymetry data from file
         lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
 
-        self.interp_ll = RectBivariateSpline(x=lat, y=lon, z=bathy)
-    
-        self.interp_xy = None
+        # initialize lat-lon interpolator
+        lat_rad, lon_rad = self._torad(lat, lon)
+        self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
+
+        # initialize x-y interpolator
+#        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
+
+#        self.interp_xy = RectBivariateSpline(x=x, y=y, z=bathy)
 
     def eval_xy(self, x, y, grid=False):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
+
+            x and y can be floats or arrays.
+
+            If grid is set to False, the bathymetry will be evaluated at 
+            the positions (x_i, y_i), where x=(x_1,...,x_N) and 
+            y=(y_1,...,y_N). Note that in this case, x and y must have 
+            the same length.
+
+            If grid is set to True, the bathymetry will be evaluated at 
+            all combinations (x_i, y_j), where x=(x_1,...,x_N) and 
+            y=(y_1,...,y_M). Note that in this case, the lengths of x 
+            and y do not have to be the same.
+
+            Args: 
+                x: float or array
+                   x-coordinate of the positions(s) where the bathymetry is to be evaluated
+                y: float or array
+                   y-coordinate of the positions(s) where the bathymetry is to be evaluated
+                grid: bool
+                   Specify how to combine elements of x and y.
 
             Returns:
                 zi: Interpolated bathymetry values
@@ -52,8 +87,36 @@ class BathyInterpolator():
     def eval_ll(self, lat, lon, grid=False):
         """ Interpolate bathymetry grid in latitude and longitude coordinates (LL).
 
-                Returns:
-                    zi: Interpolated bathymetry values
+            lat and lot can be floats or arrays.
+
+            If grid is set to False, the bathymetry will be evaluated at 
+            the coordinates (lat_i, lon_i), where lat=(lat_1,...,lat_N) 
+            and lon=(lon_1,...,lon_N). Note that in this case, lat and 
+            lon must have the same length.
+
+            If grid is set to True, the bathymetry will be evaluated at 
+            all combinations (lat_i, lon_j), where lat=(lat_1,...,lat_N) 
+            and lon=(lon_1,...,lon_M). Note that in this case, the lengths 
+            of lat and lon do not have to be the same.
+
+            Args: 
+                lat: float or array
+                   latitude of the positions(s) where the bathymetry is to be evaluated
+                lon: float or array
+                   longitude of the positions(s) where the bathymetry is to be evaluated
+                grid: bool
+                   Specify how to combine elements of lat and lon.
+
+            Returns:
+                zi: Interpolated bathymetry values
         """
-        zi = self.interp_ll.__call__(x=lat, y=lon, grid=grid)
+        lat = np.squeeze(np.array(lat))
+        lon = np.squeeze(np.array(lon))
+        lat_rad, lon_rad = self._torad(lat, lon)
+        zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid)
         return zi
+
+    def _torad(self, lat, lon):
+        lat_rad = (lat + 90) * deg2rad
+        lon_rad = lon * deg2rad
+        return lat_rad, lon_rad

@@ -133,7 +133,7 @@ class BathyReader():
 
     def _select_region(self, lat, lon, bathy, latlon_SW, latlon_NE):
         """ Select rectangular region bounded by the geographical coordinates 
-            latlon_SW to the south-west and latlon_NE to the norht-east.
+            latlon_SW to the south-west and latlon_NE to the north-east.
 
             Latitudes and longitudes can be given as 2d numpy arrays, but
             must be in regularly spaced grid.

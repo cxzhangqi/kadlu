@@ -11,7 +11,7 @@ R1_IUGG = 6371009
 deg2rad = np.pi / 180.
 
 
-def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0):
+def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False):
     """ Transform lat-lon coordinates to xy position coordinates.
 
         By default, the origin of the xy coordinate system is 
@@ -42,13 +42,17 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0):
     """
     global R1_IUGG, deg2rad
 
-    assert np.ndim(lat) == np.ndim(lon), 'lat and lon must have same dimension'
+    if grid:
+        lat, lon = np.meshgrid(lat, lon)
 
-    lat = np.array([lat])
-    lon = np.array([lon])
-    if np.ndim(lat) == 2:
-        lat = np.squeeze(lat)
-        lon = np.squeeze(lon)
+    else:
+        lat = np.array([lat])
+        lon = np.array([lon])
+        if np.ndim(lat) == 2:
+            lat = np.squeeze(lat)
+            lon = np.squeeze(lon)
+
+        assert lat.shape[0] == lon.shape[0], 'lat and lon must have same length'
 
     R = R1_IUGG
     R2 = R * np.cos(lat_ref * deg2rad)
@@ -72,7 +76,7 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0):
 
     return x, y
 
-def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0):
+def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False):
     """ Transform xy position coordinates to lat-lon coordinates.
 
         By default, the origin of the xy coordinate system is 
@@ -103,13 +107,18 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0):
     """
     global R1_IUGG, deg2rad
 
-    assert np.ndim(x) == np.ndim(y), 'x and y must have same dimension'
+    if grid:
+        x, y = np.meshgrid(x, y)
 
-    x = np.array([x])
-    y = np.array([y])
-    if np.ndim(x) == 2:
-        x = np.squeeze(x)
-        y = np.squeeze(y)
+    else:
+        x = np.array([x])
+        y = np.array([y])
+        if np.ndim(x) == 2:
+            x = np.squeeze(x)
+            y = np.squeeze(y)
+
+        assert x.shape[0] == y.shape[0], 'x and y must have same length'
+
 
     R = R1_IUGG
     R2 = R * np.cos(lat_ref * deg2rad)
@@ -132,3 +141,37 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0):
         lon = float(lon)
 
     return lat, lon
+
+def regXYgrid(lat, lon, lat_ref=0, lon_ref=0):
+
+    Nx = len(lon)
+    Ny = len(lat)
+
+    # determine extent and bin size of regular x-y grid
+    lats = [lat[0], lat[0], lat[-1], lat[-1]]
+    lons = [lon[0], lon[-1], lon[0], lon[-1]]
+
+    x, y = LLtoXY(lat=lats, lon=lons, lat_ref=lat_ref, lon_ref=lon_ref)
+
+    x_length_S = x[1] - x[0]
+    x_length_N = x[3] - x[2]
+
+    if x_length_S < x_length_N:
+        x0 = x[0]
+        dx = (x[1] - x[0]) / Nx
+    else:
+        x0 = x[2]
+        dx = (x[3] - x[2]) / Nx
+
+    y0 = y[0]
+    dy = (y[2] - y[0]) / Ny
+
+    # create regular x-y grid
+    x = np.arange(Nx, dtype=np.float)
+    x *= dx
+    x += x0
+    y = np.arange(Ny, dtype=np.float)
+    y *= dy
+    y += y0
+
+    return x, y

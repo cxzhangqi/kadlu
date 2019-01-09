@@ -19,7 +19,7 @@ from bathy_interpolator import BathyInterpolator
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
 
-def test_can_interpolate_bornholm():
+def test_can_interpolate_latlon():
     path = path_to_assets + '/bornholm.mat'
     reader = BathyReader(path=path, bathy_name='bathy')
     # interpolate without lat-lon constraints
@@ -73,3 +73,20 @@ def test_can_interpolate_bornholm():
     z = interp.eval_ll(lat=lat[0], lon=lon[0]) 
     z = int(z)
     assert z == bathy[0,0]
+
+def test_can_interpolate_xy():
+    path = path_to_assets + '/bornholm.mat'
+    reader = BathyReader(path=path, bathy_name='bathy')
+    interp = BathyInterpolator(bathy_reader=reader)
+    lat, lon, _ = reader.read()
+    # interpolate using lat-lon
+    lat_c = 0.5 * (lat[0] + lat[-1])
+    lon_c = 0.5 * (lon[0] + lon[-1])
+    z_ll = interp.eval_ll(lat=lat_c, lon=lon_c) 
+    z_ll = float(z_ll)
+    # interpolate using x-y
+    x_c = 0
+    y_c = 0
+    z_xy = interp.eval_xy(x=x_c, y=y_c) 
+    z_xy = float(z_xy)
+    assert z_ll == pytest.approx(z_xy, abs=0.1)

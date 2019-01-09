@@ -14,8 +14,8 @@
 import numpy as np
 from collections import namedtuple
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
-from pyost.bathy_reader import BathyReader, LatLon
-from pyost.util import deg2rad, XYtoLL, LLtoXY
+from bathy_reader import BathyReader, LatLon
+from util import deg2rad, XYtoLL, LLtoXY, regXYgrid
 
 
 class BathyInterpolator():
@@ -33,24 +33,36 @@ class BathyInterpolator():
     """
     def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None):
         
+        # read bathymetry data from file
+        lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
+
+        # compute coordinates of origin, if not provided
         if origin is None:
-            lat_ref = (latlon_SW.latitude + latlon_NE.latitude) / 2
-            lon_ref = (latlon_SW.longitude + latlon_NE.longitude) / 2
+            lat_ref = (lat[0] + lat[-1]) / 2
+            lon_ref = (lon[0] + lon[-1]) / 2
             origin = LatLon(lat_ref, lon_ref)
 
         self.origin = origin
-    
-        # read bathymetry data from file
-        lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
 
         # initialize lat-lon interpolator
         lat_rad, lon_rad = self._torad(lat, lon)
         self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
 
-        # initialize x-y interpolator
-#        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
+        # define regular x-y grid
+        x, y = regXYgrid(lat=lat, lon=lon, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
 
-#        self.interp_xy = RectBivariateSpline(x=x, y=y, z=bathy)
+        # transform to lat-lon
+        lat_xy, lon_xy = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=True)
+
+        # evaluate bathy on new grid using lat-lon interpolator
+        Nx = len(x)
+        Ny = len(y)
+        bathy_xy = np.zeros(shape=(Nx,Ny))
+        for i in range(Nx):
+            bathy_xy[i,:] = self.eval_ll(lat=lat_xy[:,i], lon=lon_xy[:,i])
+
+        # initialize x-y interpolator
+        self.interp_xy = RectBivariateSpline(x=x, y=y, z=bathy_xy)
 
     def eval_xy(self, x, y, grid=False):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
@@ -78,9 +90,6 @@ class BathyInterpolator():
             Returns:
                 zi: Interpolated bathymetry values
         """
-        assert self.origin is not None, 'Evaluation by position coordinates requires that the origin has been specified.'
-        assert self.interp_xy is not None, 'xy interpolation not available'
-
         zi = self.interp_xy.__call__(x=x, y=y, grid=grid)
         return zi
 

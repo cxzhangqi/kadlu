@@ -14,9 +14,9 @@
 import pytest
 import os
 import numpy as np
-from bathy_reader import BathyReader, LatLon
-from bathy_interpolator import BathyInterpolator
-from util import R1_IUGG, deg2rad, XYtoLL, LLtoXY
+from pyost.bathy_reader import BathyReader, LatLon
+from pyost.bathy_interpolator import BathyInterpolator
+from pyost.util import R1_IUGG, deg2rad, XYtoLL, LLtoXY
 
 # Degree to radian conversion factor
 deg2rad = np.pi / 180.
@@ -79,8 +79,9 @@ def test_can_interpolate_latlon():
 
 def test_interpolation_grids_are_what_they_should_be():
     path = path_to_assets + '/bornholm.mat'
+    rebin = 3
     reader = BathyReader(path=path, bathy_name='bathy')
-    interp = BathyInterpolator(bathy_reader=reader)
+    interp = BathyInterpolator(bathy_reader=reader, rebin_xy=rebin)
     lat, lon, _ = reader.read()
     lat_c = 0.5 * (lat[0] + lat[-1])
     lon_c = 0.5 * (lon[0] + lon[-1])
@@ -88,8 +89,8 @@ def test_interpolation_grids_are_what_they_should_be():
     assert interp.origin.latitude == lat_c
     assert interp.origin.longitude == lon_c
     # x,y have same number of nodes as lon,lat
-    assert len(interp.x_nodes) == len(interp.lon_nodes)
-    assert len(interp.y_nodes) == len(interp.lat_nodes)
+    assert len(interp.x_nodes) == rebin * len(interp.lon_nodes)
+    assert len(interp.y_nodes) == rebin * len(interp.lat_nodes)
     # x and y are symmetric around 0
     assert interp.x_nodes[0] == -interp.x_nodes[-1]
     assert interp.y_nodes[0] == -interp.y_nodes[-1]
@@ -110,7 +111,7 @@ def test_interpolation_tables_agree_on_xy_grid():
         bxy = interp.eval_xy(x=x, y=y)
         la, lo = XYtoLL(x=x, y=y, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
         bll = interp.eval_ll(lat=la, lon=lo)
-        assert bxy == pytest.approx(bll, rel=1e-6)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
     # y fixed
     iy = int(len(interp.y_nodes)/2)
     y = interp.y_nodes[iy]
@@ -118,7 +119,7 @@ def test_interpolation_tables_agree_on_xy_grid():
         bxy = interp.eval_xy(x=x, y=y)
         la, lo = XYtoLL(x=x, y=y, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
         bll = interp.eval_ll(lat=la, lon=lo)
-        assert bxy == pytest.approx(bll, rel=1e-6)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
 def test_interpolation_tables_agree_on_ll_grid():
     path = path_to_assets + '/bornholm.mat'
@@ -131,7 +132,7 @@ def test_interpolation_tables_agree_on_ll_grid():
         bll = interp.eval_ll(lat=lat, lon=lon)
         x, y = LLtoXY(lat=lat, lon=lon, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
         bxy = interp.eval_xy(x=x, y=y)
-        assert bxy == pytest.approx(bll, rel=1e-6)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
     # lon fixed
     ilon = int(len(interp.lon_nodes)/2)
     lon = interp.lon_nodes[ilon]
@@ -139,7 +140,7 @@ def test_interpolation_tables_agree_on_ll_grid():
         bll = interp.eval_ll(lat=lat, lon=lon)
         x, y = LLtoXY(lat=lat, lon=lon, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
         bxy = interp.eval_xy(x=x, y=y)
-        assert bxy == pytest.approx(bll, rel=1e-6)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
 def test_interpolation_tables_agree_anywhere():
     path = path_to_assets + '/bornholm.mat'
@@ -152,7 +153,7 @@ def test_interpolation_tables_agree_anywhere():
     z_ll = float(z_ll)
     z_xy = interp.eval_xy(x=0, y=0) # interpolate using x-y
     z_xy = float(z_xy)
-    assert z_ll == pytest.approx(z_xy, rel=1e-6)
+    assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)
     # --- 0.1 degrees north of origo ---
     lat = lat_c + 0.1
     lon = lon_c
@@ -161,7 +162,7 @@ def test_interpolation_tables_agree_anywhere():
     z_ll = float(z_ll)
     z_xy = interp.eval_xy(x=x, y=y) 
     z_xy = float(z_xy)
-    assert z_ll == pytest.approx(z_xy, rel=1e-6)    
+    assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)    
     # --- 0.08 degrees south of origo ---
     lat = lat_c - 0.08
     lon = lon_c
@@ -170,5 +171,77 @@ def test_interpolation_tables_agree_anywhere():
     z_ll = float(z_ll)
     z_xy = interp.eval_xy(x=x, y=y) 
     z_xy = float(z_xy)
-    assert z_ll == pytest.approx(z_xy, rel=1e-6)    
+    assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)    
+    # --- at shifted origo ---
+    interp = BathyInterpolator(bathy_reader=reader, origin=LatLon(55.30,15.10))
+    lat_c = interp.origin.latitude
+    lon_c = interp.origin.longitude
+    z_ll = interp.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
+    z_ll = float(z_ll)
+    z_xy = interp.eval_xy(x=0, y=0) # interpolate using x-y
+    z_xy = float(z_xy)
+    assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)
 
+def test_interpolation_tables_agree_on_xy_grid_for_dbarclays_data():
+    path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    interp = BathyInterpolator(bathy_reader=reader, rebin_xy=4)
+    # x fixed
+    ix = int(len(interp.x_nodes)/2)
+    x = interp.x_nodes[ix]
+    for y in interp.y_nodes: 
+        bxy = interp.eval_xy(x=x, y=y)
+        la, lo = XYtoLL(x=x, y=y, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
+        bll = interp.eval_ll(lat=la, lon=lo)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
+    # y fixed
+    iy = int(len(interp.y_nodes)/2)
+    y = interp.y_nodes[iy]
+    for x in interp.x_nodes: 
+        bxy = interp.eval_xy(x=x, y=y)
+        la, lo = XYtoLL(x=x, y=y, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
+        bll = interp.eval_ll(lat=la, lon=lo)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
+
+def test_interpolation_tables_agree_on_ll_grid_for_dbarclays_data():
+    path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    interp = BathyInterpolator(bathy_reader=reader, rebin_xy=8)
+    # lat fixed
+    ilat = int(len(interp.lat_nodes)/2)
+    lat = interp.lat_nodes[ilat]
+    for lon in interp.lon_nodes: 
+        bll = interp.eval_ll(lat=lat, lon=lon)
+        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
+        bxy = interp.eval_xy(x=x, y=y)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
+    # lon fixed
+    ilon = int(len(interp.lon_nodes)/2)
+    lon = interp.lon_nodes[ilon]
+    for lat in interp.lat_nodes: 
+        bll = interp.eval_ll(lat=lat, lon=lon)
+        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=interp.origin.latitude, lon_ref=interp.origin.longitude)
+        bxy = interp.eval_xy(x=x, y=y)
+        assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
+
+def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
+    path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    interp = BathyInterpolator(bathy_reader=reader, rebin_xy=4)
+    # --- at origo ---
+    lat_c = interp.origin.latitude
+    lon_c = interp.origin.longitude
+    z_ll = interp.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
+    z_ll = float(z_ll)
+    z_xy = interp.eval_xy(x=0, y=0) # interpolate using x-y
+    z_xy = float(z_xy)
+    assert z_ll == pytest.approx(z_xy, rel=1E-3) or z_ll == pytest.approx(z_xy, abs=0.1)
+    # --- at shifted origo ---
+    interp = BathyInterpolator(bathy_reader=reader, rebin_xy=4, origin=LatLon(9.,140.))
+    lat_c = interp.origin.latitude
+    lon_c = interp.origin.longitude
+    z_ll = interp.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
+    z_ll = float(z_ll)
+    z_xy = interp.eval_xy(x=0, y=0) # interpolate using x-y
+    z_xy = float(z_xy)
+    assert z_ll == pytest.approx(z_xy, rel=1E-3) or z_ll == pytest.approx(z_xy, abs=0.1)

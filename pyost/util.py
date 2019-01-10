@@ -142,10 +142,10 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False):
 
     return lat, lon
 
-def regXYgrid(lat, lon, lat_ref=0, lon_ref=0):
+def regXYgrid(lat, lon, lat_ref=0, lon_ref=0, rebin=1):
 
-    Nx = len(lon)
-    Ny = len(lat)
+    Nx = rebin * len(lon)
+    Ny = rebin * len(lat)
 
     # determine extent and bin size of regular x-y grid
     lats = [lat[0], lat[0], lat[-1], lat[-1]]

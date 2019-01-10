@@ -12,7 +12,6 @@
 """
 
 import numpy as np
-from collections import namedtuple
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from pyost.bathy_reader import BathyReader, LatLon
 from pyost.util import deg2rad, XYtoLL, LLtoXY, regXYgrid
@@ -31,7 +30,7 @@ class BathyInterpolator():
             latlon_ref: LatLon
                 Reference location (origo of XY coordinate system).
     """
-    def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None):
+    def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None, rebin_xy=1):
         
         # read bathymetry data from file
         lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
@@ -49,7 +48,7 @@ class BathyInterpolator():
         self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
 
         # define regular x-y grid
-        x, y = regXYgrid(lat=lat, lon=lon, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
+        x, y = regXYgrid(lat=lat, lon=lon, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, rebin=rebin_xy)
 
         # transform to lat-lon
         lat_xy, lon_xy = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=True)
@@ -97,6 +96,10 @@ class BathyInterpolator():
                 zi: Interpolated bathymetry values
         """
         zi = self.interp_xy.__call__(x=x, y=y, grid=grid)
+
+        if np.ndim(zi) == 0:
+            zi = float(zi)
+
         return zi
 
     def eval_ll(self, lat, lon, grid=False):
@@ -129,6 +132,10 @@ class BathyInterpolator():
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = self._torad(lat, lon)
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid)
+
+        if np.ndim(zi) == 0:
+            zi = float(zi)
+
         return zi
 
     def _torad(self, lat, lon):

@@ -14,7 +14,7 @@
 import pytest
 import os
 import numpy as np
-from util import LLtoXY, XYtoLL
+from pyost.util import LLtoXY, XYtoLL
 
 def test_can_convert_single_point_from_ll_to_xy():
     lat_ref = 45

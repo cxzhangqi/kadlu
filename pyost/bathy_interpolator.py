@@ -64,6 +64,12 @@ class BathyInterpolator():
         # initialize x-y interpolator
         self.interp_xy = RectBivariateSpline(x=x, y=y, z=bathy_xy)
 
+        # store grids
+        self.lat_nodes = lat
+        self.lon_nodes = lon
+        self.x_nodes = x
+        self.y_nodes = y
+
     def eval_xy(self, x, y, grid=False):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
 

@@ -158,13 +158,13 @@ def regXYgrid(lat, lon, lat_ref=0, lon_ref=0):
 
     if x_length_S < x_length_N:
         x0 = x[0]
-        dx = (x[1] - x[0]) / Nx
+        dx = (x[1] - x[0]) / (Nx - 1)
     else:
         x0 = x[2]
-        dx = (x[3] - x[2]) / Nx
+        dx = (x[3] - x[2]) / (Nx - 1)
 
     y0 = y[0]
-    dy = (y[2] - y[0]) / Ny
+    dy = (y[2] - y[0]) / (Ny - 1)
 
     # create regular x-y grid
     x = np.arange(Nx, dtype=np.float)

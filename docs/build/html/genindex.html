@@ -88,7 +88,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="play.html">Module for playing around</a></li>
+<li class="toctree-l1"><a class="reference internal" href="util.html">Module for general-purpose utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bathy_reader.html">Module for reading bathymetry data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bathy_interpolator.html">Module for interpolating bathymetry data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guidelines.html">How to contribute</a></li>
 </ul>
 
@@ -156,13 +158,78 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#P"><strong>P</strong></a>
+ <a href="#B"><strong>B</strong></a>
+ | <a href="#E"><strong>E</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#R"><strong>R</strong></a>
+ | <a href="#U"><strong>U</strong></a>
+ | <a href="#X"><strong>X</strong></a>
  
 </div>
-<h2 id="P">P</h2>
+<h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="play.html#module-play">play (module)</a>
+      <li><a href="bathy_interpolator.html#module-bathy_interpolator">bathy_interpolator (module)</a>
+</li>
+      <li><a href="bathy_reader.html#module-bathy_reader">bathy_reader (module)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="bathy_interpolator.html#bathy_interpolator.BathyInterpolator">BathyInterpolator (class in bathy_interpolator)</a>
+</li>
+      <li><a href="bathy_reader.html#bathy_reader.BathyReader">BathyReader (class in bathy_reader)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="E">E</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="bathy_interpolator.html#bathy_interpolator.BathyInterpolator.eval_ll">eval_ll() (bathy_interpolator.BathyInterpolator method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="bathy_interpolator.html#bathy_interpolator.BathyInterpolator.eval_xy">eval_xy() (bathy_interpolator.BathyInterpolator method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="bathy_reader.html#bathy_reader.LatLon.latitude">latitude (bathy_reader.LatLon attribute)</a>
+</li>
+      <li><a href="bathy_reader.html#bathy_reader.LatLon">LatLon (class in bathy_reader)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="util.html#util.LLtoXY">LLtoXY() (in module util)</a>
+</li>
+      <li><a href="bathy_reader.html#bathy_reader.LatLon.longitude">longitude (bathy_reader.LatLon attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="bathy_reader.html#bathy_reader.BathyReader.read">read() (bathy_reader.BathyReader method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="U">U</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="util.html#module-util">util (module)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="X">X</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="util.html#util.XYtoLL">XYtoLL() (in module util)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -179,7 +246,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Mark Thomas, Oliver Kirsebom.
+        &copy; Copyright 2019, Casey Hillard, Oliver Kirsebom.
 
     </p>
   </div>

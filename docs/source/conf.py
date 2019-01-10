@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.abspath('../../pyost'))
 # -- Project information -----------------------------------------------------
 
 project = 'pyost'
-copyright = '2018, Mark Thomas, Oliver Kirsebom'
-author = 'Mark Thomas, Oliver Kirsebom'
+copyright = '2019, Casey Hillard, Oliver Kirsebom'
+author = 'Casey Hillard, Oliver Kirsebom'
 
 # The short X.Y version
 version = '0.0'
@@ -140,7 +140,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'pyost.tex', 'pyost Documentation',
-     'Mark Thomas, Oliver Kirsebom', 'manual'),
+     'Casey Hillard, Oliver Kirsebom', 'manual'),
 ]
 
 

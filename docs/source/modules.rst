@@ -2,5 +2,7 @@
    :maxdepth: 2
    :caption: Modules:
 
-   play
+   util
+   bathy_reader
+   bathy_interpolator
   

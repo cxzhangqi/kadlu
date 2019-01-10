@@ -14,8 +14,8 @@
 import numpy as np
 from collections import namedtuple
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
-from bathy_reader import BathyReader, LatLon
-from util import deg2rad, XYtoLL, LLtoXY, regXYgrid
+from pyost.bathy_reader import BathyReader, LatLon
+from pyost.util import deg2rad, XYtoLL, LLtoXY, regXYgrid
 
 
 class BathyInterpolator():

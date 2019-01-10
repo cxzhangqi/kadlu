@@ -73,6 +73,17 @@ class BathyReader():
             print('Unrecognized file format')
             exit(1)
 
+        # ensure that lat and lon are strictly increasing
+        if np.all(np.diff(lat) < 0):
+            lat = np.flip(lat, axis=0)
+            bathy = np.flip(bathy, axis=0)
+        if np.all(np.diff(lon) < 0):
+            lon = np.flip(lat, axis=0)
+            bathy = np.flip(bathy, axis=1)
+        
+        assert np.all(np.diff(lat) > 0), 'Latitudes must be strictly ascending'
+        assert np.all(np.diff(lon) > 0), 'Longitudes must be strictly ascending'
+
         return lat, lon, bathy
 
     def _read_netcdf(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):

@@ -18,7 +18,7 @@ from bathy_reader import BathyReader, LatLon
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
 
-def test_can_read_bathymetry_from_netcdf_file(one):
+def test_can_read_bathymetry_from_netcdf_file():
     path = path_to_assets + '/bornholm.nc'
     reader = BathyReader(path=path, bathy_name='bathy')
     lat, lon, bathy = reader.read()
@@ -27,7 +27,7 @@ def test_can_read_bathymetry_from_netcdf_file(one):
     assert bathy.shape[0] == lat.shape[0]
     assert bathy.shape[1] == lon.shape[0]
 
-def test_can_read_bathymetry_from_matlab_file(one):
+def test_can_read_bathymetry_from_matlab_file():
     path = path_to_assets + '/bornholm.mat'
     reader = BathyReader(path=path, bathy_name='bathy')
     lat, lon, bathy = reader.read()
@@ -36,7 +36,7 @@ def test_can_read_bathymetry_from_matlab_file(one):
     assert bathy.shape[0] == lat.shape[0]
     assert bathy.shape[1] == lon.shape[0]
 
-def test_can_read_bathymetry_from_gridded_matlab_file(one):
+def test_can_read_bathymetry_from_gridded_matlab_file():
     path = path_to_assets + '/bathy_grid_test.mat'
     reader = BathyReader(path=path, bathy_name='bathy')
     # read without lat-lon constraints
@@ -51,3 +51,17 @@ def test_can_read_bathymetry_from_gridded_matlab_file(one):
     assert np.max(bathy) == 800
     assert bathy.shape[0] == lat.shape[0]
     assert bathy.shape[1] == lon.shape[0]
+
+def test_ensure_lat_and_lon_are_strictly_increasing():
+    path = path_to_assets + '/bathy_grid_test.mat'
+    reader = BathyReader(path=path, bathy_name='bathy')
+    lat, lon, _ = reader.read()
+    assert np.all(np.diff(lat) > 0)
+    assert np.all(np.diff(lon) > 0)    
+
+def test_ensure_lat_and_lon_are_strictly_increasing_for_dbarclays_data():
+    path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    lat, lon, _ = reader.read()
+    assert np.all(np.diff(lat) > 0)
+    assert np.all(np.diff(lon) > 0)    

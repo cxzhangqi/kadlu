@@ -143,7 +143,30 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False):
     return lat, lon
 
 def regXYgrid(lat, lon, lat_ref=0, lon_ref=0, rebin=1):
+    """ Transform a regular polar grid (lat,lon) into a regular planar 
+        grid (x,y) for the same area.
 
+        Args: 
+            lat: array
+                latitudes in degrees from -90 to +90.
+            lon: array
+                longitudes in degrees from -180 to +180.
+            lat_ref: float
+                reference latitude defining the origin of the y axis.
+            lon_ref: float
+                reference longitude defining the origin of the x axis.
+            rebin: int
+                Re-binning factor for the x-y grid. For example, if 
+                rebin=4, the binning used for the x and y axes will 
+                be 4 times finer than that of the longitude and 
+                latitude axes, respectively. 
+
+        Returns:
+            x: array
+                x coordinates of the planar grid
+            y: array
+                y coordinates of the planar grid
+    """
     Nx = rebin * len(lon)
     Ny = rebin * len(lat)
 

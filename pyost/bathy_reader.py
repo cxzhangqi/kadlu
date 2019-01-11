@@ -42,11 +42,12 @@ class BathyReader():
             bathy_name: str
                 Name of the variable that contains the bathymetry values.
     """
-    def __init__(self, path, lat_name='lat', lon_name='lon', bathy_name='bathy'):
+    def __init__(self, path, lat_name='lat', lon_name='lon', bathy_name='bathy', lon_axis=1):
         self.path = path
         self.lat_name = lat_name
         self.lon_name = lon_name
         self.bathy_name = bathy_name
+        self.lon_axis = lon_axis
 
     def read(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
         """ Read longitude, latitude, and bathymetry from file.
@@ -83,6 +84,17 @@ class BathyReader():
         
         assert np.all(np.diff(lat) > 0), 'Latitudes must be strictly ascending'
         assert np.all(np.diff(lon) > 0), 'Longitudes must be strictly ascending'
+
+        # ensure axis=0 is latitude and axis=1 is longitude
+        if self.lon_axis == 0:
+            bathy = np.swapaxes(bathy, 0, 1)
+
+        # check that axes have consistent sizes
+        if bathy.shape[0] != lat.shape[0]:
+            bathy = np.swapaxes(bathy, 0, 1)
+
+        assert bathy.shape[0] == lat.shape[0], 'axis #0 of bathymetry matrix must have same size as latitude array'
+        assert bathy.shape[1] == lon.shape[0], 'axis #1 of bathymetry matrix must have same size as longitude array'
 
         return lat, lon, bathy
 

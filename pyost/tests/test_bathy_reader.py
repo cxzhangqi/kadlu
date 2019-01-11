@@ -61,7 +61,7 @@ def test_ensure_lat_and_lon_are_strictly_increasing():
 
 def test_ensure_lat_and_lon_are_strictly_increasing_for_dbarclays_data():
     path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
-    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat', lon_axis=0)
     lat, lon, _ = reader.read()
     assert np.all(np.diff(lat) > 0)
     assert np.all(np.diff(lon) > 0)    

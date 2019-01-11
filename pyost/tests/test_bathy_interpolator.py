@@ -184,7 +184,7 @@ def test_interpolation_tables_agree_anywhere():
 
 def test_interpolation_tables_agree_on_xy_grid_for_dbarclays_data():
     path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
-    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat', lon_axis=0)
     interp = BathyInterpolator(bathy_reader=reader, rebin_xy=4)
     # x fixed
     ix = int(len(interp.x_nodes)/2)
@@ -205,7 +205,7 @@ def test_interpolation_tables_agree_on_xy_grid_for_dbarclays_data():
 
 def test_interpolation_tables_agree_on_ll_grid_for_dbarclays_data():
     path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
-    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat', lon_axis=0)
     interp = BathyInterpolator(bathy_reader=reader, rebin_xy=8)
     # lat fixed
     ilat = int(len(interp.lat_nodes)/2)
@@ -226,7 +226,7 @@ def test_interpolation_tables_agree_on_ll_grid_for_dbarclays_data():
 
 def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
     path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
-    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat')
+    reader = BathyReader(path=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat', lon_axis=0)
     interp = BathyInterpolator(bathy_reader=reader, rebin_xy=4)
     # --- at origo ---
     lat_c = interp.origin.latitude

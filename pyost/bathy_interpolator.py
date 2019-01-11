@@ -15,6 +15,10 @@ import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from pyost.bathy_reader import BathyReader, LatLon
 from pyost.util import deg2rad, XYtoLL, LLtoXY, regXYgrid
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter, MaxNLocator
 
 
 class BathyInterpolator():
@@ -68,6 +72,8 @@ class BathyInterpolator():
         self.lon_nodes = lon
         self.x_nodes = x
         self.y_nodes = y
+        self.bathy_ll = bathy
+        self.bathy_xy = bathy_xy
 
     def eval_xy(self, x, y, grid=False):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
@@ -139,6 +145,132 @@ class BathyInterpolator():
         return zi
 
     def _torad(self, lat, lon):
+        """ Convert latitute and longitude values from degrees to radians.
+
+            The method expects the latitude to be in the range (-90,90) and
+            the longitude to be in the range (-180,180).
+
+            The output latitude is in the range (0,pi) and the output 
+            longitude is in the range (-pi,pi).
+
+            Args: 
+                lat: float or array
+                   latitude(s) in degrees from -90 to +90.
+                lon: float or array
+                   longitude(s) in degrees from -180 to +180.
+
+            Returns:
+                lat_rad: float or array
+                    latitude(s) in radians from 0 to pi.
+                lon_rad: float or array
+                    longitude(s) in radians from -pi to +pi.
+        """
         lat_rad = (lat + 90) * deg2rad
         lon_rad = lon * deg2rad
         return lat_rad, lon_rad
+
+    def plot_ll(self):        
+        """ Draw a map of the elevation in polar coordinates.
+
+            Returns:
+                fig: matplotlib.figure.Figure
+                    A figure object.
+        """
+        fig = self._plot(ll=True)
+        return fig
+
+    def plot_xy(self):        
+        """ Draw a map of the elevation in planar coordinates.
+
+            Returns:
+                fig: matplotlib.figure.Figure
+                    A figure object.
+        """
+        fig = self._plot(ll=False)
+        return fig
+
+    def _plot(self, ll=True):
+        """ Draw a map of the elevation using either polar or
+            planar coordinates.
+
+            Args:
+                ll: bool
+                    If ll=True use polar coordinates; otherwise 
+                        use planar coordinates.
+
+            Returns:
+                fig: matplotlib.figure.Figure
+                    A figure object.
+        """        
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+
+        if ll:
+            X = self.lon_nodes
+            Y = self.lat_nodes
+            X,Y = np.meshgrid(X,Y,indexing='ij')
+            Z = self.bathy_ll
+            Z = np.swapaxes(Z, 0, 1)
+        else:
+            X = self.x_nodes
+            Y = self.y_nodes
+            X,Y = np.meshgrid(X,Y,indexing='ij')
+            Z = self.bathy_xy
+
+        # x and y axis range
+        xrange = np.max(X) - np.min(X)
+        yrange = np.max(Y) - np.min(Y)
+        if xrange > 1e3:
+            X = X / 1.e3
+        if yrange > 1e3:
+            Y = Y / 1.e3
+
+        # z axis binning and range
+        zmin = np.min(Z)
+        zmax = np.max(Z)
+        zrange = zmax - zmin
+        p = int(np.log10(zrange)) - 1
+        p = max(0, p)
+        dz = pow(10,p)
+        zmax = np.ceil(zmax / dz) * pow(10,p)
+        zmin = np.floor(zmin / dz) * pow(10,p)
+
+        if zrange > 1e3:
+            zmax = zmax / 1.e3
+            zmin = zmin / 1.e3
+            Z = Z / 1.e3
+
+        # plot the surface
+        surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
+                            linewidth=0, antialiased=False)
+
+        # axes titles
+        if ll:
+            ax.set_xlabel('Longitude (degrees east)')
+            ax.set_ylabel('Latitude (degrees north)')
+        else:
+            if xrange > 1e3:
+                ax.set_xlabel('X (km)')
+            else:
+                ax.set_xlabel('X (m)')
+            
+            if yrange > 1e3:
+                ax.set_ylabel('Y (km)')
+            else:
+                ax.set_ylabel('Y (m)')
+
+        if zrange > 1e3:
+            ax.set_zlabel('Elevation (km)')
+        else:
+            ax.set_zlabel('Elevation (m)')
+
+        # Customize the z axis
+        ax.set_zlim(zmin, zmax)
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+        # Add a color bar which maps values to colors.
+        fig.colorbar(surf, shrink=0.3, aspect=5)
+
+        return fig
+
+#    def plot_xy(self):

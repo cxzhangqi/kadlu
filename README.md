@@ -1,6 +1,6 @@
-# Welcome to the Ocean Soundscape Toolbox python package! (PyOST)
+# Welcome to PyOST, the Ocean Soundscape Toolbox python package!
 
-This package is currently under development, but will eventually 
+This package is under development, but will eventually 
 contain a bunch of tools useful for modeling the underwater ocean 
 soundscapes, for example:
 
@@ -22,6 +22,14 @@ soundscapes, for example:
 And potentially more ...
 
 Some of these features can already be found in the [arlpy](https://github.com/org-arl/arlpy) package.
+
+## Environmental noise model
+
+Currently, we are working on translating [this environmental noise model](https://data.meridian.cs.dal.ca/gitlab/data_analytics_dal/packages/pyost/tree/master/Nx2DSSFPE) 
+from MATLAB to Python. As part of this work, we will be restructuring 
+and documenting the code to make it more user-friendly and more easily 
+adaptable in new scenarios.
+
 
 ## Notebook tutorials
 

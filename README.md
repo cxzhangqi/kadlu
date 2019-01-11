@@ -1,4 +1,5 @@
-Welcome to the Ocean Soundscape Toolbox python package (pyost). 
+# Welcome to the Ocean Soundscape Toolbox python package, or PyOST!
+
 This package is currently under development, but will eventually 
 contain a bunch of tools useful for modeling the underwater ocean 
 soundscapes, for example:
@@ -21,3 +22,11 @@ soundscapes, for example:
 And potentially more ...
 
 Some of these features can already be found in the [arlpy](https://github.com/org-arl/arlpy) package.
+
+## Notebook tutorials
+
+ 1. [Extract bathymetry data from a matlab file](docs/demo_notebooks/read_bathy.ipynb)
+
+ 2. [Polar and planar coordinates](docs/demo_notebooks/coordinates.ipynb)
+
+ 3. [Interpolate bathymetry data](docs/demo_notebooks/interp_bathy.ipynb)

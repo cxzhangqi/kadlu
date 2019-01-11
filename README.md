@@ -1,6 +1,6 @@
-# Welcome to the Ocean Soundscape Toolbox python package!
+# Welcome to the Ocean Soundscape Toolbox python package! (PyOST)
 
-This package, also know as **PyOST**, is currently under development, but will eventually 
+This package is currently under development, but will eventually 
 contain a bunch of tools useful for modeling the underwater ocean 
 soundscapes, for example:
 

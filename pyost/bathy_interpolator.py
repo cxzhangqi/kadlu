@@ -14,7 +14,7 @@
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from pyost.bathy_reader import BathyReader, LatLon
-from pyost.util import deg2rad, XYtoLL, LLtoXY, regXYgrid
+from pyost.util import deg2rad, XYtoLL, LLtoXY
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm

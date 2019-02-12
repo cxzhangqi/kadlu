@@ -14,12 +14,66 @@
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from pyost.bathy_reader import BathyReader, LatLon
-from pyost.util import deg2rad, XYtoLL, LLtoXY
+from pyost.util import deg2rad, XYtoLL, LLtoXY, torad
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter, MaxNLocator
 from scipy.interpolate import griddata
+
+
+class GridData():
+    """ Wrapper function around scipy's scipy.interpolate.griddata
+
+        https://docs.scipy.org/doc/scipy-0.15.1/reference/generated/scipy.interpolate.griddata.html
+
+        Attributes: 
+            x: float or 1d array
+                data points 1st coordinate
+            y: float or 1d array
+                data points 2nd coordinate
+            z: float or 1d array
+                data values
+            method : {‘linear’, ‘nearest’, ‘cubic’}, optional
+    """
+    def __init__(self, x, y, z, method='cubic'):
+        self.xy = np.column_stack((x,y))
+        self.z = z
+        self.method = method
+
+    def __call__(self, theta, phi, grid=False):
+        """ Interpolate data
+
+            theta and phi can be floats or arrays.
+
+            If grid is set to False, the interpolation will be evaluated at 
+            the positions (theta_i, phi_i), where theta=(theta_1,...,theta_N) and 
+            phi=(phi_1,...,phi_N). Note that in this case, theta and phi must have 
+            the same length.
+
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (theta_i, phi_j), where theta=(theta_1,...,theta_N) and 
+            phi=(phi_1,...,phi_M). Note that in this case, the lengths of theta 
+            and phi do not have to be the same.
+
+            Args: 
+                theta: float or array
+                   1st coordinate of the points where the interpolation is to be evaluated
+                phi: float or array
+                   2nd coordinate of the points where the interpolation is to be evaluated
+                grid: bool
+                   Specify how to combine elements of theta and phi.
+
+            Returns:
+                zi: Interpolated values
+        """        
+        if grid:
+            theta, phi = np.meshgrid(theta, phi)
+
+        xi = np.column_stack((theta, phi))
+        zi = griddata(self.xy, self.z, xi, method=self.method)
+
+        return zi
 
 
 class BathyInterpolator():
@@ -48,9 +102,17 @@ class BathyInterpolator():
 
         self.origin = origin
 
+        # check if bathymetry data are on a regular or unstructured grid
+        reggrid = (np.ndim(bathy) == 2)
+
+        # convert to radians
+        lat_rad, lon_rad = torad(lat, lon)
+
         # initialize lat-lon interpolator
-        lat_rad, lon_rad = self._torad(lat, lon)
-        self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
+        if reggrid:
+            self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
+        else:
+            self.interp_ll = GridData(x=lat_rad, y=lon_rad, z=bathy)
 
         # store grids
         self.lat_nodes = lat
@@ -84,14 +146,7 @@ class BathyInterpolator():
                 zi: Interpolated bathymetry values
         """
         lat, lon = XYtoLL(x, y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
-
         zi = self.eval_ll(lat=lat, lon=lon, grid=grid)
-
-#        zi = self.interp_xy.__call__(x=x, y=y, grid=grid)
-
-#        if np.ndim(zi) == 0:
-#            zi = float(zi)
-
         return zi
 
     def eval_ll(self, lat, lon, grid=False):
@@ -122,38 +177,13 @@ class BathyInterpolator():
         """
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))
-        lat_rad, lon_rad = self._torad(lat, lon)
+        lat_rad, lon_rad = torad(lat, lon)
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid)
 
         if np.ndim(zi) == 0:
             zi = float(zi)
 
         return zi
-
-    def _torad(self, lat, lon):
-        """ Convert latitute and longitude values from degrees to radians.
-
-            The method expects the latitude to be in the range (-90,90) and
-            the longitude to be in the range (-180,180).
-
-            The output latitude is in the range (0,pi) and the output 
-            longitude is in the range (-pi,pi).
-
-            Args: 
-                lat: float or array
-                   latitude(s) in degrees from -90 to +90.
-                lon: float or array
-                   longitude(s) in degrees from -180 to +180.
-
-            Returns:
-                lat_rad: float or array
-                    latitude(s) in radians from 0 to pi.
-                lon_rad: float or array
-                    longitude(s) in radians from -pi to +pi.
-        """
-        lat_rad = (lat + 90) * deg2rad
-        lon_rad = lon * deg2rad
-        return lat_rad, lon_rad
 
     def plot_ll(self):        
         """ Draw a map of the elevation in polar coordinates.
@@ -195,12 +225,12 @@ class BathyInterpolator():
             X = self.lon_nodes
             Y = self.lat_nodes
             X,Y = np.meshgrid(X,Y,indexing='ij')
-            Z = self.bathy_ll
-            Z = np.swapaxes(Z, 0, 1)
         else:
-            X, Y = LLtoXY(lat=self.lon_nodes, lon=self.lon_nodes)
+            X,Y = LLtoXY(lat=self.lat_nodes, lon=self.lon_nodes)
             X,Y = np.meshgrid(X,Y,indexing='ij')
-            Z = self.bathy_ll
+
+        Z = self.bathy_ll
+        Z = np.swapaxes(Z, 0, 1)
 
         # x and y axis range
         xrange = np.max(X) - np.min(X)
@@ -257,5 +287,3 @@ class BathyInterpolator():
         fig.colorbar(surf, shrink=0.3, aspect=5)
 
         return fig
-
-#    def plot_xy(self):

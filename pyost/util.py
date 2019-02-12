@@ -141,3 +141,28 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False):
         lon = float(lon)
 
     return lat, lon
+
+def torad(lat, lon):
+    """ Convert latitute and longitude values from degrees to radians.
+
+        The method expects the latitude to be in the range (-90,90) and
+        the longitude to be in the range (-180,180).
+
+        The output latitude is in the range (0,pi) and the output 
+        longitude is in the range (-pi,pi).
+
+        Args: 
+            lat: float or array
+                latitude(s) in degrees from -90 to +90.
+            lon: float or array
+                longitude(s) in degrees from -180 to +180.
+
+        Returns:
+            lat_rad: float or array
+                latitude(s) in radians from 0 to pi.
+            lon_rad: float or array
+                longitude(s) in radians from -pi to +pi.
+    """
+    lat_rad = (lat + 90) * deg2rad
+    lon_rad = lon * deg2rad
+    return lat_rad, lon_rad

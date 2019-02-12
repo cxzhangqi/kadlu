@@ -177,7 +177,6 @@ def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
     # --- at origo ---
     lat_c = interp.origin.latitude
     lon_c = interp.origin.longitude
-    print(lat_c, lon_c)
     z_ll = interp.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
     z_xy = interp.eval_xy(x=0, y=0) # interpolate using x-y
@@ -224,5 +223,30 @@ def test_can_interpolate_multiple_points_in_xx():
     zi = list()
     for x, y in zip(xs, ys):
         zi.append(interp.eval_xy(x=x, y=y))
+    for z,d in zip(zi, depths):
+        assert z == pytest.approx(d, rel=1e-3)
+
+
+def test_can_interpolate_unstructured_grid():
+    class Reader():
+        def __init__(self, latlon_SW=None, latlon_NE=None):
+            _=None
+        def read(self, latlon_SW=None, latlon_NE=None):
+            lats = np.array([0.0, 1.0, 1.5, 2.1, 3.0])
+            lons = np.array([0.0, 2.0, 0.2, 0.7, 1.2])
+            depths = np.array([-90.0, -200.0, -140.0, -44.0, -301.0])
+            return lats, lons, depths
+
+    reader = Reader()
+    interp = BathyInterpolator(bathy_reader=reader)
+    # --- 4 latitudes ---
+    lats = [0.01, 0.1, 0.2, 2.1]
+    # --- 4 longitudes --- 
+    lons = [0.01, 0.15, 0.08, 0.71]
+    # interpolate
+    depths = interp.eval_ll(lat=lats, lon=lons)
+    zi = list()
+    for lat, lon in zip(lats, lons):
+        zi.append(interp.eval_ll(lat=lat, lon=lon))
     for z,d in zip(zi, depths):
         assert z == pytest.approx(d, rel=1e-3)

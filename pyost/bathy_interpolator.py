@@ -19,6 +19,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter, MaxNLocator
+from scipy.interpolate import griddata
 
 
 class BathyInterpolator():
@@ -34,7 +35,7 @@ class BathyInterpolator():
             latlon_ref: LatLon
                 Reference location (origo of XY coordinate system).
     """
-    def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None, rebin_xy=1):
+    def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None):
         
         # read bathymetry data from file
         lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
@@ -51,29 +52,10 @@ class BathyInterpolator():
         lat_rad, lon_rad = self._torad(lat, lon)
         self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
 
-        # define regular x-y grid
-        x, y = regXYgrid(lat=lat, lon=lon, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, rebin=rebin_xy)
-
-        # transform to lat-lon
-        lat_xy, lon_xy = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=True)
-
-        # evaluate bathy on new grid using lat-lon interpolator
-        Nx = len(x)
-        Ny = len(y)
-        bathy_xy = np.zeros(shape=(Nx,Ny))
-        for i in range(Nx):
-            bathy_xy[i,:] = self.eval_ll(lat=lat_xy[:,i], lon=lon_xy[:,i])
-
-        # initialize x-y interpolator
-        self.interp_xy = RectBivariateSpline(x=x, y=y, z=bathy_xy)
-
         # store grids
         self.lat_nodes = lat
         self.lon_nodes = lon
-        self.x_nodes = x
-        self.y_nodes = y
         self.bathy_ll = bathy
-        self.bathy_xy = bathy_xy
 
     def eval_xy(self, x, y, grid=False):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
@@ -101,10 +83,14 @@ class BathyInterpolator():
             Returns:
                 zi: Interpolated bathymetry values
         """
-        zi = self.interp_xy.__call__(x=x, y=y, grid=grid)
+        lat, lon = XYtoLL(x, y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
 
-        if np.ndim(zi) == 0:
-            zi = float(zi)
+        zi = self.eval_ll(lat=lat, lon=lon, grid=grid)
+
+#        zi = self.interp_xy.__call__(x=x, y=y, grid=grid)
+
+#        if np.ndim(zi) == 0:
+#            zi = float(zi)
 
         return zi
 
@@ -212,10 +198,9 @@ class BathyInterpolator():
             Z = self.bathy_ll
             Z = np.swapaxes(Z, 0, 1)
         else:
-            X = self.x_nodes
-            Y = self.y_nodes
+            X, Y = LLtoXY(lat=self.lon_nodes, lon=self.lon_nodes)
             X,Y = np.meshgrid(X,Y,indexing='ij')
-            Z = self.bathy_xy
+            Z = self.bathy_ll
 
         # x and y axis range
         xrange = np.max(X) - np.min(X)

@@ -14,6 +14,7 @@
 import numpy as np
 from collections import namedtuple
 from netCDF4 import Dataset
+from osgeo import gdal
 import scipy.io as sio
 
 

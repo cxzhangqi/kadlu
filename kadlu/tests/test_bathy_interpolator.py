@@ -1,10 +1,10 @@
-""" Unit tests for the the 'bathy_interpolator' module in the 'pyost' package
+""" Unit tests for the the 'bathy_interpolator' module in the 'kadlu' package
 
     Authors: Oliver Kirsebom
     contact: oliver.kirsebom@dal.ca
     Organization: MERIDIAN-Intitute for Big Data Analytics
     Team: Acoustic data Analytics, Dalhousie University
-    Project: packages/pyost
+    Project: packages/kadlu
              Project goal: Tools for underwater soundscape modeling
      
     License:
@@ -14,9 +14,9 @@
 import pytest
 import os
 import numpy as np
-from pyost.bathy_reader import BathyReader, LatLon
-from pyost.bathy_interpolator import BathyInterpolator
-from pyost.util import R1_IUGG, deg2rad, XYtoLL, LLtoXY
+from kadlu.bathy_reader import BathyReader, LatLon
+from kadlu.bathy_interpolator import BathyInterpolator
+from kadlu.util import R1_IUGG, deg2rad, XYtoLL, LLtoXY
 
 # Degree to radian conversion factor
 deg2rad = np.pi / 180.

@@ -1,10 +1,10 @@
-""" Bathymetry interpolation module within the pyost package
+""" Bathymetry interpolation module within the kadlu package
 
     Authors: Oliver Kirsebom
     contact: oliver.kirsebom@dal.ca
     Organization: MERIDIAN-Intitute for Big Data Analytics
     Team: Acoustic data Analytics, Dalhousie University
-    Project: packages/pyost
+    Project: packages/kadlu
              Project goal: Tools for underwater soundscape modeling
      
     License:
@@ -13,8 +13,8 @@
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
-from pyost.bathy_reader import BathyReader, LatLon
-from pyost.util import deg2rad, XYtoLL, LLtoXY, torad
+from kadlu.bathy_reader import BathyReader, LatLon
+from kadlu.util import deg2rad, XYtoLL, LLtoXY, torad
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm

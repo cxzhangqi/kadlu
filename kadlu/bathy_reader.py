@@ -1,10 +1,10 @@
-""" Bathymetry reader module within the pyost package
+""" Bathymetry reader module within the kadlu package
 
     Authors: Oliver Kirsebom
     contact: oliver.kirsebom@dal.ca
     Organization: MERIDIAN-Intitute for Big Data Analytics
     Team: Acoustic data Analytics, Dalhousie University
-    Project: packages/pyost
+    Project: packages/kadlu
              Project goal: Tools for underwater soundscape modeling
      
     License:

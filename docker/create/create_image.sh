@@ -1,19 +1,19 @@
 
 # copy package and requirements
-cp -r ../../pyost/ .
+cp -r ../../kadlu/ .
 cp ../../requirements.txt .
 cp ../../setup.py .
 
 # build image
-docker build --tag=pyost_test1 .
+docker build --tag=kadlu_test1 .
 
 # tag image
-docker tag pyost_test1 oliskir/pyost:test1
+docker tag kadlu_test1 oliskir/kadlu:test1
 
 # push image to repository
-docker push oliskir/pyost:test1
+docker push oliskir/kadlu:test1
 
 # clean
-rm -rf pyost
+rm -rf kadlu
 rm -rf requirements
 rm -rf setup.py

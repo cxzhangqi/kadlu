@@ -1,8 +1,8 @@
 
 # pull latest image
-docker pull oliskir/pyost:test1
+docker pull oliskir/kadlu:test1
 
 # run test
 docker run \
 -it \
---rm oliskir/pyost:test1
+--rm oliskir/kadlu:test1

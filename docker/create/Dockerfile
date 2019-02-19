@@ -4,8 +4,8 @@ FROM python:3.6-stretch
 # Set the working directory to /app
 WORKDIR /app
 
-# Copy pyost package
-COPY pyost/ /app/pyost
+# Copy kadlu package
+COPY kadlu/ /app/kadlu
 COPY requirements.txt /app
 COPY setup.py /app
 
@@ -41,4 +41,4 @@ ENV C_INCLUDE_PATH=/usr/include/gdal
 RUN pip install -r requirements.txt
 
 RUN python setup.py sdist
-RUN pip install dist/pyost-0.0.1.tar.gz
+RUN pip install dist/kadlu-0.0.1.tar.gz

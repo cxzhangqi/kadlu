@@ -47,5 +47,5 @@ RUN python setup.py sdist
 RUN pip install dist/pyost-0.0.1.tar.gz
 
 # Run pytest when the container launches
-ENTRYPOINT ["pytest"]
+# ENTRYPOINT ["pytest"]
 

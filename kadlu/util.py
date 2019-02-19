@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 # Equatorial radius (6,378.1370 km)
 # Polar radius (6,356.7523 km)
@@ -166,3 +167,52 @@ def torad(lat, lon):
     lat_rad = (lat + 90) * deg2rad
     lon_rad = lon * deg2rad
     return lat_rad, lon_rad
+
+
+def get_files(path, substr, fullpath=True, subdirs=False):
+    """ Find all files in the specified directory containing the specified substring in their file name
+
+        Args:
+            path: str
+                Directory path
+            substr: str
+                Substring contained in file name
+            fullpath: bool
+                Return full path to each file or just the file name 
+            subdirs: bool
+                Also search all subdirectories
+
+        Returns:
+            files: list (str)
+                Alphabetically sorted list of file names
+    """
+    # find all files
+    allfiles = list()
+    if not subdirs:
+        f = os.listdir(path)
+        for fil in f:
+            if fullpath:
+                x = path
+                if path[-1] is not '/':
+                    x += '/'
+                allfiles.append(os.path.join(x, fil))
+            else:
+                allfiles.append(fil)
+    else:
+        for r, _, f in os.walk(path):
+            for fil in f:
+                if fullpath:
+                    allfiles.append(os.path.join(r, fil))
+                else:
+                    allfiles.append(fil)
+
+    # select those that contain specified substring
+    files = list()
+    for f in allfiles:
+        if substr in f:
+            files.append(f)
+
+    # sort alphabetically
+    files.sort()
+
+    return files

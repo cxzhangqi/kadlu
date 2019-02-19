@@ -22,6 +22,10 @@ nodata = band.GetNoDataValue()
 arr = np.ma.masked_equal(arr, nodata)
 type(arr)
 
+print("[ MAX ] = ", band.GetMaximum())
+print("[ SCALE ] = ", band.GetScale())
+print("[ UNIT TYPE ] = ", band.GetUnitType())
+
 print(arr.min())
 
 stats = band.GetStatistics( True, True )

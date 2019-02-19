@@ -23,7 +23,7 @@ from scipy.interpolate import griddata
 
 
 class GridData():
-    """ Wrapper function around scipy's scipy.interpolate.griddata
+    """ Wrapper function around scipy's interpolate.griddata
 
         https://docs.scipy.org/doc/scipy-0.15.1/reference/generated/scipy.interpolate.griddata.html
 

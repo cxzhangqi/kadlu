@@ -9,3 +9,4 @@ pyost/tests/__pycache__/*
 dist/*
 docs/demo_notebooks/.ipynb_checkpoints/*
 pyost.egg-info/*
+*__pycache__

@@ -1,5 +1,5 @@
 #image: python:3.6
-image: oliskir/pyost:test1
+image: oliskir/kadlu:test1
 
 stages:
 - build

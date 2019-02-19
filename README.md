@@ -36,7 +36,7 @@ installed with pipe. Kadlu also uses a few C libraries:
 
 which can be installed with apt-get.
 
-The following installation script install all the required 
+The following bash script will install all the required 
 libraries. It should work out of the box on newer Ubuntu systems.
 
 ```bash

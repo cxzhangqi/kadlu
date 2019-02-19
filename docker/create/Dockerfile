@@ -37,15 +37,8 @@ RUN apt-get install -y --reinstall build-essential && \
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
 ENV C_INCLUDE_PATH=/usr/include/gdal
 
-# This will install latest version of GDAL
-RUN pip install GDAL>=2.2.4
-
-# Install any needed packages specified in requirements.txt
+# Install packages specified in requirements.txt (including GDAL)
 RUN pip install -r requirements.txt
 
 RUN python setup.py sdist
 RUN pip install dist/pyost-0.0.1.tar.gz
-
-# Run pytest when the container launches
-# ENTRYPOINT ["pytest"]
-

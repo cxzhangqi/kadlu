@@ -1,7 +1,6 @@
 
 # copy package and requirements
 cp -r ../../kadlu/ .
-cp ../../requirements.txt .
 cp ../../setup.py .
 
 # build image
@@ -15,5 +14,4 @@ docker push oliskir/kadlu:test1
 
 # clean
 rm -rf kadlu
-rm -rf requirements
 rm -rf setup.py

@@ -7,4 +7,4 @@ setuptools
 cftime
 netCDF4
 h5py
-GDAL>=2.2.4
+pygdal==1.11.3.3

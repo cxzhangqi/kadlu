@@ -10,20 +10,12 @@ COPY requirements.txt /app
 COPY setup.py /app
 
 # Update base container install
-RUN apt-get update && \
-  apt-get upgrade -y
-
-# Add unstable repo to allow us to access latest GDAL builds
-RUN echo deb http://ftp.uk.debian.org/debian unstable main contrib non-free >> /etc/apt/sources.list  
 RUN apt-get update
 
-# Existing binutils causes a dependency conflict, correct version will be installed when GDAL gets intalled
-RUN apt-get remove -y binutils
-
 # Install GDAL dependencies
-RUN apt-get -t unstable install -y libgdal-dev g++
+RUN apt-get install -y gdal-bin libgdal-dev g++
 
-# Install HDF5, netCDF4 and tk with apt-get.
+# Install HDF5, netCDF4 and tk
 RUN apt-get install -y --reinstall build-essential && \
   apt-get install -y software-properties-common && \
   apt-get update && \

@@ -66,11 +66,27 @@ def test_ensure_lat_and_lon_are_strictly_increasing_for_dbarclays_data():
     assert np.all(np.diff(lat) > 0)
     assert np.all(np.diff(lon) > 0)    
 
-def test_can_read_bathymetry_from_single_geotiff_chs_file():
-    path = path_to_assets + '/CA2_4300N06000W.tif'
-    reader = BathyReader(input=path, format='GEOTIFF_CHS')
+def test_can_read_bathymetry_from_single_geotiff_file():
+    path = path_to_assets + '/tif/CA2_4300N06000W.tif'
+    reader = BathyReader(input=path)
     lat, lon, bathy = reader.read()
     assert np.min(bathy) == pytest.approx(-3257.100, abs=0.001)
     assert np.max(bathy) == pytest.approx(1.645, abs=0.001)
     assert bathy.shape[0] == lat.shape[0]
     assert bathy.shape[0] == lon.shape[0]
+
+def test_can_read_bathymetry_from_two_geotiff_files():
+    path = path_to_assets + '/tif/CA2_4300N06000W.tif'
+    r1 = BathyReader(input=path)
+    path = path_to_assets + '/tif/CA2_4400N06000W.tif'
+    r2 = BathyReader(input=path)
+    path = path_to_assets + '/tif/'
+    r12 = BathyReader(input=path)
+    lat1, lon1, bathy1 = r1.read()
+    lat2, lon2, bathy2 = r2.read()
+    lat12, lon12, bathy12 = r12.read()
+    assert bathy12.shape[0] == bathy1.shape[0] + bathy2.shape[0]
+    assert np.min(lat12) == np.min(lat1)
+    assert np.max(lat12) == np.max(lat2)
+    assert min(np.min(lon1),np.min(lon2)) == np.min(lon12)
+    assert max(np.max(lon1),np.max(lon2)) == np.max(lon12)

@@ -34,13 +34,29 @@ LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
 
 
 class Format(Enum):
+    """ Enum class for bathymetry file formats
+    """
     NETCDF = 1
     MATLAB = 2
     GEOTIFF = 3
-    GEOTIFF_CHS = 4
-    XYZ = 5
+    XYZ = 4
 
 def get_member(cls, member_name):
+    """ Search for a member of an Enum-derived class by name.
+
+        Returns ValueError if the class does not contain any member by that name.
+
+        Args:
+            cls: Class
+                Class derived from Enum
+
+            member_name: str
+                Name of the member
+
+        Returns:
+            member: Class member    
+                Class member with the specified name
+    """
     for name, member in cls.__members__.items():
         if member_name == name:
             return member
@@ -50,45 +66,88 @@ def get_member(cls, member_name):
 
 
 class BathyReader():
-    """ Class for reading bathymetry data from NetCDF files (*.nc) or MATLAB files (*.mat).
+    """ Class for reading bathymetry data.
+    
+        BathyReader can handle four different file formats:
+            
+            * NetCDF (*.nc) 
+            * MATLAB (*.mat)
+            * GeoTIFF (*.tif)
+            * XYZ (*.xyz)
+
+        BathyReader expects NetCDF and MATLAB files to contain bathymetry 
+        data on a regular grid. Specically, it expects to find two 1d arrays 
+        with uniformly spaced latitude and longitude coordinates, and a 2d 
+        array with the bathymetry values at each grid point. The names of these 
+        arrays can be specified by the user. See the list of attributes below.
+
+        BathyReader expects GeoTIFF and XYZ files to conform to the standard 
+        adopted by the Canadian Hydrographic Service (CHS) for their Non-Navigational 
+        (NONNA-100) Bathymetric Data. In particular, the files must adhere to the 
+        same naming scheme used by the CHS. For more information, see 
+
+        https://open.canada.ca/data/en/dataset/d3881c4c-650d-4070-bf9b-1e00aabf0a1d
 
         Attributes: 
             input: str
                 Normally, this should be the full path to a single data file.
-                However, in the special case where format='GEOTIFF_CHS', this 
-                could also be the name of a folder containing multiple *.tif files.
+                However, for GeoTIFF and XYZ formats this can also be the name of 
+                a folder containing multiple *.tif or *.xyz files.
             lat_name: str
-                Name of the variable that contains the latitue values.
+                Name of the variable that contains the latitue values. 
+                Only relevant for NetCDF and MATLAB files.
             lon_name: str
                 Name of the variable that contains the longitude values.
+                Only relevant for NetCDF and MATLAB files.
             bathy_name: str
                 Name of the variable that contains the bathymetry values.
-            format: str
-                Format that the bathymetry data is stored in.
-                Options are: NETCDF, MATLAB, GEOTIFF, GEOTIFF_CHS, XYZ
-                If no format is provided (default), the BathyReader will 
-                attempt to determine the format from the input path.
+                Only relevant for NetCDF and MATLAB files.
+            lon_axis: int
+                Used to specify which of the axes of the 2d bathymetry array 
+                corresponds to the longitude axis.
+                Only relevant for NetCDF and MATLAB files.
     """
-    def __init__(self, input, lat_name='lat', lon_name='lon', bathy_name='bathy', lon_axis=1, format=None):
+    def __init__(self, input, lat_name='lat', lon_name='lon', bathy_name='bathy', lon_axis=1):
 
-        self.input = input
-
-        if format is None:
-            format = self._determine_format_from_filename(input)
+        # get files
+        self.files = self._get_files(input)
+        assert len(self.files) > 0, "You must provide at least one data file" 
 
         # file format
-        self.format = get_member(Format, format)
+        self.format = self._detect_format(self.files)
 
         self.lat_name = lat_name
         self.lon_name = lon_name
         self.bathy_name = bathy_name
         self.lon_axis = lon_axis
 
-    def _determine_format_from_filename(self, input):
+    def _get_files(self, input):
 
+        # check if input is a folder
+        if os.path.isdir(input):
+            files = list()
+            extensions = ['.tif', 'xyz']
+            for ext in extensions:
+                files = get_files(path=input, substr=ext)
+                if len(files) > 0:
+                    break
+        else:
+            files = [input]
+
+        return files
+
+    def _detect_format(self, files):
+        """ Detect file format.
+
+            Args:
+                files: list(str)
+                    List of files
+
+                fmt: Format
+                    File format
+        """
         fmt = None
-
-        f = input
+        f = files[0]
         ext = f[f.rfind('.'):]
 
         if ext == '.nc':
@@ -100,8 +159,9 @@ class BathyReader():
         elif ext == '.xyz':
             fmt = 'XYZ'
 
-        return fmt
+        fmt = get_member(Format, fmt)
 
+        return fmt
 
     def read(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
         """ Read longitude, latitude, and bathymetry from file.
@@ -127,8 +187,6 @@ class BathyReader():
             _r = self._read_matlab
         elif self.format is Format.GEOTIFF:
             _r = self._read_geotiff
-        elif self.format is Format.GEOTIFF_CHS:
-            _r = self._read_geotiff_chs
         elif self.format is Format.XYZ:
             _r = self._read_xyz
 
@@ -187,7 +245,7 @@ class BathyReader():
                     Bathymetry values
         """
         # load data
-        d = Dataset(self.input)
+        d = Dataset(self.files[0])
         lat = np.array(d.variables[self.lat_name])
         lon = np.array(d.variables[self.lon_name])
         bathy = np.array(d.variables[self.bathy_name])
@@ -198,7 +256,7 @@ class BathyReader():
         return lat, lon, bathy
 
     def _read_matlab(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
-        """ Read longitude, latitude, and bathymetry matrices from file.
+        """ Read longitude, latitude, and bathymetry from MATLAB file.
 
             Args: 
                 latlon_NW: LatLon
@@ -215,7 +273,7 @@ class BathyReader():
                     Bathymetry values
         """
         # load data
-        m = sio.loadmat(self.input)
+        m = sio.loadmat(self.files[0])
         lat = np.squeeze(np.array(m[self.lat_name]))
         lon = np.squeeze(np.array(m[self.lon_name]))
         bathy = np.array(m[self.bathy_name])
@@ -226,105 +284,242 @@ class BathyReader():
         return lat, lon, bathy
 
     def _read_geotiff(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
-        return None, None, None
+        """ Read longitude, latitude, and bathymetry from a collection of GeoTIFF files.
 
-    def _read_geotiff_chs(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
+            Args: 
+                latlon_NW: LatLon
+                    South-western (SW) boundary of the region of interest.
+                latlon_SE: LatLon
+                    North-eastern (NE) boundary of the region of interest.
 
-        band_no = 1
-
-        # check if file or directory
-        if os.path.isdir(self.input):
-            files = get_files(path=self.input, substr='.tif')
-        else:
-            files = [self.input]
-
+            Returns:
+                lat: 1d numpy array
+                    Latitude values
+                lon: 1d numpy array
+                    Longitude values
+                bathy: 1d numpy array
+                    Bathymetry values
+        """
         # empty lists
         lat, lon, bathy = list(), list(), list()
 
         # loop over files
-        for f in files:
-
-            # parse south-west corner from file name
-            sw = self._chs_parse_sw_corner(f)
-
-            # generate lat-lon arrays
-            y, x = self._chs_generate_latlon_arrays(sw)
-
-            # check if file overlaps with requested region
-            overlap = np.min(y) <= latlon_NE.latitude \
-                and np.max(y) >= latlon_SW.latitude \
-                and np.min(x) <= latlon_NE.longitude \
-                and np.max(x) >= latlon_SW.longitude
-
-            if not overlap:
-                continue
-
-            # open file
-            data_set = gdal.Open(f)
-
-            # get bathy matrix
-            band = data_set.GetRasterBand(band_no)
-            z = data_set.ReadAsArray()
-
-            # get nodata value from the GDAL band object
-            nodata = band.GetNoDataValue()
-
-            # flip bathy matrix
-            z = np.flip(z, axis=0)
-
-            # empty lists
-            _x, _y, _z = list(), list(), list()
-
-            # loop over bathy matrix, keeping only those entries that 
-            # have data and are inside requested region
-            N = z.shape[0]
-            for i in range(N):
-                for j in range(N):
-                    if z[i,j] != nodata and \
-                        x[i] >= latlon_SW.longitude and \
-                        x[i] <= latlon_NE.longitude and \
-                        y[j] >= latlon_SW.latitude and \
-                        y[j] <= latlon_NE.latitude:
-
-                        _x.append(x[i])
-                        _y.append(y[j])
-                        _z.append(z[i,j])
-
-            # fill lists
-            lat = lat + _y
-            lon = lon + _x
-            bathy = bathy + _z
+        for f in self.files:
+            x, y, z = self._read_single_geotiff(path=f, latlon_SW=latlon_SW, latlon_NE=latlon_NE)
+            lon = lon + x
+            lat = lat + y
+            bathy = bathy + z
 
         return np.array(lat), np.array(lon), np.array(bathy)
 
-    def _chs_parse_sw_corner(self, path):
+    def _read_single_geotiff(self, path, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
+        """ Read longitude, latitude, and bathymetry from a single GeoTIFF file.
+
+            Args: 
+                path: str
+                    Full path of the data file.
+                latlon_NW: LatLon
+                    South-western (SW) boundary of the region of interest.
+                latlon_SE: LatLon
+                    North-eastern (NE) boundary of the region of interest.
+
+            Returns:
+                x: list(float)
+                    Longitude values
+                y: list(float)
+                    Latitude values
+                z: list(float)
+                    Bathymetry values
+        """
+
+        band_no = 1
+
+        # parse south-west corner from file name
+        sw = self._parse_sw_corner(path)
+
+        # generate lat-lon arrays
+        y, x = self._generate_latlon_arrays(sw)
+
+        # check if file overlaps with requested region
+        overlap = self._get_overlap(lats=y, lons=x, sw=latlon_SW, ne=latlon_NE)
+
+        if len(overlap) == 0:
+            return list(), list(), list()
+
+        # open file
+        data_set = gdal.Open(path)
+
+        # get bathy matrix
+        band = data_set.GetRasterBand(band_no)
+        z = data_set.ReadAsArray()
+
+        # get nodata value from the GDAL band object
+        nodata = band.GetNoDataValue()
+
+        # flip bathy matrix
+        z = np.flip(z, axis=0)
+
+        # select data within the region of interest
+        x = x[overlap]
+        y = y[overlap]
+        z = z[overlap]
+
+        # find entries with data
+        idx = np.where(z != nodata)
+
+        # select entries with data
+        x, y = np.meshgrid(x, y)
+        x = x[idx]
+        y = y[idx]
+        z = z[idx]
+
+        # reshape
+        N = len(idx[0])
+        x = np.reshape(x, newshape=(N))
+        y = np.reshape(y, newshape=(N))
+        z = np.reshape(z, newshape=(N))
+
+        x = x.tolist()
+        y = y.tolist()
+        z = z.tolist()
+
+        return x, y, z
+
+    def _parse_sw_corner(self, path):
+        """ Parse latitude and longitude data from filename assuming 
+            the naming convention of the Canadian Hydrographic Service.
+
+            Args: 
+                path: str
+                    File name
+
+            Returns:
+                sw_corner: LatLon
+                    Latitude and longitude of the SW corner of the data set
+        """
         f = path[path.rfind('/')+1:]
         north = int(f[4:8]) / 100
         west = int(f[9:14]) / 100
         east = west - 180
-        return LatLon(north, east)
 
-    def _chs_generate_latlon_arrays(self, sw):
+        assert east >= -180 and east <= 180, 'Invalid parsed longitude value'
+        assert north >= -90 and north <= 180, 'Invalid parsed latitude value'
+
+        sw_corner = LatLon(north, east)
+        return sw_corner
+
+    def _generate_latlon_arrays(self, sw_corner):
+        """ Compute latitude and longitude values for a single 
+            bathymetry file from the Canadian Hydrographic Service.
+
+            The number of lat/lon values is 1001.
+
+            The latitude binning is 0.001 degrees.
+
+            The longitude binning depends on the latitude:
+
+                * south of 68 deg N: 0.001 deg
+                * latitudes from 68 to 80 deg N: 0.002 deg
+                * 80 deg N and north: 0.004 deg
+
+            Args: 
+                sw_corner: LatLon
+                    Latitude and longitude of the SW corner of the data set
+
+            Returns:
+                lats: numpy array
+                    Uniformly spaced latitude values 
+                lons: numpy array
+                    Uniformly spaced longitude values 
+        """
+        # number of data points        
         N = 1001
+
+        # latitude step size in degrees
         dlat = 0.001
-        if sw.longitude < 68:
+
+        # longitude step size in degrees
+        if sw_corner.longitude < 68:
             dlon = 0.001
-        elif sw.longitude >=68 and sw.longitude < 80:
+        elif sw_corner.longitude >=68 and sw_corner.longitude < 80:
             dlon = 0.002
-        elif sw.longitude >= 80:
+        elif sw_corner.longitude >= 80:
             dlon = 0.004
-        else:
-            print('Request longitude is outside tabulated range') 
 
         lats = np.arange(N, dtype=np.float)
         lats *= dlat
-        lats += sw.latitude
+        lats += sw_corner.latitude
 
         lons = np.arange(N, dtype=np.float)
         lons *= dlon
-        lons += sw.longitude
+        lons += sw_corner.longitude
 
         return lats, lons
+
+    def _get_latitude_overlap(self, lats, south, north):
+        """ From an array of latitudes, selects those that 
+            are within the prescribed boundaries.
+
+            Args: 
+                lats: numpy array
+                    latitude values
+                south: LatLon
+                    Southern boundary
+                north: LatLon
+                    Northern boundary
+
+            Returns:
+                indeces: numpy array
+                    Indeces of the entries that are within the prescribed boundaries
+        """
+        indeces = np.where(np.logical_and(lats <= north.latitude, lats >= south.latitude))
+        return indeces
+
+    def _get_longitude_overlap(self, lons, west, east):
+        """ From an array of longitudes, selects those that 
+            are within the prescribed boundaries.
+
+            Args: 
+                lons: numpy array
+                    Longitude values
+                west: LatLon
+                    Western boundary
+                east: LatLon
+                    Eastern boundary
+
+            Returns:
+                indeces: numpy array
+                    Indeces of the entries that are within the prescribed boundaries
+        """
+        indeces = np.where(np.logical_and(lons <= east.longitude, lons >= west.longitude))
+        return indeces
+
+    def _get_overlap(self, lats, lons, sw, ne):
+        """ From arrays of latitude and longitude coordinates, selects those that 
+            are within the prescribed boundaries.
+
+            The latitude and longitude arrays must have the same length.
+
+            Args: 
+                lats: numpy array
+                    latitude values
+                lons: numpy array
+                    Longitude values
+                west: LatLon
+                    Western boundary
+                east: LatLon
+                    Eastern boundary
+
+            Returns:
+                indeces: numpy array
+                    Indeces of the entries that are within the prescribed boundaries
+        """
+        assert len(lats) == len(lons), 'lats and lons must have the same length'        
+
+        lat_indeces = self._get_latitude_overlap(lats, sw, ne) 
+        lon_indeces = self._get_longitude_overlap(lons, sw, ne) 
+        indeces = np.intersect1d(lat_indeces, lon_indeces)
+        return indeces
 
     def _read_xyz(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
         return None, None, None

@@ -11,3 +11,4 @@ docs/demo_notebooks/.ipynb_checkpoints/*
 pyost.egg-info/*
 *__pycache__
 *.vscode
+kadlu.egg-info/*

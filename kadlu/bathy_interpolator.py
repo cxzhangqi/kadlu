@@ -145,8 +145,8 @@ class BathyInterpolator():
             Returns:
                 zi: Interpolated bathymetry values
         """
-        lat, lon = XYtoLL(x, y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
-        zi = self.eval_ll(lat=lat, lon=lon, grid=grid)
+        lat, lon = XYtoLL(x, y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
+        zi = self.eval_ll(lat=lat, lon=lon)
         return zi
 
     def eval_ll(self, lat, lon, grid=False):
@@ -178,6 +178,7 @@ class BathyInterpolator():
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = torad(lat, lon)
+
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid)
 
         if np.ndim(zi) == 0:
@@ -185,27 +186,27 @@ class BathyInterpolator():
 
         return zi
 
-    def plot_ll(self):        
+    def plot_ll(self, lat_bins=100, lat_min=None, lat_max=None, lon_bins=100, lon_min=None, lon_max=None):        
         """ Draw a map of the elevation in polar coordinates.
 
             Returns:
                 fig: matplotlib.figure.Figure
                     A figure object.
         """
-        fig = self._plot(ll=True)
+        fig = self._plot(True, lat_bins, lat_min, lat_max, lon_bins, lon_min, lon_max)
         return fig
 
-    def plot_xy(self):        
+    def plot_xy(self, x_bins=100, x_min=None, x_max=None, y_bins=100, y_min=None, y_max=None):        
         """ Draw a map of the elevation in planar coordinates.
 
             Returns:
                 fig: matplotlib.figure.Figure
                     A figure object.
         """
-        fig = self._plot(ll=False)
+        fig = self._plot(False, x_bins, x_min, x_max, y_bins, y_min, y_max)
         return fig
 
-    def _plot(self, ll=True):
+    def _plot(self, ll=True, x_bins=100, x_min=None, x_max=None, y_bins=100, y_min=None, y_max=None):
         """ Draw a map of the elevation using either polar or
             planar coordinates.
 
@@ -218,19 +219,45 @@ class BathyInterpolator():
                 fig: matplotlib.figure.Figure
                     A figure object.
         """        
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-
+        # interpolation grid
         if ll:
-            X = self.lon_nodes
-            Y = self.lat_nodes
-            X,Y = np.meshgrid(X,Y,indexing='ij')
+            x0 = self.lon_nodes
+            y0 = self.lat_nodes
         else:
-            X,Y = LLtoXY(lat=self.lat_nodes, lon=self.lon_nodes)
-            X,Y = np.meshgrid(X,Y,indexing='ij')
+            x0, y0 = LLtoXY(lat=self.lat_nodes, lon=self.lon_nodes, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=True)
 
-        Z = self.bathy_ll
+        # axes ranges
+        if x_min is None:
+            x_min = np.min(x0)
+        if x_max is None:
+            x_max = np.max(x0)
+        if y_min is None:
+            y_min = np.min(y0)
+        if y_max is None:
+            y_max = np.max(y0)
+
+        # binning
+        dx = (x_max - x_min) / x_bins
+        dy = (y_max - y_min) / y_bins
+
+        # create axes
+        X = np.arange(x_bins+1, dtype=np.float)
+        X *= dx
+        X += x_min
+        Y = np.arange(y_bins+1, dtype=np.float)
+        Y *= dy
+        Y += y_min
+
+        # interpolate bathymetry
+        if ll:
+            Z = self.eval_ll(lat=Y, lon=X, grid=True)
+        else:
+            Z = self.eval_xy(x=X, y=Y, grid=True)
+
         Z = np.swapaxes(Z, 0, 1)
+
+        # meshgrid
+        X,Y = np.meshgrid(X,Y,indexing='ij')
 
         # x and y axis range
         xrange = np.max(X) - np.min(X)
@@ -255,9 +282,9 @@ class BathyInterpolator():
             zmin = zmin / 1.e3
             Z = Z / 1.e3
 
-        # plot the surface
-        surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
-                            linewidth=0, antialiased=False)
+        # plot
+        fig, ax = plt.subplots(figsize=(10,10))
+        img = ax.imshow(Z.T, aspect='auto', origin='lower', extent=(np.min(X), np.max(X), np.min(Y), np.max(Y)))
 
         # axes titles
         if ll:
@@ -275,15 +302,11 @@ class BathyInterpolator():
                 ax.set_ylabel('Y (m)')
 
         if zrange > 1e3:
-            ax.set_zlabel('Elevation (km)')
+            zlabel = 'Elevation (km)'
         else:
-            ax.set_zlabel('Elevation (m)')
+            zlabel = 'Elevation (m)'
 
-        # Customize the z axis
-        ax.set_zlim(zmin, zmax)
-        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
-
-        # Add a color bar which maps values to colors.
-        fig.colorbar(surf, shrink=0.3, aspect=5)
+        # Add a color bar which maps values to colors
+        fig.colorbar(img, format='%.02f', label=zlabel)
 
         return fig

@@ -47,3 +47,5 @@ libraries. It should work out of the box on newer Ubuntu systems.
  2. [Polar and planar coordinates](docs/demo_notebooks/coordinates.ipynb)
 
  3. [Interpolate bathymetry data](docs/demo_notebooks/interp_bathy.ipynb)
+
+ 4. [How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)](docs/demo_notebooks/CHS.ipynb)

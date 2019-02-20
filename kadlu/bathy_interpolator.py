@@ -95,8 +95,10 @@ class BathyInterpolator():
                 North-eastern (SE) boundary of the interpolation region.
             latlon_ref: LatLon
                 Reference location (origo of XY coordinate system).
+            method : {‘linear’, ‘nearest’, ‘cubic’}, optional
+                Interpolation method used for unstructured data (GeoTIFF and XYZ)
     """
-    def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None):
+    def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None, method='cubic'):
         
         # read bathymetry data from file
         lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
@@ -119,7 +121,7 @@ class BathyInterpolator():
         if reggrid:
             self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
         else:
-            self.interp_ll = GridData(x=lat_rad, y=lon_rad, z=bathy)
+            self.interp_ll = GridData(x=lat_rad, y=lon_rad, z=bathy, method=method)
 
         # store grids
         self.lat_nodes = lat

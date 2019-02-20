@@ -338,12 +338,12 @@ class BathyReader():
         sw = self._parse_sw_corner(path)
 
         # generate lat-lon arrays
-        y, x = self._generate_latlon_arrays(sw)
+        lats, lons = self._generate_latlon_arrays(sw)
 
-        # check if file overlaps with requested region
-        overlap = self._get_overlap(lats=y, lons=x, sw=latlon_SW, ne=latlon_NE)
-
-        if len(overlap) == 0:
+        # get overlap with requested region
+        lat_overlap = self._get_latitude_overlap(lats=lats, south=latlon_SW, north=latlon_NE)
+        lon_overlap = self._get_longitude_overlap(lons=lons, west=latlon_SW, east=latlon_NE)
+        if len(lat_overlap) == 0 or len(lon_overlap) == 0:
             return list(), list(), list()
 
         # open file
@@ -358,26 +358,24 @@ class BathyReader():
 
         # flip bathy matrix
         z = np.flip(z, axis=0)
+        z = np.swapaxes(z, 0, 1)
+
+        # grid
+        x = lons
+        y = lats
+        x, y = np.meshgrid(x, y)
+
+        # select entries with data
+        has_data = np.where(z != nodata)
+        x = x[has_data]
+        y = y[has_data]
+        z = z[has_data]
 
         # select data within the region of interest
+        overlap = self._get_overlap(lats=y, lons=x, sw=latlon_SW, ne=latlon_NE)
         x = x[overlap]
         y = y[overlap]
         z = z[overlap]
-
-        # find entries with data
-        idx = np.where(z != nodata)
-
-        # select entries with data
-        x, y = np.meshgrid(x, y)
-        x = x[idx]
-        y = y[idx]
-        z = z[idx]
-
-        # reshape
-        N = len(idx[0])
-        x = np.reshape(x, newshape=(N))
-        y = np.reshape(y, newshape=(N))
-        z = np.reshape(z, newshape=(N))
 
         x = x.tolist()
         y = y.tolist()
@@ -518,7 +516,9 @@ class BathyReader():
 
         lat_indeces = self._get_latitude_overlap(lats, sw, ne) 
         lon_indeces = self._get_longitude_overlap(lons, sw, ne) 
+
         indeces = np.intersect1d(lat_indeces, lon_indeces)
+
         return indeces
 
     def _read_xyz(self, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):

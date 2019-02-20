@@ -248,12 +248,12 @@ class BathyInterpolator():
         dy = (y_max - y_min) / y_bins
 
         # create axes
-        X = np.arange(x_bins+1, dtype=np.float)
+        X = np.arange(x_bins, dtype=np.float)
         X *= dx
-        X += x_min
-        Y = np.arange(y_bins+1, dtype=np.float)
+        X += x_min + 0.5*dx
+        Y = np.arange(y_bins, dtype=np.float)
         Y *= dy
-        Y += y_min
+        Y += y_min + 0.5*dy
 
         # interpolate bathymetry
         if ll:
@@ -263,12 +263,15 @@ class BathyInterpolator():
 
         Z = np.swapaxes(Z, 0, 1)
 
+        # mask NaN entries
+        Z = np.ma.masked_invalid(Z)
+
         # meshgrid
         X,Y = np.meshgrid(X,Y,indexing='ij')
 
         # x and y axis range
-        xrange = np.max(X) - np.min(X)
-        yrange = np.max(Y) - np.min(Y)
+        xrange = x_max - x_min
+        yrange = y_max - y_min
         if xrange > 1e3:
             X = X / 1.e3
         if yrange > 1e3:
@@ -291,7 +294,7 @@ class BathyInterpolator():
 
         # plot
         fig, ax = plt.subplots(figsize=(10,10))
-        img = ax.imshow(Z.T, aspect='auto', origin='lower', extent=(np.min(X), np.max(X), np.min(Y), np.max(Y)))
+        img = ax.imshow(Z.T, aspect='auto', origin='lower', extent=(x_min, x_max, y_min, y_max))
 
         # axes titles
         if ll:

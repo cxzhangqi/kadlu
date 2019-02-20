@@ -256,9 +256,9 @@ def test_can_interpolate_geotiff_data():
     reader = BathyReader(path)
     interp = BathyInterpolator(bathy_reader=reader)
     # --- 4 latitudes ---
-    lats = [43.1, 43.2, 43.7, 43.9]
+    lats = [43.3, 43.2, 43.7, 43.5]
     # --- 4 longitudes --- 
-    lons = [-119.9, -119.8, -119.2, -119.1]
+    lons = [-119.6, -119.8, -119.2, -119.3]
     # interpolate
     depths = interp.eval_ll(lat=lats, lon=lons)
     zi = list()

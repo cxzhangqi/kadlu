@@ -2,7 +2,7 @@
 
 # Update base container install
 sudo apt-get update
-sudo apt-get install -y --reinstall build-essential && \
+sudo apt-get install -y --reinstall build-essential
 sudo apt-get install -y software-properties-common
 
 # Install GDAL dependencies

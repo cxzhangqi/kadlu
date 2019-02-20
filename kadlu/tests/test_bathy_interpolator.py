@@ -250,3 +250,25 @@ def test_can_interpolate_unstructured_grid():
         zi.append(interp.eval_ll(lat=lat, lon=lon))
     for z,d in zip(zi, depths):
         assert z == pytest.approx(d, rel=1e-3)
+
+def test_can_interpolate_geotiff_data():
+    path = path_to_assets + '/tif/CA2_4300N06000W.tif'
+    reader = BathyReader(path)
+    interp = BathyInterpolator(bathy_reader=reader)
+    # --- 4 latitudes ---
+    lats = [43.1, 43.2, 43.7, 43.9]
+    # --- 4 longitudes --- 
+    lons = [-119.9, -119.8, -119.2, -119.1]
+    # interpolate
+    depths = interp.eval_ll(lat=lats, lon=lons)
+    zi = list()
+    for lat, lon in zip(lats, lons):
+        zi.append(interp.eval_ll(lat=lat, lon=lon))
+    for z,d in zip(zi, depths):
+        assert z == pytest.approx(d, rel=1e-3)
+    # interpolate on grid
+    depths_grid = interp.eval_ll(lat=lats, lon=lons, grid=True)
+    assert depths_grid.shape[0] == 4
+    assert depths_grid.shape[1] == 4
+    for i in range(4):
+        assert depths_grid[i,i] == depths[i]

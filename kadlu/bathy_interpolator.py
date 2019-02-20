@@ -68,10 +68,17 @@ class GridData():
                 zi: Interpolated values
         """        
         if grid:
+            M = len(theta)
+            N = len(phi)
             theta, phi = np.meshgrid(theta, phi)
+            theta = np.reshape(theta, newshape=(M*N))
+            phi = np.reshape(phi, newshape=(M*N))
 
         xi = np.column_stack((theta, phi))
         zi = griddata(self.xy, self.z, xi, method=self.method)
+
+        if grid:
+            zi = np.reshape(zi, newshape=(M,N))
 
         return zi
 

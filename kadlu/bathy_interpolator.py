@@ -72,9 +72,16 @@ class GridData():
             N = len(phi)
             theta, phi = np.meshgrid(theta, phi)
             theta = np.reshape(theta, newshape=(M*N))
-            phi = np.reshape(phi, newshape=(M*N))
+            phi = np.reshape(phi, newshape=(M*N))        
 
         xi = np.column_stack((theta, phi))
+
+#        for i in range(len(self.xy)):
+#            a = self.xy[i][0]*180./np.pi
+#            b = self.xy[i][1]*180./np.pi
+#            if abs(a-133.68)<0.01 and abs(b+119.74)<0.01:
+#                print(a,b,self.z[i])
+
         zi = griddata(self.xy, self.z, xi, method=self.method)
 
         if grid:
@@ -105,8 +112,8 @@ class BathyInterpolator():
 
         # compute coordinates of origin, if not provided
         if origin is None:
-            lat_ref = (lat[0] + lat[-1]) / 2
-            lon_ref = (lon[0] + lon[-1]) / 2
+            lat_ref = (np.min(lat) + np.max(lat)) / 2
+            lon_ref = (np.min(lon) + np.max(lon)) / 2
             origin = LatLon(lat_ref, lon_ref)
 
         self.origin = origin
@@ -126,7 +133,7 @@ class BathyInterpolator():
         # store grids
         self.lat_nodes = lat
         self.lon_nodes = lon
-        self.bathy_ll = bathy
+        self.bathy = bathy
 
     def eval_xy(self, x, y, grid=False):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
@@ -154,8 +161,25 @@ class BathyInterpolator():
             Returns:
                 zi: Interpolated bathymetry values
         """
-        lat, lon = XYtoLL(x, y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
+        lat, lon = self._xy_to_ll(x, y, grid=grid)
+
+        if grid:
+            M = lat.shape[0]
+            N = lat.shape[1]
+            lat = np.reshape(lat, newshape=(M*N))
+            lon = np.reshape(lon, newshape=(M*N))
+
         zi = self.eval_ll(lat=lat, lon=lon)
+
+        if grid:
+            zi = np.reshape(zi, newshape=(M,N))
+
+        if np.ndim(zi) == 2:
+            zi = np.swapaxes(zi, 0, 1)
+
+        if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
+            zi = float(zi)
+
         return zi
 
     def eval_ll(self, lat, lon, grid=False):
@@ -190,10 +214,67 @@ class BathyInterpolator():
 
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid)
 
-        if np.ndim(zi) == 0:
+        if np.ndim(self.bathy) == 1 and np.ndim(zi) == 2:
+            zi = np.swapaxes(zi, 0, 1)
+
+        if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
             zi = float(zi)
 
         return zi
+
+    def slice(self, angle=0, distance=1000, bins=100, num_slices=1, origin=None):
+
+        # x,y coordinates of origin
+        if origin is None:
+            origin = self.origin
+            xo, yo = 0, 0
+        else:
+            xo, yo = self._ll_to_xy(origin.latitude, origin.longitude)
+
+        # distance array
+        dr = distance / float(bins)
+        r = np.arange(bins, dtype=np.float)
+        r *= dr
+        r += 0.5 * dr
+
+        bathy = list()
+
+        # loop over angles
+        a = angle
+        da = 360. / float(num_slices)
+        for i in range(num_slices):
+            a += float(i) * da
+            x = r * np.cos(a * np.pi / 180.)
+            y = r * np.sin(a * np.pi / 180.)
+            x += xo
+            y += yo
+            b = self.eval_xy(x=x, y=y)
+            bathy.append(b)
+
+        if num_slices == 1:
+            bathy = bathy[0]
+        
+        return bathy
+
+    def _ll_to_xy(self, lat, lon, lat_ref=None, lon_ref=None, grid=False):
+
+        if lat_ref is None:
+            lat_ref = self.origin.latitude
+        if lon_ref is None:
+            lon_ref = self.origin.longitude
+
+        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=lat_ref, lon_ref=lon_ref, grid=grid)
+        return x, y
+
+    def _xy_to_ll(self, x, y, lat_ref=None, lon_ref=None, grid=False):
+
+        if lat_ref is None:
+            lat_ref = self.origin.latitude
+        if lon_ref is None:
+            lon_ref = self.origin.longitude
+
+        lat, lon = XYtoLL(x=x, y=y, lat_ref=lat_ref, lon_ref=lon_ref, grid=grid)
+        return lat, lon
 
     def plot_ll(self, lat_bins=100, lat_min=None, lat_max=None, lon_bins=100, lon_min=None, lon_max=None):        
         """ Draw a map of the elevation in polar coordinates.
@@ -233,7 +314,8 @@ class BathyInterpolator():
             x0 = self.lon_nodes
             y0 = self.lat_nodes
         else:
-            x0, y0 = LLtoXY(lat=self.lat_nodes, lon=self.lon_nodes, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=True)
+            grid = (np.ndim(self.bathy) == 2)
+            x0, y0 = self._ll_to_xy(lat=self.lat_nodes, lon=self.lon_nodes, grid=grid)
 
         # axes ranges
         if x_min is None:
@@ -260,24 +342,34 @@ class BathyInterpolator():
         # interpolate bathymetry
         if ll:
             Z = self.eval_ll(lat=Y, lon=X, grid=True)
+            Z = np.swapaxes(Z, 0, 1)
         else:
             Z = self.eval_xy(x=X, y=Y, grid=True)
-
-        Z = np.swapaxes(Z, 0, 1)
 
         # mask NaN entries
         Z = np.ma.masked_invalid(Z)
 
         # meshgrid
-        X,Y = np.meshgrid(X,Y,indexing='ij')
+        X,Y = np.meshgrid(X,Y)#,indexing='ij')
 
         # x and y axis range
         xrange = x_max - x_min
         yrange = y_max - y_min
         if xrange > 1e3:
             X = X / 1.e3
+            x_max = x_max / 1.e3
+            x_min = x_min / 1.e3
+            xlabel = 'x (km)'
+        else:
+            xlabel = 'x (m)'
+
         if yrange > 1e3:
             Y = Y / 1.e3
+            y_max = y_max / 1.e3
+            y_min = y_min / 1.e3
+            ylabel = 'y (km)'
+        else:
+            ylabel = 'y (m)'
 
         # z axis binning and range
         zmin = np.min(Z)
@@ -295,7 +387,7 @@ class BathyInterpolator():
             Z = Z / 1.e3
 
         # plot
-        fig, ax = plt.subplots(figsize=(10,10))
+        fig, ax = plt.subplots(figsize=(8,6))
         img = ax.imshow(Z.T, aspect='auto', origin='lower', extent=(x_min, x_max, y_min, y_max))
 
         # axes titles
@@ -303,15 +395,8 @@ class BathyInterpolator():
             ax.set_xlabel('Longitude (degrees east)')
             ax.set_ylabel('Latitude (degrees north)')
         else:
-            if xrange > 1e3:
-                ax.set_xlabel('X (km)')
-            else:
-                ax.set_xlabel('X (m)')
-            
-            if yrange > 1e3:
-                ax.set_ylabel('Y (km)')
-            else:
-                ax.set_ylabel('Y (m)')
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
 
         if zrange > 1e3:
             zlabel = 'Elevation (km)'

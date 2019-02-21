@@ -358,7 +358,7 @@ class BathyReader():
 
         # flip bathy matrix
         z = np.flip(z, axis=0)
-        z = np.swapaxes(z, 0, 1)
+#        z = np.swapaxes(z, 0, 1)
 
         # grid
         x = lons

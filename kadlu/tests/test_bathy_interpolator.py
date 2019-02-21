@@ -192,6 +192,17 @@ def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
     z_xy = float(z_xy)
     assert z_ll == pytest.approx(z_xy, rel=1E-3) or z_ll == pytest.approx(z_xy, abs=0.1)
 
+def test_mariana_trench_is_in_correct_location():
+    path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
+    reader = BathyReader(input=path, lat_name='latgrat', lon_name='longrat', bathy_name='mat', lon_axis=0)
+    interp = BathyInterpolator(bathy_reader=reader)
+    d = interp.eval_ll(lat=11.3733, lon=142.5917)
+    assert d < -10770
+    d = interp.eval_ll(lat=12.0, lon=142.4)
+    assert d > -3000
+    d = interp.eval_ll(lat=11.4, lon=143.1)
+    assert d < -9000
+
 def test_can_interpolate_multiple_points_in_ll():
     path = path_to_assets + '/bornholm.mat'
     reader = BathyReader(input=path, bathy_name='bathy')
@@ -225,7 +236,6 @@ def test_can_interpolate_multiple_points_in_xx():
         zi.append(interp.eval_xy(x=x, y=y))
     for z,d in zip(zi, depths):
         assert z == pytest.approx(d, rel=1e-3)
-
 
 def test_can_interpolate_unstructured_grid():
     class Reader():
@@ -272,3 +282,47 @@ def test_can_interpolate_geotiff_data():
     assert depths_grid.shape[1] == 4
     for i in range(4):
         assert depths_grid[i,i] == depths[i]
+
+def test_can_interpolate_geotiff_data_in_xy():
+    path = path_to_assets + '/tif/CA2_4300N06000W.tif'
+    reader = BathyReader(path)
+    interp = BathyInterpolator(bathy_reader=reader, method='nearest')
+    depth = interp.eval_xy(x=-20e3, y=20e3)
+    assert depth == -82.
+    depth = interp.eval_ll(lat=43.69, lon=-119.75)
+    assert depth == -82.
+    depth = interp.eval_xy(x=-30e3, y=40e3)
+    assert depth == -43.
+    depth = interp.eval_xy(x=-20e3, y=40e3)
+    assert depth == -38.
+    depth = interp.eval_xy(x=-30e3, y=20e3)
+    assert depth == -80.
+    a = [-20e3, -30e3]
+    b = [20e3, 40e3]
+    depth = interp.eval_xy(x=a, y=b)
+    assert depth[0] == -82.
+    assert depth[1] == -43.
+    depth = interp.eval_xy(x=a, y=b, grid=True)
+    assert depth[0][0] == -82.
+    assert depth[1][1] == -43.
+    assert depth[0][1] == -38.
+    assert depth[1][0] == -80.
+
+def test_can_interpolate_geotiff_data_in_ll():
+    path = path_to_assets + '/tif/CA2_4300N06000W.tif'
+    reader = BathyReader(path)
+    interp = BathyInterpolator(bathy_reader=reader, method='nearest')
+    depth = interp.eval_ll(lat=43.6, lon=-119.8)
+    assert depth == -188.
+    depth = interp.eval_ll(lat=43.2, lon=-119.8)
+    assert depth == pytest.approx(-2011.7, abs=0.1)
+    a = [43.6, 43.2]
+    b = [-119.8, -119.8]
+    depth = interp.eval_ll(lat=a, lon=b)
+    assert depth[0] == -188.
+    assert depth[1] == pytest.approx(-2011.7, abs=0.1)
+    depth = interp.eval_ll(lat=a, lon=b, grid=True)
+    assert depth[0][0] == -188.
+    assert depth[1][1] == pytest.approx(-2011.7, abs=0.1)
+    assert depth[0][1] == -188.
+    assert depth[1][0] == pytest.approx(-2011.7, abs=0.1)

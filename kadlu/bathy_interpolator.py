@@ -243,13 +243,13 @@ class BathyInterpolator():
         a = angle
         da = 360. / float(num_slices)
         for i in range(num_slices):
-            a += float(i) * da
             x = r * np.cos(a * np.pi / 180.)
             y = r * np.sin(a * np.pi / 180.)
             x += xo
             y += yo
             b = self.eval_xy(x=x, y=y)
             bathy.append(b)
+            a += da
 
         if num_slices == 1:
             bathy = bathy[0]

@@ -50,4 +50,6 @@ class TransmissionLossCalculator():
         nz = round(nz/2) * 2  # ensure even number of vertical bins
         ndz_3DSliceout = 1 # ?
 
-    
+        # PE starter
+        pe_starter_type = 'Thomson''s'
+        pe_starter_aperature = 88 # degress

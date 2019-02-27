@@ -398,7 +398,7 @@ class BathyReader():
         f = path[path.rfind('/')+1:]
         north = int(f[4:8]) / 100
         west = int(f[9:14]) / 100
-        east = west - 180
+        east = -west
 
         assert east >= -180 and east <= 180, 'Invalid parsed longitude value'
         assert north >= -90 and north <= 180, 'Invalid parsed latitude value'

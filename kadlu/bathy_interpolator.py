@@ -242,7 +242,7 @@ class BathyInterpolator():
         # loop over angles
         a = angle
         da = 360. / float(num_slices)
-        for _ in num_slices:
+        for _ in range(num_slices):
             x = r * np.cos(a * np.pi / 180.)
             y = r * np.sin(a * np.pi / 180.)
             x += xo

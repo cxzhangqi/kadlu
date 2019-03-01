@@ -66,7 +66,7 @@ class TransmissionLossCalculator():
         ThinknessOfArtificialAbsorpLayer_ratio_z = 6 # ?
         nz = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1) / dz # number of vertical bins
         nz = round(nz/2) * 2  # ensure even number of vertical bins
-        Lz = nz * dz
+        Lz = nz * dz  
         z_pos = np.arange(nz/2, dtype=float)
         z_neg = np.arange(-nz/2-1, step=-1, dtype=float)
         z = np.concatenate((z_pos, z_neg)) * dz

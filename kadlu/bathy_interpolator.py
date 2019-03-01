@@ -14,7 +14,7 @@
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from kadlu.bathy_reader import BathyReader, LatLon
-from kadlu.util import deg2rad, XYtoLL, LLtoXY, torad
+from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm

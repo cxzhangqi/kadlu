@@ -16,7 +16,7 @@ import os
 import numpy as np
 from kadlu.bathy_reader import BathyReader, LatLon
 from kadlu.bathy_interpolator import BathyInterpolator
-from kadlu.util import R1_IUGG, deg2rad, XYtoLL, LLtoXY
+from kadlu.utils import R1_IUGG, deg2rad, XYtoLL, LLtoXY
 
 # Degree to radian conversion factor
 deg2rad = np.pi / 180.

@@ -1,5 +1,6 @@
 import numpy as np
 from enum import Enum
+from kadlu.utils import get_member
 
 
 class PEStarterMethod(Enum):
@@ -8,18 +9,9 @@ class PEStarterMethod(Enum):
     THOMSON = 3
 
 
-def get_member(cls, member_name):
-    for name, member in cls.__members__.items():
-        if member_name == name:
-            return member
-
-    s = ", ".join(name for name, _ in cls.__members__.items())
-    raise ValueError("Unknown value \'{0}\'. Select between: {1}".format(member_name, s))
-
-
 class PEStarter():
 
-    def __init__(self, method, aperture):
+    def __init__(self, method='THOMSON', aperture=90):
 
         self.method = get_member(PEStarterMethod, method)
         self.aperture = aperture

@@ -216,3 +216,12 @@ def get_files(path, substr, fullpath=True, subdirs=False):
     files.sort()
 
     return files
+
+
+def get_member(cls, member_name):
+    for name, member in cls.__members__.items():
+        if member_name == name:
+            return member
+
+    s = ", ".join(name for name, _ in cls.__members__.items())
+    raise ValueError("Unknown value \'{0}\'. Select between: {1}".format(member_name, s))

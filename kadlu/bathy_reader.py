@@ -18,7 +18,7 @@ from netCDF4 import Dataset
 from osgeo import gdal
 import scipy.io as sio
 from enum import Enum
-from kadlu.util import get_files
+from kadlu.utils import get_files
 
 
 LatLon = namedtuple('LatLon', ['latitude', 'longitude'])

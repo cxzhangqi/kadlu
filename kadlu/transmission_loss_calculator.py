@@ -1,4 +1,5 @@
 import numpy as np
+from kadlu.pe_starter import PEStarter
 
 
 class TransmissionLossCalculator():
@@ -19,37 +20,59 @@ class TransmissionLossCalculator():
 
     def run(self, frequency, source_depth):
 
-        freq = frequency  # frequency in Hz
+        # frequency in Hz
+        freq = frequency  
         
         # source position in meters
         xs = 0
         ys = 0
         zs = source_depth
 
-        lambda0 = self.c0 / freq  # reference wavelength
+        # reference wavelenght and wavenumber
+        lambda0 = self.c0 / freq        
+        k0 = 2 * np.pi * freq / self.c0  
 
-        # --- set parameters for PE solver ---
+        # create grids
+        Z = self._create_grids(lambda0)
 
-        # r
+        # PE starter
+        starter = PEStarter(method='THOMSON', aperture=88)
+
+
+    def _create_grids(self, lambda0):
+
+        # ------ r (x) ------ 
         steplength = lambda0 / 2         # step size in meters
         rmax = 50e3                      # radial range in meters
-        ndxout = 1                       # ?
-        numstep = round(rmax/steplength) # number of radial marching steps
+        numstep = round(rmax / steplength) # number of radial marching steps
+        dx = steplength
+        x = np.arange(numstep+1, dtype=float)
+        x *= dx
 
-        # theta
+        # ------ theta (y) ------ 
         Ltheta = 2 * np.pi # angular domain in radians
         dtheta = 1/180 * np.pi # angular bin size in radians
         ntheta = int(np.ceil(Ltheta/dtheta)) # number of angular bins
         if ntheta%2==1: ntheta = ntheta+1 # ensure even number of angular bins
-        ndy_3DSliceout=1 # ?
+        dy = dtheta
+        ny = ntheta
+        Ly = dy * ny   # rough estimate of angular aperature
+        y_pos = np.arange(ny/2, dtype=float)
+        y_neg = np.arange(-ny/2-1, step=-1, dtype=float)
+        y = np.concatenate((y_pos, y_neg)) * dy
 
-        # z
+        # ------ z ------ 
         dz = 10 # vertical bin size in meters
         ThinknessOfArtificialAbsorpLayer_ratio_z = 6 # ?
         nz = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1) / dz # number of vertical bins
         nz = round(nz/2) * 2  # ensure even number of vertical bins
-        ndz_3DSliceout = 1 # ?
+        Lz = nz * dz
+        z_pos = np.arange(nz/2, dtype=float)
+        z_neg = np.arange(-nz/2-1, step=-1, dtype=float)
+        z = np.concatenate((z_pos, z_neg)) * dz
+        kz = z * 2 * np.pi / (Lz * dz)
 
-        # PE starter
-        pe_starter_type = 'Thomson''s'
-        pe_starter_aperature = 88 # degress
+
+        Y, Z = np.meshgrid(y, z)
+
+        return Z

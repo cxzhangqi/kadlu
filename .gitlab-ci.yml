@@ -21,7 +21,6 @@ create-docs:
   - pip install --upgrade pip
   - pip install sphinx
   - pip install sphinx_rtd_theme
-  - apt-get install build-essential
  script:
   - cd docs/ && make html && cd ..
  only:

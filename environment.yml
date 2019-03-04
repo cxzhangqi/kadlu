@@ -1,5 +1,6 @@
 name: kadlu_env
 dependencies:
+  - make
   - pip
   - pytest
   - numpy

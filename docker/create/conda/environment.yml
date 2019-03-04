@@ -1,0 +1,13 @@
+name: kadlu_env
+dependencies:
+  - pip
+  - pytest
+  - numpy
+  - scipy
+  - matplotlib
+  - cython
+  - setuptools
+  - cftime
+  - netCDF4
+  - h5py
+  - GDAL

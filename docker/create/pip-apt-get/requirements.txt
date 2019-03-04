@@ -1,0 +1,10 @@
+pytest
+numpy
+scipy
+matplotlib
+cython
+setuptools
+cftime
+netCDF4
+h5py
+pygdal==2.1.2.3

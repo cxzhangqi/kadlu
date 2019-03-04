@@ -1,4 +1,3 @@
-#image: python:3.6
 image: oliskir/kadlu:conda_test1
 
 stages:
@@ -9,7 +8,7 @@ stages:
 
 
 before_script:
-
+  - source activate kadlu_env
 
 run-tests:
  type: test

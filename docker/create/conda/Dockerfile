@@ -12,9 +12,9 @@ COPY environment.yml /app/environment.yml
 # Create conda environment
 RUN conda env create -f /app/environment.yml
 
-# Pull the environment name out of the environment.yml
-RUN echo "source activate $(head -1 /tmp/environment.yml | cut -d' ' -f2)" > ~/.bashrc
-ENV PATH /opt/conda/envs/$(head -1 /tmp/environment.yml | cut -d' ' -f2)/bin:$PATH
+# Activate the environment
+RUN echo "source activate $(head -1 /app/environment.yml | cut -d' ' -f2)" > ~/.bashrc
+ENV PATH /opt/conda/envs/$(head -1 /app/environment.yml | cut -d' ' -f2)/bin:$PATH
 
 # Install the kadlu package using pip
 RUN python setup.py sdist

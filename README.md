@@ -40,10 +40,23 @@ Installation of these libraries is most easily accomplished using Anaconda.
  1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/)
  2. Clone the Kadlu repository
     ```terminal
-        git clone https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu.git
-        cd kadlu
+      git clone https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu.git
+      cd kadlu
     ```
- 3. 
+ 3. Create and activate Anaconda environment (this installs all dependencies)
+    ```terminal
+      conda env create -f environment.yml
+      source activate kadlu_env
+    ```
+ 4. Install Kadlu
+    ```terminal
+      python setup.py sdist
+      pip install dist/kadlu-0.0.1.tar.gz
+    ```
+ 5. Check that everything is working by running pytest
+    ```terminal
+      pytest
+    ```
 
 ## Installation without Anaconda
 

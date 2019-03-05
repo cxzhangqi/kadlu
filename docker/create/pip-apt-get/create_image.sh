@@ -1,7 +1,7 @@
 
 # copy package and requirements
-cp -r ../../kadlu/ .
-cp ../../setup.py .
+cp -r ../../../kadlu/ .
+cp ../../../setup.py .
 
 # build image
 docker build --tag=kadlu_test1 .

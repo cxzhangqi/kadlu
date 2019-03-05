@@ -24,20 +24,44 @@ from MATLAB to Python. As part of this work, we will be restructuring
 and documenting the code to make it more user-friendly and more easily 
 adaptable to new scenarios.
 
-## Dependencies and installation
+## Dependencies
 
 Kadlu uses a number of standard Python libraries such as 
-numpy, scipy, matplotlib, etc, which can be conveniently 
-installed with pipe. Kadlu also uses a few C libraries:
+numpy, scipy, and matplotlib, plus a few C libraries:
  
   * [HDF5 (Hierarchical Data Format)](https://www.hdfgroup.org/) 
   * [NetCDF-4 (Network Common Data Form](https://www.unidata.ucar.edu/software/netcdf/)
   * [GDAL (Geospatial Data Abstraction Library)](https://www.gdal.org/)
 
-which can be installed with apt-get.
+Installation of these libraries is most easily accomplished using Anaconda.
 
-This [bash script](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/blob/master/install_dep.sh) will install all the required 
-libraries. It should work out of the box on newer Ubuntu systems.
+## Installation with Anaconda
+ 
+ 1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/)
+ 2. Clone the Kadlu repository
+    ```terminal
+      git clone https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu.git
+      cd kadlu
+    ```
+ 3. Create and activate Anaconda environment (this installs all dependencies)
+    ```terminal
+      conda env create -f environment.yml
+      source activate kadlu_env
+    ```
+ 4. Install Kadlu
+    ```terminal
+      python setup.py sdist
+      pip install dist/kadlu-0.0.1.tar.gz
+    ```
+ 5. Check that everything is working by running pytest
+    ```terminal
+      pytest
+    ```
+
+## Installation without Anaconda
+
+If you prefer to avoid using Anaconda, try to run this [bash script](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/blob/master/install_dep.sh). It will install all the required 
+libraries using pip and apt-get. It should work out of the box on newer Ubuntu systems.
 
 
 ## Notebook tutorials

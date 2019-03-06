@@ -38,8 +38,8 @@ Installation of these libraries is most easily accomplished using Anaconda.
 ## Installation with Anaconda
  
  1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/).<br/>
-    * Make sure you get the Python 3.x version.<br/>
-    ** Note that the `Download` button takes you to the macOS installer regardless of your OS, so make sure to switch to the installer appropriate for your OS (Linux, macOS, Windows) 
+    Make sure you get the Python 3.x version.<br/>
+    Note that the Download button takes you to the macOS installer regardless of your OS, so make sure to switch to the installer appropriate for your OS (Linux, macOS, Windows) 
  
  2. Clone the Kadlu repository
     ```terminal

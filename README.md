@@ -5,8 +5,8 @@ contain a bunch of tools useful for modeling the underwater ocean
 soundscapes, for example:
 
  * Automated retrieval of relevant environmental data, including static 
-   data such as bathymetry and seabed properties, and dynamic data such 
-   as water temperature, salinity, and wave height.
+   data such as bathymetry and seabed properties, and dynamic data like 
+   water temperature, salinity, and wave height.
 
  * Derivation of underwater acoustic properties (such as sound speed) from 
    the environmental data and conversion into format suitable for transmission 
@@ -30,7 +30,7 @@ Kadlu uses a number of standard Python libraries such as
 numpy, scipy, and matplotlib, plus a few C libraries:
  
   * [HDF5 (Hierarchical Data Format)](https://www.hdfgroup.org/) 
-  * [NetCDF-4 (Network Common Data Form](https://www.unidata.ucar.edu/software/netcdf/)
+  * [NetCDF-4 (Network Common Data Form)](https://www.unidata.ucar.edu/software/netcdf/)
   * [GDAL (Geospatial Data Abstraction Library)](https://www.gdal.org/)
 
 Installation of these libraries is most easily accomplished using Anaconda.
@@ -46,7 +46,7 @@ Installation of these libraries is most easily accomplished using Anaconda.
  3. Create and activate Anaconda environment (this installs all dependencies)
     ```terminal
       conda env create -f environment.yml
-      source activate kadlu_env
+      conda activate kadlu_env
     ```
  4. Install Kadlu
     ```terminal

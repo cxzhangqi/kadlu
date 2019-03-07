@@ -68,12 +68,12 @@ class WWIIIWavevar(Enum):
 def fetchWWIII(fetch_timestamp=datetime.now(), region=WWIIIRegion.glo_30m, wavevar=WWIIIWavevar.hs):
 
     # Peel off strings from fetch date for component parts of the fetchc url
-    fetchYear = fetch_timestamp.strftime("%Y") 
-    fetchMonth = fetch_timestamp.strftime("%m")
+    fetch_year = fetch_timestamp.strftime("%Y") 
+    fetch_month = fetch_timestamp.strftime("%m")
     
     # Build URL
-    fetchURLString = 'https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/' + fetchYear + '/' + fetchMonth + '/gribs/multi_1.' + region.name + '.' + wavevar.name + '.' + fetchYear + fetchMonth + '.grb2'
-    fetchURLFile = 'multi_1.' + region.name + '.' + wavevar.name + '.' + fetchYear + fetchMonth + '.grb2'
+    fetchURLString = 'https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/' + fetch_year + '/' + fetch_month + '/gribs/multi_1.' + region.name + '.' + wavevar.name + '.' + fetch_year + fetch_month + '.grb2'
+    fetchURLFile = 'multi_1.' + region.name + '.' + wavevar.name + '.' + fetch_year + fetch_month + '.grb2'
 
     ### DEBUG ###
     print("URL:{}\nFILE:{}".format(fetchURLString, fetchURLFile))
@@ -81,6 +81,7 @@ def fetchWWIII(fetch_timestamp=datetime.now(), region=WWIIIRegion.glo_30m, wavev
     # Attempt to retrieve the referneced target.
     urllib.request.urlretrieve(fetchURLString, fetchURLFile)
 
+    ### Handle storage here.
 
 def loadWWIII():
     # NOAA WAVEWatch III Format:
@@ -111,6 +112,57 @@ def loadWWIII():
     title_text = "Example 2: NWW3 Sig. Wave Height from GRIB\n({}) ".format(date_valid)
 
     return (grb, title_text)
+
+# Enumerated class defining RDWPS coverages.
+class RDWPSRegion(Enum):
+    gulf_st_lawrence = "Gulf of St. Lawrence"
+    superior = "Lake Superior"
+    huron_michigan = "Lake Huron and Michigan"
+    erie = "Lake Erie"
+    ontario = "Lake Ontario"
+
+# Enumerated class defining RDWPS parameters to use.
+class RDWPSWavevar(Enum):
+    HTSGW = "swh"
+    WVDIR = "mwd" ## Check this, other sources do not refer to only wind driven for direction (CH 20190307).
+    PKPER = "mwp"
+    
+def fetchRDWPS(fetch_timestamp=datetime.now(), region=RDWPSRegion.gulf_st_lawrence, wavevar=RDWPSWavevar.HTSGW):
+
+    # Peel off strings from fetch date for component parts of the fetchc url
+    fetch_year = fetch_timestamp.strftime("%Y") 
+    fetch_month = fetch_timestamp.strftime("%m")
+    fetch_day = fetch_timestamp.strftime("%d")
+    
+    ## If we can constrain to: 00, 03, 06, 09, we can allow specification
+    # -- are any better than 00 for our use?
+    fetch_forecast_hour = '00'
+    
+    ## If we can constrain to: 000 -> 048, in intervals of 3, we can allow specification
+    # -- are any better than 0-hour for our use?
+    fetch_prediction_hour = '000'
+
+    # Un-sanitize Enum name, re-add hyphen for url building.
+    hyph_region_name = region.name.replace('_','-')
+
+    # Build appropriate level reference based on parameter.
+    if (wavevar is RDWPSWavevar.HTSGW or wavevar is RDWPSWavevar.PKPER):
+        level_ref = 'SFC_0'
+    else: # For WVDIR
+        level_ref = 'TGL_0'
+    
+    # Build URL
+    fetchURLString = 'http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/' + fetch_forecast_hour + '/CMC_rdwps_' + hyph_region_name + '_' + wavevar.name + '_' + level_ref + '_latlon0.05x0.05_' + fetch_year + fetch_month + fetch_day + '00_P' + fetch_prediction_hour + '.grib2'
+    fetchURLFile = 'CMC_rdwps_' + hyph_region_name + '_' + wavevar.name + '_' + level_ref + '_latlon0.05x0.05_' + fetch_year + fetch_month + fetch_day + '00_P' + fetch_prediction_hour + '.grib2'
+
+    ### DEBUG ###
+    print("URL:{}\nFILE:{}".format(fetchURLString, fetchURLFile))
+
+    # Attempt to retrieve the referneced target.
+    urllib.request.urlretrieve(fetchURLString, fetchURLFile)
+
+    ### Handle storage here.
+
 
 def loadRDWPS():
     
@@ -176,17 +228,19 @@ def plotSampleGrib(grb,title_text):
 def main():
 
     # Test WWIII Fetch
-    fetchWWIII(datetime(2017,2,3))
-    quit()
-    # Test ERA5
+#    fetchWWIII(datetime(2017,2,3))
+    # Test RDWPS Fetch
+#    fetchRDWPS()
+
+    # Test ERA5 Load
 #    (grbsample, samp_title_text) = loadERA5()
 #    plotSampleGrib(grbsample, samp_title_text)
     
-    # Test WWIII
+    # Test WWIII Load
 #    (grbsample, samp_title_text) = loadWWIII()
 #    plotSampleGrib(grbsample, samp_title_text)
     
-    # Test RDWPS
+    # Test RDWPS Load
     (grbsample, samp_title_text) = loadRDWPS()
     plotSampleGrib(grbsample, samp_title_text)
     

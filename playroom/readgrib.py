@@ -9,15 +9,17 @@ import pygrib
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from datetime import datetime
+from enum import Enum
+import urllib.request
 
+def loadERA5():
 ### ECMWF ERA5 Format:
-# Source: see ecmwf_era5_grib_fetch.py, cdsapi API calls
-def fetchERA5():
+# Source: see ecmwf_era5_grib_load.py, cdsapi API calls
 
     # Sample target file
     grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/03_Sample_ECMWF_ERA5/era5_reanalysis_sig_wave_swell_2018_Jan_00_hourly.grib'
 
-    # Fetch grib structure from target.
+    # load grib structure from target.
     grbs=pygrib.open(grib)
 
     # Identify parameter and date for extraction.
@@ -31,7 +33,7 @@ def fetchERA5():
     #   mwp - Mean wave period (s)
     # Short ECMWF field: shortNameECMF --OR-- shortName 
 
-    # Attempt fetch of matching data.
+    # Attempt load of matching data.
     #grb = grbs.select(validDate=date_valid,name='Significant height of combined wind waves and swell')[0]
     grb = grbs.select(validDate=date_valid,shortNameECMF='swh')[0]
 
@@ -45,7 +47,42 @@ def fetchERA5():
     # Nj
     return (grb, title_text)
 
-def fetchWWIII():
+# Enumerated class defining WWIII Reanalysis coverages.
+class WWIIIRegion(Enum):
+    glo_30m = "Global 30 min"
+    ao_30m = "Arctic Ocean 30 min"
+    at_10m = "NW Atlantic 10 min"
+    wc_10m = "US West Coast 10 min"
+    ep_10m = "East Pacific 10 min"
+    ak_10m = "Alaskan 10 min"
+    at_4m = "Gulf of Mexico and NW Atlantic 4 min"
+    wc_4m = "US West Coast 4 min"
+    ak_4m = "Alaskan 4 min"
+
+# Enumerated class defining WWIII Reanalysis parameters to use.
+class WWIIIWavevar(Enum):
+    hs = "swh"
+    dp = "mwd"
+    tp = "mwp"
+    
+def fetchWWIII(fetch_timestamp=datetime.now(), region=WWIIIRegion.glo_30m, wavevar=WWIIIWavevar.hs):
+
+    # Peel off strings from fetch date for component parts of the fetchc url
+    fetchYear = fetch_timestamp.strftime("%Y") 
+    fetchMonth = fetch_timestamp.strftime("%m")
+    
+    # Build URL
+    fetchURLString = 'https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/' + fetchYear + '/' + fetchMonth + '/gribs/multi_1.' + region.name + '.' + wavevar.name + '.' + fetchYear + fetchMonth + '.grb2'
+    fetchURLFile = 'multi_1.' + region.name + '.' + wavevar.name + '.' + fetchYear + fetchMonth + '.grb2'
+
+    ### DEBUG ###
+    print("URL:{}\nFILE:{}".format(fetchURLString, fetchURLFile))
+
+    # Attempt to retrieve the referneced target.
+    urllib.request.urlretrieve(fetchURLString, fetchURLFile)
+
+
+def loadWWIII():
     # NOAA WAVEWatch III Format:
     # Source: URL form https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/YYYY/MM/gribs/multi_1.glo_30m.hs.WWWWMM.grb2 
     # e.g. URL https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/2018/11/gribs/multi_1.glo_30m.hs.201811.grb2
@@ -56,7 +93,7 @@ def fetchWWIII():
     #grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/01_Sample_Wavewatch_III/multi_1.glo_30m.hs.201712.grb2'
     #grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/01_Sample_Wavewatch_III/multi_1.glo_30m.hs.201810.grb2'
 
-    # Fetch grib structure from target.
+    # load grib structure from target.
     grbs=pygrib.open(grib)
 
     # Identify parameter and date for extraction.
@@ -75,14 +112,14 @@ def fetchWWIII():
 
     return (grb, title_text)
 
-def fetchRDWPS():
+def loadRDWPS():
     
     # CMC RDWPS (Gulf of St. Lawrence, regional forecast)
     # Source (daily only): URL: http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/HH/CMC_rdwps_gulf-st-lawrence_PARAM_SFC_0_latlon0.05x0.05_YYYYMMDD00_PTTT.grib2
     # HH Forecast product hour 00/03/06/09; PARAM - forecast parameter; YYYYMMDD (Current date); TTT - Target forecast out in 3hr intervals from 000 (?nowcast) to 48 hrs out
     grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/02_Sample_CMC_StL/CMC_rdwps_gulf-st-lawrence_HTSGW_SFC_0_latlon0.05x0.05_2019022100_P000.grib2'
 
-    # Fetch grib structure from target.
+    # load grib structure from target.
     grbs=pygrib.open(grib)
 
     # Identify parameter and date for extraction.
@@ -109,11 +146,11 @@ def plotSampleGrib(grb,title_text):
     # Instantiate plot
     plt.figure()
 
-    # Fetch parameter values, coordinates.
+    # load parameter values, coordinates.
     data=grb.values
     lat,lon = grb.latlons()
 
-    # Fetch, project basemap.
+    # load, project basemap.
     m=Basemap(projection='mill',lat_ts=10,llcrnrlon=lon.min(), urcrnrlon=lon.max(),llcrnrlat=lat.min(),urcrnrlat=lat.max(), resolution='l')
       
     # Project data coordinates
@@ -138,16 +175,19 @@ def plotSampleGrib(grb,title_text):
 
 def main():
 
+    # Test WWIII Fetch
+    fetchWWIII(datetime(2017,2,3))
+    quit()
     # Test ERA5
-#    (grbsample, samp_title_text) = fetchERA5()
+#    (grbsample, samp_title_text) = loadERA5()
 #    plotSampleGrib(grbsample, samp_title_text)
     
     # Test WWIII
-#    (grbsample, samp_title_text) = fetchWWIII()
+#    (grbsample, samp_title_text) = loadWWIII()
 #    plotSampleGrib(grbsample, samp_title_text)
     
     # Test RDWPS
-    (grbsample, samp_title_text) = fetchRDWPS()
+    (grbsample, samp_title_text) = loadRDWPS()
     plotSampleGrib(grbsample, samp_title_text)
     
 

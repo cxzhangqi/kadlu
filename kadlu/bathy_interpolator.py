@@ -14,7 +14,7 @@
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from kadlu.bathy_reader import BathyReader, LatLon
-from kadlu.util import deg2rad, XYtoLL, LLtoXY, torad
+from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -109,6 +109,9 @@ class BathyInterpolator():
         
         # read bathymetry data from file
         lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
+
+        # check that data was 
+        assert len(lat) > 0, "Reader unable to retrieve any bathymetry data for selected region"
 
         # compute coordinates of origin, if not provided
         if origin is None:
@@ -242,7 +245,7 @@ class BathyInterpolator():
         # loop over angles
         a = angle
         da = 360. / float(num_slices)
-        for _ in num_slices:
+        for _ in range(num_slices):
             x = r * np.cos(a * np.pi / 180.)
             y = r * np.sin(a * np.pi / 180.)
             x += xo

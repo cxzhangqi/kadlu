@@ -5,8 +5,8 @@ contain a bunch of tools useful for modeling the underwater ocean
 soundscapes, for example:
 
  * Automated retrieval of relevant environmental data, including static 
-   data such as bathymetry and seabed properties, and dynamic data such 
-   as water temperature, salinity, and wave height.
+   data such as bathymetry and seabed properties, and dynamic data like 
+   water temperature, salinity, and wave height.
 
  * Derivation of underwater acoustic properties (such as sound speed) from 
    the environmental data and conversion into format suitable for transmission 
@@ -30,29 +30,36 @@ Kadlu uses a number of standard Python libraries such as
 numpy, scipy, and matplotlib, plus a few C libraries:
  
   * [HDF5 (Hierarchical Data Format)](https://www.hdfgroup.org/) 
-  * [NetCDF-4 (Network Common Data Form](https://www.unidata.ucar.edu/software/netcdf/)
+  * [NetCDF-4 (Network Common Data Form)](https://www.unidata.ucar.edu/software/netcdf/)
   * [GDAL (Geospatial Data Abstraction Library)](https://www.gdal.org/)
 
 Installation of these libraries is most easily accomplished using Anaconda.
 
 ## Installation with Anaconda
  
- 1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/)
+ 1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/).<br/>
+    Make sure you get the Python 3.x version.<br/>
+    Note that the Download button takes you to the macOS installer regardless of your OS, so make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
+ 
  2. Clone the Kadlu repository
     ```terminal
       git clone https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu.git
       cd kadlu
     ```
+    Note: Windows users may find it easier to download the source code using Gitlab's ''Download zip'' option.
+
  3. Create and activate Anaconda environment (this installs all dependencies)
     ```terminal
       conda env create -f environment.yml
-      source activate kadlu_env
+      conda activate kadlu_env
     ```
+ 
  4. Install Kadlu
     ```terminal
       python setup.py sdist
       pip install dist/kadlu-0.0.1.tar.gz
     ```
+ 
  5. Check that everything is working by running pytest
     ```terminal
       pytest

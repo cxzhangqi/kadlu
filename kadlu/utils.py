@@ -209,7 +209,8 @@ def get_files(path, substr, fullpath=True, subdirs=False):
     # select those that contain specified substring
     files = list()
     for f in allfiles:
-        if substr in f:
+        n = len(substr)
+        if f[-n:] == substr:
             files.append(f)
 
     # sort alphabetically

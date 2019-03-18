@@ -437,11 +437,11 @@ class BathyReader():
         dlat = 0.001
 
         # longitude step size in degrees
-        if sw_corner.longitude < 68:
+        if sw_corner.latitude < 68:
             dlon = 0.001
-        elif sw_corner.longitude >=68 and sw_corner.longitude < 80:
+        elif sw_corner.latitude >=68 and sw_corner.latitude < 80:
             dlon = 0.002
-        elif sw_corner.longitude >= 80:
+        elif sw_corner.latitude >= 80:
             dlon = 0.004
 
         lats = np.arange(N, dtype=np.float)

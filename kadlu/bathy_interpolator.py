@@ -110,6 +110,9 @@ class BathyInterpolator():
         # read bathymetry data from file
         lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
 
+        # check that data was 
+        assert len(lat) > 0, "Reader unable to retrieve any bathymetry data for selected region"
+
         # compute coordinates of origin, if not provided
         if origin is None:
             lat_ref = (np.min(lat) + np.max(lat)) / 2

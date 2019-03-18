@@ -15,11 +15,13 @@ import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from kadlu.bathy_reader import BathyReader, LatLon
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter, MaxNLocator
 from scipy.interpolate import griddata
+
+from sys import platform as sys_pf
+if sys_pf == 'darwin':
+    import matplotlib
+    matplotlib.use("TkAgg")
+from matplotlib import pyplot as plt
 
 
 class GridData():
@@ -75,12 +77,6 @@ class GridData():
             phi = np.reshape(phi, newshape=(M*N))        
 
         xi = np.column_stack((theta, phi))
-
-#        for i in range(len(self.xy)):
-#            a = self.xy[i][0]*180./np.pi
-#            b = self.xy[i][1]*180./np.pi
-#            if abs(a-133.68)<0.01 and abs(b+119.74)<0.01:
-#                print(a,b,self.z[i])
 
         zi = griddata(self.xy, self.z, xi, method=self.method)
 

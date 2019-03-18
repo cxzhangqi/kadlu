@@ -331,7 +331,6 @@ class BathyReader():
                 z: list(float)
                     Bathymetry values
         """
-
         band_no = 1
 
         # parse south-west corner from file name
@@ -340,10 +339,17 @@ class BathyReader():
         # generate lat-lon arrays
         lats, lons = self._generate_latlon_arrays(sw)
 
-        # get overlap with requested region
-        lat_overlap = self._get_latitude_overlap(lats=lats, south=latlon_SW, north=latlon_NE)
-        lon_overlap = self._get_longitude_overlap(lons=lons, west=latlon_SW, east=latlon_NE)
-        if len(lat_overlap) == 0 or len(lon_overlap) == 0:
+        # lat-lon range
+        lat_min = np.min(lats)
+        lat_max = np.max(lats)
+        lon_min = np.min(lons)
+        lon_max = np.max(lons)
+
+        # check if overlap
+        lat_overlap = (lat_min <= latlon_NE.latitude and lat_max >= latlon_SW.latitude)
+        lon_overlap = (lon_min <= latlon_NE.longitude and lon_max >= latlon_SW.longitude)
+
+        if not (lat_overlap and lon_overlap):
             return list(), list(), list()
 
         # open file
@@ -471,6 +477,10 @@ class BathyReader():
                     Indeces of the entries that are within the prescribed boundaries
         """
         indeces = np.where(np.logical_and(lats <= north.latitude, lats >= south.latitude))
+        indeces = np.squeeze(indeces)
+        if len(indeces.shape) == 0:
+            indeces = indeces[np.newaxis]
+
         return indeces
 
     def _get_longitude_overlap(self, lons, west, east):
@@ -490,6 +500,10 @@ class BathyReader():
                     Indeces of the entries that are within the prescribed boundaries
         """
         indeces = np.where(np.logical_and(lons <= east.longitude, lons >= west.longitude))
+        indeces = np.squeeze(indeces)
+        if len(indeces.shape) == 0:
+            indeces = indeces[np.newaxis]
+
         return indeces
 
     def _get_overlap(self, lats, lons, sw, ne):

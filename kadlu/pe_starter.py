@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib import scimath
 from enum import Enum
 from kadlu.utils import get_member
 
@@ -16,7 +17,7 @@ class PEStarter():
         self.method = get_member(PEStarterMethod, method)
         self.aperture = aperture
 
-    def eval(self, k0,  zs, Z, kz):
+    def eval(self, k0, zs, Z, kz):
         """ Evaluate PE starter
             
             Args:
@@ -29,7 +30,6 @@ class PEStarter():
                 kz: 1d numpy array
                     ???
         """
-
         if self.method is PEStarterMethod.GAUSSIAN:
             psi = self._gaussian(k0, zs, Z)
         elif self.method is PEStarterMethod.GREENE:
@@ -54,11 +54,11 @@ class PEStarter():
         psi = np.fft.fft(psi)
         return psi
 
-    def _thomson(self, k0, zs, z, kz):
-        psi = np.exp(-1j * np.pi / 4.) * 2 * np.sqrt(2 * np.pi) * np.sin(kz * zs) / np.sqrt(np.sqrt(k0**2 - kz**2))
+    def _thomson(self, k0, zs, Z, kz):
+        psi = np.exp(-1j * np.pi / 4.) * 2 * scimath.sqrt(2 * np.pi) * np.sin(kz * zs) / scimath.sqrt(scimath.sqrt(k0**2 - kz**2))
         # normalize the starter
-        psi = psi / (Z[1] - Z[0])
-        psi[Z.shape[0] / 2 + 1, :] = 0 
+        psi = psi / (Z[1,0] - Z[0,0])
+        psi[int(Z.shape[0]/2)] = 0  # <--- OBS: round down or up? 
         # taper the spectrum to obtain desired angle using Turkey window
         kcut1 = k0 * np.sin(self.aperture / 180 * np.pi) 
         kcut0 = k0 * np.sin((self.aperture - 1.5) / 180 * np.pi)
@@ -67,5 +67,6 @@ class PEStarter():
         W[np.abs(kz) <= kcut0] = 1
         psi = psi * W
         psi[np.abs(kz) >= kcut1] = 0
+        psi = psi[:, np.newaxis]
         return psi
 

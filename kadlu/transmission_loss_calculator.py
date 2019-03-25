@@ -40,12 +40,27 @@ class TransmissionLossCalculator():
         vertical_range = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
 
         # create grids
-        Z = self._create_grids(radial_step=dr, radial_range=50e3,\
+        Z, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
                 azimuthal_step=1/180*np.pi, azimuthal_range=2*np.pi,\
                 vertical_step=10, vertical_range=vertical_range)
 
+        print('\nnx,ny,nz: ', nx, ny, nz)
+
         # PE starter
         starter = PEStarter(method='THOMSON', aperture=88)
+
+        # boudary conditions on z
+        ArtificialAbsorpCoeff =  1. / np.log10(np.e) / lambda0 * 2 / k0
+
+        ThinknessOfArtificialAbsorpLayer = np.max(np.abs(z)) / ThinknessOfArtificialAbsorpLayer_ratio_z
+        D = ThinknessOfArtificialAbsorpLayer / 3
+        atten0 = 1j * ArtificialAbsorpCoeff * np.exp(-(np.abs(Z[:]) - np.max(np.abs(z)))**2 / D**2)
+
+        # initial field
+        psi = starter.eval(k0=k0, zs=zs, Z=Z, kz=kz) * np.ones(shape=(1,ny))
+
+        print('psi.shape: ', psi.shape)
+
 
 
     def _create_grids(self, radial_step, radial_range,\
@@ -104,4 +119,4 @@ class TransmissionLossCalculator():
 
         Y, Z = np.meshgrid(y, z)
 
-        return Z
+        return Z, z, kz, nx, ny, nz

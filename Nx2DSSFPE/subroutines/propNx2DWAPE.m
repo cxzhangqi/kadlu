@@ -55,7 +55,7 @@ Ly=dy*ny;   % rough estimate of angular aperature
 y=[(1:ny/2)-1 (-ny/2:-1)]*dy;
 
 Lz=nz*dz;
-z=[(1:nz/2)-1 (-nz/2:-1)]*dz; z = z(:);
+z=[(1:nz/2)-1 (-nz/2:-1)]*dz; z = z(:); % ensure that z is column vector
 kz=[(1:nz/2)-1 (-nz/2:-1)]*2*pi/Lz; kz = kz(:);
 
 % --- initialize the grid ---

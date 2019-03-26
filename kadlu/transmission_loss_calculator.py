@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib import scimath
 from kadlu.pe_starter import PEStarter
 
 
@@ -32,6 +33,9 @@ class TransmissionLossCalculator():
         lambda0 = self.c0 / freq        
         k0 = 2 * np.pi * freq / self.c0  
 
+        smoothing_length_rho = self.c0 / freq / 4
+        smoothing_length_ssp = np.finfo(float).eps  # machine epsilon
+
         # radial step size
         dr = lambda0 / 2
 
@@ -40,11 +44,14 @@ class TransmissionLossCalculator():
         vertical_range = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
 
         # create grids
-        Z, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
+        Z, x, y, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
                 azimuthal_step=1/180*np.pi, azimuthal_range=2*np.pi,\
                 vertical_step=10, vertical_range=vertical_range)
 
         print('\nnx,ny,nz: ', nx, ny, nz)
+        print('x.shape: ', x.shape)
+        print('y.shape: ', y.shape)
+        print('z.shape: ', z.shape)
 
         # PE starter
         starter = PEStarter(method='THOMSON', aperture=88)
@@ -61,6 +68,11 @@ class TransmissionLossCalculator():
 
         print('psi.shape: ', psi.shape)
 
+        # initial Nx2D free propagator
+        fr_half, fr_full = self._free_propagator(dr, k0, kz, ny)
+
+        print('fr_half:', fr_half.shape)
+        print('fr_full:', fr_full.shape)
 
 
     def _create_grids(self, radial_step, radial_range,\
@@ -119,4 +131,13 @@ class TransmissionLossCalculator():
 
         Y, Z = np.meshgrid(y, z)
 
-        return Z, z, kz, nx, ny, nz
+        return Z, x, y, z, kz, nx, ny, nz
+
+    def _free_propagator(self, dr, k0, kz, ny):
+        fr_half = np.exp(1j * dr / 2 * (scimath.sqrt(k0**2 - kz**2) - k0))
+        fr_half = fr_half[:,np.newaxis]
+        fr_half = fr_half * np.ones(shape=(1,ny))
+        fr_full = np.exp(1j * dr * (scimath.sqrt(k0**2 - kz**2) - k0)) 
+        fr_full = fr_full[:,np.newaxis]        
+        fr_full = fr_full * np.ones(shape=(1,ny))
+        return fr_half, fr_full

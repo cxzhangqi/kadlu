@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.lib import scimath
 from kadlu.pe_starter import PEStarter
+from kadlu.env_input import EnvInput
 
 
 class TransmissionLossCalculator():
@@ -15,6 +16,7 @@ class TransmissionLossCalculator():
         self.cb = 1700      # homogeneous bottom sound speed
         self.bloss = 0.5    # homogeneous bottom attenuation db/lambda
         self.rhob = 1.5     # homogeneous bottom density
+        self.ndx_ChangeWD = 3 #1  how often to update the env
 
         self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
 
@@ -44,7 +46,7 @@ class TransmissionLossCalculator():
         vertical_range = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
 
         # create grids
-        Z, x, y, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
+        Y, Z, x, y, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
                 azimuthal_step=1/180*np.pi, azimuthal_range=2*np.pi,\
                 vertical_step=10, vertical_range=vertical_range)
 
@@ -52,6 +54,8 @@ class TransmissionLossCalculator():
         print('x.shape: ', x.shape)
         print('y.shape: ', y.shape)
         print('z.shape: ', z.shape)
+        print('y: {0:.3f},{1:.3f}...{2:.3f},{3:.3f},{4:.3f}...,{5:.3f},{6:.3f}'.format(y[0],y[1],y[int(ny/2)-1],y[int(ny/2)],y[int(ny/2)+1],y[-2],y[-1]))
+        print('dx: {0:.1f} m'.format(dr))
 
         # PE starter
         starter = PEStarter(method='THOMSON', aperture=88)
@@ -73,6 +77,59 @@ class TransmissionLossCalculator():
 
         print('fr_half:', fr_half.shape)
         print('fr_full:', fr_full.shape)
+
+        # allocate memory
+        Af = np.empty(shape=(int(nz/2), len(x)))
+        U = np.zeros(shape=Z.shape)
+        print('Af.shape: ', Af.shape)
+        print('U.shape: ', U.shape)
+
+        # module handling updates of environmental input
+        env = EnvInput(Y=Y, Z=Z, xs=xs, ys=ys, dx=dr, nx=nx, ny=ny,\
+            freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, c0=self.c0,\
+            cb=self.cb, bloss=self.bloss, rhob=self.rhob)
+
+        # output field at 0
+        nfft = 0
+        dista = 0
+        iNextOutput = 0
+        Af[:,iNextOutput] = self._model_output() #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
+        iNextOutput += 1
+
+        # PE marching starts here
+        is_halfstep = True    # initially, half step to dx/2
+        for jj in range(10): #range(1, nx+1):
+    
+            print("loop: {0}/{1}".format(jj, nx+1), end="\r")
+
+            # (1) x --> x+dx/2 free propagation
+            if is_halfstep:
+                psi = fr_half * psi
+    
+            # (2) do phase adjustment at x+dx/2
+            isnewscreen, isupdate = env.get_input(dista=dista) #(freq,c0,dista+dx/2,dx,xs,ys,smoothing_length_rho,smoothing_length_ssp);
+            
+#            if isnewscreen:
+#                U[:, isupdate] = np.exp(1j * dr * k0 * (-1 + scimath.sqrt( n2in[:,isupdate] + atten0[:,isupdate] +\
+#                    1/2 / k0**2 * (d2denin[:,isupdate] / denin[:,isupdate] - 3/2 * (ddenin[:,isupdate] / denin[:,isupdate])**2))))
+            
+            psi = np.fft.fft(U * np.fft.ifft(psi))    
+            nfft += 2 
+            
+            # (3) x+dx/2 --> x+dx free propagation
+            dista = dista + dr
+        
+            # output field?
+            if np.any(x == dista):
+                is_halfstep = True        # output field at x+dx, so half step from x+dx/2
+                psi = fr_half * psi
+                Af[:, iNextOutput] = self._model_output() #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
+                iNextOutput += 1
+
+            else:                        # if not output filed, full step to x+dx/2+dx
+                is_halfstep = False
+                psi = fr_full * psi
+
 
 
     def _create_grids(self, radial_step, radial_range,\
@@ -111,8 +168,8 @@ class TransmissionLossCalculator():
         # ------ y (azimuthal) ------ 
         ny = int(np.ceil(ymax / dy)) # number of angular bins
         if ny%2==1: ny = ny + 1 # ensure even number of angular bins
-        y_pos = np.arange(ny/2, dtype=float)
-        y_neg = np.arange(-ny/2-1, step=-1, dtype=float)
+        y_pos = np.arange(start=0, stop=ny/2, step=1, dtype=float)
+        y_neg = np.arange(start=-1, stop=-ny/2-1, step=-1, dtype=float)
         y = np.concatenate((y_pos, y_neg)) 
         y *= dy
 
@@ -120,8 +177,8 @@ class TransmissionLossCalculator():
         nz = zmax / dz # number of vertical bins
         nz = round(nz / 2) * 2  # ensure even number of vertical bins
         Lz = nz * dz  
-        z_pos = np.arange(nz/2, dtype=float)
-        z_neg = np.arange(-nz/2-1, step=-1, dtype=float)
+        z_pos = np.arange(start=0, stop=nz/2, step=1, dtype=float)
+        z_neg = np.arange(start=-1, stop=-nz/2-1, step=-1, dtype=float)
         z = np.concatenate((z_pos, z_neg))
         z *= dz
 
@@ -131,7 +188,7 @@ class TransmissionLossCalculator():
 
         Y, Z = np.meshgrid(y, z)
 
-        return Z, x, y, z, kz, nx, ny, nz
+        return Y, Z, x, y, z, kz, nx, ny, nz
 
     def _free_propagator(self, dr, k0, kz, ny):
         fr_half = np.exp(1j * dr / 2 * (scimath.sqrt(k0**2 - kz**2) - k0))
@@ -141,3 +198,7 @@ class TransmissionLossCalculator():
         fr_full = fr_full[:,np.newaxis]        
         fr_full = fr_full * np.ones(shape=(1,ny))
         return fr_half, fr_full
+
+
+    def _model_output(self):
+        return 0

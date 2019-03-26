@@ -2,6 +2,7 @@ import numpy as np
 from numpy.lib import scimath
 from kadlu.pe_starter import PEStarter
 from kadlu.env_input import EnvInput
+import math
 
 
 class TransmissionLossCalculator():
@@ -16,7 +17,9 @@ class TransmissionLossCalculator():
         self.cb = 1700      # homogeneous bottom sound speed
         self.bloss = 0.5    # homogeneous bottom attenuation db/lambda
         self.rhob = 1.5     # homogeneous bottom density
-        self.ndx_ChangeWD = 3 #1  how often to update the env
+        self.ndx_ChangeWD = 3 #1  how often to update bathymetry
+
+        self.ndx_ChangeNSQ = math.inf  # how often to update water column (inf => range-independent SSP)
 
         self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
 
@@ -86,7 +89,7 @@ class TransmissionLossCalculator():
 
         # module handling updates of environmental input
         env = EnvInput(Y=Y, Z=Z, xs=xs, ys=ys, dx=dr, nx=nx, ny=ny,\
-            freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, c0=self.c0,\
+            freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, ndx_ChangeNSQ=self.ndx_ChangeNSQ, c0=self.c0,\
             cb=self.cb, bloss=self.bloss, rhob=self.rhob)
 
         # output field at 0

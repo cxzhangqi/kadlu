@@ -5,7 +5,7 @@ from kadlu.refractive_index import RefractiveIndex
 
 class EnvInput():
 
-    def __init__(self, Y, Z, xs, ys, dx, nx, ny, freq, ndx_ChangeWD, ndx_ChangeNSQ, c0, cb, bloss, rhob):
+    def __init__(self, Y, Z, xs, ys, dx, nx, ny, freq, ndx_ChangeWD, ndx_ChangeNSQ, c0, cb, bloss, rhob, rhow):
 
         self.Z = Z
 
@@ -57,6 +57,8 @@ class EnvInput():
         cbi = cbi[np.logical_and(cbi >= 0, cbi < cb)]
         cb = cb - 1j * cbi
         self.n2b = (c0 / cb)**2
+
+        self.rhow = rhow
 
 
     def get_input(self, dista):
@@ -114,13 +116,21 @@ class EnvInput():
             IDZ = (self.Z <= 0)
             idy = np.nonzero(IDZ)[1]
             IDZ = np.nonzero(IDZ)
-#            n2w_new[IDZ] = self.refractive_index.get_nsq(x=x[idy], YZ=self.Z[IDZ])   #sub_NSQ(x(idy).',y(idy).',Z(IDZ));
-#            clear IDZ
-#            isnewNSQ = any((n2w([1 size(Z,1):-1:size(Z,1)/2+2],:) ...
-#                -n2w_new([1 size(Z,1):-1:size(Z,1)/2+2],:))~=0,1);
-#            n2w_new(2:size(Z,1)/2,isnewNSQ) = n2w_new(size(Z,1):-1:size(Z,1)/2+2,isnewNSQ);
-#            n2w(:,isnewNSQ) = n2w_new(:,isnewNSQ);
-#            rhow = ENV.rhow;       % water density
+            n2w_new[IDZ] = self.refractive_index.get_nsq(x=x[idy], YZ=self.Z[IDZ])   #sub_NSQ(x(idy).',y(idy).',Z(IDZ));
+
+            k = self.Z.shape
+            one = np.array([0], dtype=int)
+            indeces = np.arange(start=k[0]-1, step=-1, stop=k[0]/2, dtype=int)
+            indeces = np.concatenate([one, indeces])
+
+            new_refr = np.any(self.n2w[indeces,:] - n2w_new[indeces,:] != 0, axis=0)
+
+
+            indeces2 = np.arange(start=1, step=1, stop=k[0]/2, dtype=int)
+
+            n2w_new[np.ix_(indeces2, new_refr)] = n2w_new[np.ix_(indeces[1:], new_refr)]
+
+            self.n2w[:,new_refr] = n2w_new[:,new_refr]       
 
             print('Updating water column at {0:.2f} m'.format(dista))
 

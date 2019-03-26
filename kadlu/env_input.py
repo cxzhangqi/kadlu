@@ -5,7 +5,12 @@ from kadlu.refractive_index import RefractiveIndex
 
 class EnvInput():
 
-    def __init__(self, Y, Z, xs, ys, dx, nx, ny, freq, ndx_ChangeWD, ndx_ChangeNSQ, c0, cb, bloss, rhob, rhow):
+    def __init__(self, Y, Z, xs, ys, dx, nx, ny, freq, ndx_ChangeWD,\
+                    ndx_ChangeNSQ, c0, cb, bloss, rhob, rhow,\
+                    smoothing_length_ssp, smoothing_length_rho):
+
+        self.smoothing_length_ssp = smoothing_length_ssp
+        self.smoothing_length_rho = smoothing_length_rho
 
         self.Z = Z
 
@@ -35,12 +40,15 @@ class EnvInput():
         self.NSQ_x_next = 0
 
         self.n2w = np.zeros(m)
-        H_rho = np.empty(m)
-        ddenin = np.empty(m)   
-        d2denin = np.empty(m)
-        denin = np.empty(m)
-        H_c = np.empty(m)
-        n2in = np.empty(m)
+        
+        # updated in _update_phase_screen()
+        self.H_c = np.empty(m, dtype=complex)
+        self.n2in = np.empty(m, dtype=complex)
+        self.H_rho = np.empty(m, dtype=complex)
+        self.ddenin = np.empty(m, dtype=complex)   
+        self.d2denin = np.empty(m, dtype=complex)
+        self.denin = np.empty(m, dtype=complex)
+
 
         self.costheta = np.cos(Y[0,:])
         self.sintheta = np.sin(Y[0,:])
@@ -63,8 +71,11 @@ class EnvInput():
 
     def get_input(self, dista):
 
-        new_env = self._new_env(dista)
+        new_env = self._new_env(dista)[0]
         new_env_any = np.any(new_env)
+
+        if new_env_any:
+            self._update_phase_screen(dista, new_env)
 
         return new_env_any, new_env
 
@@ -141,3 +152,28 @@ class EnvInput():
         y = self.ys + self.sintheta * dista
         new = np.logical_or(self._new_bathymetry(x, y, dista), self._new_refractive_index(x, dista))
         return new
+
+
+    def _update_phase_screen(self, dista, new_env):
+
+        # smooth ssp
+        self.H_c[:,new_env] = (1 + np.tanh(self.Z_sub_wd[:,new_env] / self.smoothing_length_ssp / 2)) / 2
+        self.n2in[:,new_env] = self.n2w[:,new_env] + (self.n2b - self.n2w[:,new_env]) * self.H_c[:,new_env]
+        itmp = (self.wd_mask[0,:] == 0) 
+        if np.any(itmp):
+            self.n2in[0,itmp] = self.n2b
+        
+        # smooth density
+        TANH = np.tanh(self.Z_sub_wd[:,new_env] / self.smoothing_length_rho / 2)
+        self.H_rho[:,new_env] = (1 + TANH) / 2
+        self.denin[:,new_env] = self.rhow + (self.rhob - self.rhow) * self.H_rho[:,new_env]
+        
+        SECH2 = 1 / np.cosh(self.Z_sub_wd[:,new_env] / self.smoothing_length_rho / 2)
+        SECH2 = SECH2 * SECH2
+        self.ddenin[:,new_env] =  SECH2 / self.smoothing_length_rho / 2 * np.sqrt(1 + self.DwdDy[:,new_env]**2)
+        self.ddenin[:,new_env] =  (self.rhob - self.rhow) / 2 * self.ddenin[:,new_env]
+
+        self.d2denin[:,new_env] = -SECH2 / self.smoothing_length_rho / 2 * (TANH / self.smoothing_length_rho * (1+self.DwdDy[:,new_env]**2))
+        self.d2denin[:,new_env] =  (self.rhob - self.rhow) / 2 * self.d2denin[:,new_env]
+        
+        print('Updating phase screen at {0:.2f} m'.format(dista))

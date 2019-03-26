@@ -90,7 +90,8 @@ class TransmissionLossCalculator():
         # module handling updates of environmental input
         env = EnvInput(Y=Y, Z=Z, xs=xs, ys=ys, dx=dr, nx=nx, ny=ny,\
             freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, ndx_ChangeNSQ=self.ndx_ChangeNSQ, c0=self.c0,\
-            cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow)
+            cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow,\
+            smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho)
 
         # output field at 0
         nfft = 0

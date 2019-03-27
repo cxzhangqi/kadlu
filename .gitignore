@@ -12,3 +12,4 @@ pyost.egg-info/*
 *__pycache__
 *.vscode
 kadlu.egg-info/*
+playroom/bathy.mat

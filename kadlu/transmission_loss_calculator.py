@@ -83,7 +83,7 @@ class TransmissionLossCalculator():
 
         # allocate memory
         Af = np.empty(shape=(int(nz/2), len(x)))
-        U = np.zeros(shape=Z.shape)
+        U = np.zeros(shape=Z.shape, dtype=complex)
         print('Af.shape: ', Af.shape)
         print('U.shape: ', U.shape)
 
@@ -111,11 +111,11 @@ class TransmissionLossCalculator():
                 psi = fr_half * psi
     
             # (2) do phase adjustment at x+dx/2
-            isnewscreen, isupdate = env.get_input(dista=dista) #(freq,c0,dista+dx/2,dx,xs,ys,smoothing_length_rho,smoothing_length_ssp);
+            isnewscreen, isupdate = env.get_input(dista=dista+dr/2)
             
-#            if isnewscreen:
-#                U[:, isupdate] = np.exp(1j * dr * k0 * (-1 + scimath.sqrt( n2in[:,isupdate] + atten0[:,isupdate] +\
-#                    1/2 / k0**2 * (d2denin[:,isupdate] / denin[:,isupdate] - 3/2 * (ddenin[:,isupdate] / denin[:,isupdate])**2))))
+            if isnewscreen:
+                U[:, isupdate] = np.exp(1j * dr * k0 * (-1 + scimath.sqrt( env.n2in[:,isupdate] + atten0[:,isupdate] +\
+                    1/2 / k0**2 * (env.d2denin[:,isupdate] / env.denin[:,isupdate] - 3/2 * (env.ddenin[:,isupdate] / env.denin[:,isupdate])**2))))
             
             psi = np.fft.fft(U * np.fft.ifft(psi))    
             nfft += 2 
@@ -134,6 +134,16 @@ class TransmissionLossCalculator():
                 is_halfstep = False
                 psi = fr_full * psi
 
+
+        psifinal = np.fft.ifft(psi) * np.exp(1j * k0 * dista) / np.sqrt(dista) * np.sqrt(env.denin)
+        nfft += 1 
+        psifinal = np.fft.fftshift(psifinal[:int(nz/2),:], axes=(1,))
+
+        # take only first 1/2 of z axis (?)
+        z = z[:int(nz/2)]
+
+        # rearrange y axis (azimuthal) so values are increasing order
+        y = np.fft.fftshift(y)
 
 
     def _create_grids(self, radial_step, radial_range,\

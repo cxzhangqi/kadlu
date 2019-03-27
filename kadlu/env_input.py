@@ -113,6 +113,7 @@ class EnvInput():
 
         return new_bathy
 
+
     def _new_refractive_index(self, x, dista): # NSQ
 
         new_refr = self._unchanged
@@ -146,6 +147,7 @@ class EnvInput():
             print('Updating water column at {0:.2f} m'.format(dista))
 
         return new_refr
+
 
     def _new_env(self, dista):
         x = self.xs + self.costheta * dista

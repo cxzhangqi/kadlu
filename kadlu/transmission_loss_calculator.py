@@ -58,17 +58,10 @@ class TransmissionLossCalculator():
         print('x.shape: ', x.shape)
         print('y.shape: ', y.shape)
         print('z.shape: ', z.shape)
+        print('Y.shape: ', Y.shape)
+        print('Z.shape: ', Z.shape)
         print('y: {0:.3f},{1:.3f}...{2:.3f},{3:.3f},{4:.3f}...,{5:.3f},{6:.3f}'.format(y[0],y[1],y[int(ny/2)-1],y[int(ny/2)],y[int(ny/2)+1],y[-2],y[-1]))
         print('dx: {0:.1f} m'.format(dr))
-
-        # this are used for storing the calculated 3d field values
-        Ez_z = np.array([.1])  # z values (depth)
-        Ez_y = np.empty(shape=(ny,1))  # y values (azimuthal)
-        Ez = np.empty(shape=(len(Ez_z), ny, len(x)))  # sound intensity values
-
-        print('Ez_z.shape: ', Ez_z.shape)
-        print('Ez_y.shape: ', Ez_y.shape)
-        print('Ez.shape: ', Ez.shape)
 
         # PE starter
         starter = PEStarter(method='THOMSON', aperture=88)
@@ -92,7 +85,7 @@ class TransmissionLossCalculator():
         print('fr_full:', fr_full.shape)
 
         # allocate memory
-        Af = np.empty(shape=(int(nz/2), len(x)))
+        Af = np.empty(shape=(int(nz/2), len(x)), dtype=complex)
         U = np.zeros(shape=Z.shape, dtype=complex)
         print('Af.shape: ', Af.shape)
         print('U.shape: ', U.shape)
@@ -104,13 +97,13 @@ class TransmissionLossCalculator():
             smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho)
 
         # module handling calculation of output quantities
-        mout = ModelOutput(Y=Y, Z=Z)
+        mout = ModelOutput(Y=Y, Z=Z, kz=kz, ny=ny, x=x, k0=k0)
 
         # output field at 0
         nfft = 0
         dista = 0
         iNextOutput = 0
-        Af[:,iNextOutput] = mout.get_output(dista=dista) #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
+        Af[:,iNextOutput], nfft = mout.get_output(dista=dista, psi=psi, denin=env.denin, nfft=nfft) #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
         iNextOutput += 1
 
         # PE marching starts here
@@ -140,7 +133,7 @@ class TransmissionLossCalculator():
             if np.any(x == dista):
                 is_halfstep = True        # output field at x+dx, so half step from x+dx/2
                 psi = fr_half * psi
-                Af[:, iNextOutput] = mout.get_output(dista=dista) #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
+                Af[:, iNextOutput], nfft = mout.get_output(dista=dista, psi=psi, denin=env.denin, nfft=nfft) #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
                 iNextOutput += 1
 
             else:                        # if not output filed, full step to x+dx/2+dx

@@ -21,6 +21,37 @@ from enum import Enum
 from kadlu.utils import get_files
 
 
+def write_bathy(lat, lon, bathy, destination, compression=False):
+    """ Write latitude, longitude, and bathymetry data to a file.
+
+        The current implementation only supports MATLAB format (*.mat)
+
+        Returns AssertionError if the destination path does not have *.mat extension.
+
+        Args:
+            lat: 1d numpy array
+                Latitude values
+            lon: 1d numpy array
+                Longitude values
+            bathy: 1d or 2d numpy array
+                Bathymetry values
+            destination: str
+                Name of output file. Must have extension *.mat
+            compression: bool
+                Compress matrices on write. Default is False
+    """
+    # parse file format
+    p = destination.rfind('.')
+    ext = destination[p:]
+    
+    assert ext == '.mat', 'Destination file must have extension *.mat (MATLAB file)'
+
+    output = {'lat': lat, 'lon': lon, 'bathy': bathy}
+    sio.savemat(file_name=destination, mdict=output, do_compression=compression)
+
+    print('Bathymetry data saved to ' + destination)
+
+
 LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
 """ Latitude and longitude coordinates for a given location.
 

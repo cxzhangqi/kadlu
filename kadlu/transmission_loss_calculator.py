@@ -108,7 +108,8 @@ class TransmissionLossCalculator():
 
         # PE marching starts here
         is_halfstep = True    # initially, half step to dx/2
-        for jj in range(10): #range(1, nx+1):
+###        for jj in range(10):
+        for jj in range(1, nx+1):
     
             print("loop: {0}/{1}".format(jj, nx+1), end="\r")
 

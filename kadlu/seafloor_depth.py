@@ -8,5 +8,14 @@ class SeafloorDepth():
         self.n = n
 
     def get_depth(self, x, y):
+        # Input:
+        #  x,y coordinates (cartesian)
+        # returns:
+        #  1) water depth in all (n) angular bins
+        #  2) derivative of depth wrt angle in all angular bins
 
-        return np.ones(self.n), np.ones(self.n)
+        # flat seafloor with depth of 5 km:
+        depth = 5000 * np.ones(self.n)
+        gradient = np.zeros(self.n)
+
+        return depth, gradient

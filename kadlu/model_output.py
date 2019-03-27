@@ -23,9 +23,10 @@ class ModelOutput():
 
     def get_output(self, dista, psi, denin, nfft):
 
-        self.iout_Ez += 1
-
         if dista != 0:
+
+            self.iout_Ez += 1
+
             dz = self.Z[1] - self.Z[0]
 
             idx = np.round(self.Ez_z/dz).astype(int)

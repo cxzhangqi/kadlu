@@ -2,6 +2,7 @@ import numpy as np
 from numpy.lib import scimath
 from kadlu.pe_starter import PEStarter
 from kadlu.env_input import EnvInput
+from kadlu.model_output import ModelOutput
 import math
 
 
@@ -60,6 +61,15 @@ class TransmissionLossCalculator():
         print('y: {0:.3f},{1:.3f}...{2:.3f},{3:.3f},{4:.3f}...,{5:.3f},{6:.3f}'.format(y[0],y[1],y[int(ny/2)-1],y[int(ny/2)],y[int(ny/2)+1],y[-2],y[-1]))
         print('dx: {0:.1f} m'.format(dr))
 
+        # this are used for storing the calculated 3d field values
+        Ez_z = np.array([.1])  # z values (depth)
+        Ez_y = np.empty(shape=(ny,1))  # y values (azimuthal)
+        Ez = np.empty(shape=(len(Ez_z), ny, len(x)))  # sound intensity values
+
+        print('Ez_z.shape: ', Ez_z.shape)
+        print('Ez_y.shape: ', Ez_y.shape)
+        print('Ez.shape: ', Ez.shape)
+
         # PE starter
         starter = PEStarter(method='THOMSON', aperture=88)
 
@@ -93,11 +103,14 @@ class TransmissionLossCalculator():
             cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow,\
             smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho)
 
+        # module handling calculation of output quantities
+        mout = ModelOutput(Y=Y, Z=Z)
+
         # output field at 0
         nfft = 0
         dista = 0
         iNextOutput = 0
-        Af[:,iNextOutput] = self._model_output() #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
+        Af[:,iNextOutput] = mout.get_output(dista=dista) #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
         iNextOutput += 1
 
         # PE marching starts here
@@ -127,7 +140,7 @@ class TransmissionLossCalculator():
             if np.any(x == dista):
                 is_halfstep = True        # output field at x+dx, so half step from x+dx/2
                 psi = fr_half * psi
-                Af[:, iNextOutput] = self._model_output() #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
+                Af[:, iNextOutput] = mout.get_output(dista=dista) #icase,psi,dista,ndy_3DSliceout,ndz_3DSliceout,YZSlice_output_folder,isplot);
                 iNextOutput += 1
 
             else:                        # if not output filed, full step to x+dx/2+dx

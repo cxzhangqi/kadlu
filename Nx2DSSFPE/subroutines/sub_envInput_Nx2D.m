@@ -62,7 +62,7 @@ if (dista==dx/2)||(dista>=wd_x_next),
     DwdDy(:,isnewbathy) = ones(size(Z,1),1)*DwdDy_new(isnewbathy); %
     % DDwdDyy(:,isnewbathy) = ones(size(Z,1),1)*DDwdDyy_new(isnewbathy); %
     Z_sub_wd(:,isnewbathy) = abs(Z(:,isnewbathy))-wd_mask(:,isnewbathy);
-    % fprintf('   Updating bathymetry at %.2f m\n',dista)
+    fprintf('   Updating bathymetry at %.2f m\n',dista)
 end
 
 % water column

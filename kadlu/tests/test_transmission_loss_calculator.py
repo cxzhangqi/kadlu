@@ -23,4 +23,4 @@ def test_can_initialize_TL_calculator():
 
 def test_run_TL_calculator():
     c = TransmissionLossCalculator(bathymetry=None, sound_speed=None)
-    c.run(frequency=10, source_depth=100)
+    c.run(frequency=10, source_depth=10)

@@ -12,12 +12,14 @@ class ModelOutput():
         self.nzhalf = int(Z.shape[0] / 2)
 
         # this are used for storing the calculated 3d field values
-        self.Ez_z = np.array([.1]) 
+#        self.Ez_z = np.array([.1]) 
+        self.Ez_z = (np.arange(99, dtype=float) + 0.5) * 10. 
+        self.Ez_z = self.Ez_z[:, np.newaxis] 
         self.Ez_y = Y[0,:]  # y values (azimuthal)
         self.Ez = np.empty(shape=(len(self.Ez_z), ny, len(x)), dtype=complex)  # sound intensity values
 
-        self.Ez_ifft_kernel = np.exp(1j * self.Ez_z * kz) / len(kz)
-        self.Ez_ifft_kernel = self.Ez_ifft_kernel[np.newaxis, :]        
+        self.Ez_ifft_kernel = np.exp(1j * np.matmul(self.Ez_z, kz[np.newaxis,:])) / len(kz)
+
         self.iout_Ez = 0
 
 
@@ -27,14 +29,16 @@ class ModelOutput():
 
             self.iout_Ez += 1
 
-            dz = self.Z[1] - self.Z[0]
+            dz = self.Z[1,0] - self.Z[0,0]
 
-            idx = np.round(self.Ez_z/dz).astype(int)
+            idx = np.squeeze(np.round(self.Ez_z/dz).astype(int))
+            if np.ndim(idx) == 0:
+                idx = np.array([idx])
 
             A = np.matmul(self.Ez_ifft_kernel, psi)
-            B = np.sqrt(denin[idx,:])
+            B = np.sqrt(denin[idx])
 
-            self.Ez[:,:,self.iout_Ez] = np.matmul(A, B) * np.exp(1j * self.k0 * dista) / np.sqrt(dista) 
+            self.Ez[:,:,self.iout_Ez] = A * B * np.exp(1j * self.k0 * dista) / np.sqrt(dista) 
 
             psi = np.fft.ifft(psi) * np.exp(1j * self.k0 * dista) / np.sqrt(dista) * np.sqrt(denin)
             nfft += 1 

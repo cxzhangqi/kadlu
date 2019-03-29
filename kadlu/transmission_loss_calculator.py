@@ -158,7 +158,7 @@ class TransmissionLossCalculator():
         plot_r = x[1:]
         plot_theta = np.fft.fftshift(np.squeeze(mout.Ez_y))
 
-        if False:
+        if True:
             SPfield = np.fft.fftshift(np.squeeze(mout.Ez[0,:,1:]),axes=0)
             SPfield = 20 * np.log10(np.abs(SPfield))
             R, TH = np.meshgrid(plot_r, plot_theta)
@@ -167,7 +167,7 @@ class TransmissionLossCalculator():
             plt.contourf(XX, YY, SPfield, 100)
             plt.show()
 
-        if True:
+        if False:
             ZZ = 20 * np.log10(np.abs(Af[:,:]))
             XX, YY = np.meshgrid(x, z)
             plt.contourf(XX, YY, ZZ, 100)

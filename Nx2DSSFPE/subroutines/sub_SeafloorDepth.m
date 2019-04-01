@@ -15,6 +15,12 @@ global ENV
 x = x(:); y = y(:); % making sure every vector is in columns 
 tmp0 = zeros(size(x)); tmp1 = ones(size(x));  % zeros and ones
 
+
+
+ENV.WD.field = ones(size(ENV.WD.field)) * 10000;
+
+
+
 [nx,ny] = size(ENV.WD.field); % check dimensions 
 if nx > 1,
     x(x<ENV.WD.x0)=ENV.WD.x0; x(x>=ENV.WD.x1)=ENV.WD.x1-1e-6;

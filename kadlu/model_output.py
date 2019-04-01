@@ -25,9 +25,9 @@ class ModelOutput():
 
     def get_output(self, dista, psi, denin, nfft):
 
-        if dista != 0:
+        self.iout_Ez += 1
 
-            self.iout_Ez += 1
+        if dista != 0:
 
             dz = self.Z[1,0] - self.Z[0,0]
 
@@ -38,13 +38,17 @@ class ModelOutput():
             A = np.matmul(self.Ez_ifft_kernel, psi)
             B = np.sqrt(denin[idx])
 
-            self.Ez[:,:,self.iout_Ez] = A * B * np.exp(1j * self.k0 * dista) / np.sqrt(dista) 
+            self.Ez[:,:,self.iout_Ez-1] = A * B * np.exp(1j * self.k0 * dista) / np.sqrt(dista) 
 
-            psi = np.fft.ifft(psi) * np.exp(1j * self.k0 * dista) / np.sqrt(dista) * np.sqrt(denin)
+            if self.iout_Ez < 5:
+                print('\n',self.iout_Ez)
+                print(self.Ez[0,0,self.iout_Ez-1])
+
+            psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dista) / np.sqrt(dista) * np.sqrt(denin)
             nfft += 1 
 
         else:
-            psi = np.fft.ifft(psi)
+            psi = np.fft.ifft(psi, axis=0)
             nfft += 1 
 
         # sound intensity on the vertical x-z plane crossing the source

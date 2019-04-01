@@ -14,6 +14,14 @@ global ENV
 %
 %  Y.-T. Lin 03/10/2014 @ WHOI
 
+
+
+
+ENV.NSQ.field = ones(size(ENV.NSQ.field));
+
+
+
+
 x = x(:); y = y(:); z = z(:);  % making sure every vector is in columns 
 z = abs(z);  % z positive pointing down
 tmp0 = zeros(size(x)); tmp1 = ones(size(x));  % zeros and ones

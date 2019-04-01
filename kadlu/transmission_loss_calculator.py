@@ -43,16 +43,20 @@ class TransmissionLossCalculator():
         smoothing_length_ssp = np.finfo(float).eps  # machine epsilon
 
         # radial step size
-        dr = lambda0 / 2
+        dr = 1000 #lambda0 / 2
+
+        # azimuthal step size
+        azimuthal_step = 45 / 180 * np.pi  #1/180 * np.pi
 
         # vertical range
         ThinknessOfArtificialAbsorpLayer_ratio_z = 6
         vertical_range = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
+        vertical_step = 1000 #10
 
         # create grids
         Y, Z, x, y, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
-                azimuthal_step=1/180*np.pi, azimuthal_range=2*np.pi,\
-                vertical_step=10, vertical_range=vertical_range)
+                azimuthal_step=azimuthal_step, azimuthal_range=2*np.pi,\
+                vertical_step=vertical_step, vertical_range=vertical_range)
 
         print('\nnx,ny,nz: ', nx, ny, nz)
         print('x.shape: ', x.shape)
@@ -108,7 +112,7 @@ class TransmissionLossCalculator():
 
         # PE marching starts here
         is_halfstep = True    # initially, half step to dx/2
-###        for jj in range(10):
+###        for jj in range(1,3):
         for jj in range(1, nx+1):
     
             print("loop: {0}/{1}".format(jj, nx+1), end="\r")
@@ -116,7 +120,7 @@ class TransmissionLossCalculator():
             # (1) x --> x+dx/2 free propagation
             if is_halfstep:
                 psi = fr_half * psi
-    
+
             # (2) do phase adjustment at x+dx/2
             isnewscreen, isupdate = env.get_input(dista=dista+dr/2)
             
@@ -124,9 +128,13 @@ class TransmissionLossCalculator():
                 U[:, isupdate] = np.exp(1j * dr * k0 * (-1 + scimath.sqrt( env.n2in[:,isupdate] + atten0[:,isupdate] +\
                     1/2 / k0**2 * (env.d2denin[:,isupdate] / env.denin[:,isupdate] - 3/2 * (env.ddenin[:,isupdate] / env.denin[:,isupdate])**2))))
             
-            psi = np.fft.fft(U * np.fft.ifft(psi))    
+            psi = np.fft.fft(U * np.fft.ifft(psi, axis=0), axis=0)    
             nfft += 2 
-            
+
+#            if jj==2:                
+#                for g in range(len(psi)):
+#                    print('{0:.4f}'.format(psi[g,0]))
+
             # (3) x+dx/2 --> x+dx free propagation
             dista = dista + dr
         
@@ -142,7 +150,7 @@ class TransmissionLossCalculator():
                 psi = fr_full * psi
 
 
-        psifinal = np.fft.ifft(psi) * np.exp(1j * k0 * dista) / np.sqrt(dista) * np.sqrt(env.denin)
+        psifinal = np.fft.ifft(psi, axis=0) * np.exp(1j * k0 * dista) / np.sqrt(dista) * np.sqrt(env.denin)
         nfft += 1 
         psifinal = np.fft.fftshift(psifinal[:int(nz/2),:], axes=(1,))
 
@@ -153,24 +161,26 @@ class TransmissionLossCalculator():
         y = np.fft.fftshift(y)
 
 
-
         import matplotlib.pyplot as plt
         plot_r = x[1:]
         plot_theta = np.fft.fftshift(np.squeeze(mout.Ez_y))
 
         if True:
-            SPfield = np.fft.fftshift(np.squeeze(mout.Ez[0,:,1:]),axes=0)
+            SPfield = np.fft.fftshift(np.squeeze(mout.Ez[0,:,1:]), axes=0)
             SPfield = 20 * np.log10(np.abs(SPfield))
             R, TH = np.meshgrid(plot_r, plot_theta)
             XX = R * np.cos(TH)
             YY = R * np.sin(TH)
-            plt.contourf(XX, YY, SPfield, 100)
+            fig = plt.contourf(XX, YY, SPfield, 100)
+            plt.colorbar(fig)
             plt.show()
 
-        if False:
+        if True:
+            fig=plt.figure()
             ZZ = 20 * np.log10(np.abs(Af[:,:]))
             XX, YY = np.meshgrid(x, z)
-            plt.contourf(XX, YY, ZZ, 100)
+            fig = plt.contourf(XX, YY, ZZ, 100)
+            plt.colorbar(fig)
             plt.show()
 
 
@@ -211,7 +221,7 @@ class TransmissionLossCalculator():
         ny = int(np.ceil(ymax / dy)) # number of angular bins
         if ny%2==1: ny = ny + 1 # ensure even number of angular bins
         y_pos = np.arange(start=0, stop=ny/2, step=1, dtype=float)
-        y_neg = np.arange(start=-1, stop=-ny/2-1, step=-1, dtype=float)
+        y_neg = np.arange(start=-ny/2, stop=0, step=1, dtype=float)
         y = np.concatenate((y_pos, y_neg)) 
         y *= dy
 
@@ -220,7 +230,8 @@ class TransmissionLossCalculator():
         nz = round(nz / 2) * 2  # ensure even number of vertical bins
         Lz = nz * dz  
         z_pos = np.arange(start=0, stop=nz/2, step=1, dtype=float)
-        z_neg = np.arange(start=-1, stop=-nz/2-1, step=-1, dtype=float)
+#        z_neg = np.arange(start=-1, stop=-nz/2-1, step=-1, dtype=float)
+        z_neg = np.arange(start=-nz/2, stop=0, step=1, dtype=float)
         z = np.concatenate((z_pos, z_neg))
         z *= dz
 

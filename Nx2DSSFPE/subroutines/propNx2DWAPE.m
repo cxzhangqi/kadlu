@@ -85,7 +85,6 @@ nfft = 0;
 % see Section 6.5.3 of Computational Ocean Acoustics for the formula using here,
 % i.e.,    n^2 = nb^2 + i * alpha * exp( -(z-zmax).^2/D.^2 )
 ArtificialAbsorpCoeff =  1/log10(exp(1))./lambda0*2/k0;     % 20dB to zmax and ymax, Gaussian decayed length: D
-
 ThinknessOfArtificialAbsorpLayer = max(abs(z))/ThinknessOfArtificialAbsorpLayer_ratio_z;      % which gives effective PE domain within zmax-ThinknessOfArtificialAbsorpLayer
 D = ThinknessOfArtificialAbsorpLayer/3;         % Gaussian decayed length: D
 atten0(:) = sqrt(-1) * ArtificialAbsorpCoeff * exp(-(abs(Z(:))-max(abs(z))).^2/D.^2);      % the sponge layer on z
@@ -128,7 +127,7 @@ for jj=1:numstep
     
     %(1) x --> x+dx/2 free propagation
     if is_halfstep, psi = fr_half.*psi; end
-    
+
     %(2) do phase adjustment at x+dx/2
     [isnewscreen,isupdate] = envInput(freq,c0,dista+dx/2,dx,xs,ys,smoothing_length_rho,smoothing_length_ssp);
     if isnewscreen,
@@ -141,8 +140,13 @@ for jj=1:numstep
         U(:,isupdate) = exp(1i*dx*k0*(-1 + sqrt( n2in(:,isupdate) + atten0(:,isupdate) + ...
             1/2/k0/k0*(d2denin(:,isupdate)./denin(:,isupdate) - 3/2*(ddenin(:,isupdate)./denin(:,isupdate)).^2) ) ) );
     end
+
     psi = fft(U.*ifft(psi));    nfft = nfft+2; 
-    
+
+%    if jj==2,
+%        psi(:,1)
+%    end
+
     %(3) x+dx/2 --> x+dx free propagation
     dista = dista + dx;
     % output field?
@@ -168,7 +172,8 @@ psifinal = fftshift(psifinal(1:nz/2,:),2);
 z=z(1:nz/2);
 y=fftshift(y);
 fprintf('----- Finsih in %.2f sec for a %.2f m run with %d ffts. -----\n\n',toc,dista,nfft)
-    
+
+
 clear global Y Z k0 kz nfft
 clear global n2in denin ddenin d2denin
 clear global wd_mask

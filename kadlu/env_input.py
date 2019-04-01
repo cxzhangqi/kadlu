@@ -40,6 +40,7 @@ class EnvInput():
         self.NSQ_x_next = 0
 
         self.n2w = np.zeros(m)
+        self.n2w_new = np.zeros(m)
         
         # updated in _update_phase_screen()
         self.H_c = np.empty(m, dtype=complex)
@@ -124,25 +125,24 @@ class EnvInput():
             self.NSQ_x_next = dista + self.ndx_ChangeNSQ * self.dx
 
             # interpolate water nsq
-            n2w_new = self.n2w
+            self.n2w_new = np.copy(self.n2w)
             IDZ = (self.Z <= 0)
             idy = np.nonzero(IDZ)[1]
             IDZ = np.nonzero(IDZ)
-            n2w_new[IDZ] = self.refractive_index.get_nsq(x=x[idy], YZ=self.Z[IDZ])   #sub_NSQ(x(idy).',y(idy).',Z(IDZ));
+            self.n2w_new[IDZ] = self.refractive_index.get_nsq(x=x[idy], YZ=self.Z[IDZ])   #sub_NSQ(x(idy).',y(idy).',Z(IDZ));
 
             k = self.Z.shape
             one = np.array([0], dtype=int)
             indeces = np.arange(start=k[0]-1, step=-1, stop=k[0]/2, dtype=int)
             indeces = np.concatenate([one, indeces])
 
-            new_refr = np.any(self.n2w[indeces,:] - n2w_new[indeces,:] != 0, axis=0)
-
+            new_refr = np.any(self.n2w[indeces,:] - self.n2w_new[indeces,:] != 0, axis=0)
 
             indeces2 = np.arange(start=1, step=1, stop=k[0]/2, dtype=int)
 
-            n2w_new[np.ix_(indeces2, new_refr)] = n2w_new[np.ix_(indeces[1:], new_refr)]
+            self.n2w_new[np.ix_(indeces2, new_refr)] = self.n2w_new[np.ix_(indeces[1:], new_refr)]
 
-            self.n2w[:,new_refr] = n2w_new[:,new_refr]       
+            self.n2w[:,new_refr] = self.n2w_new[:,new_refr]       
 
             print('Updating water column at {0:.2f} m'.format(dista))
 

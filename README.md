@@ -80,3 +80,8 @@ libraries using pip and apt-get. It should work out of the box on newer Ubuntu s
  3. [Interpolate bathymetry data](docs/demo_notebooks/interp_bathy.ipynb)
 
  4. [How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)](docs/demo_notebooks/CHS.ipynb)
+
+
+## Useful resources
+
+ *  [gsw Python package](https://github.com/TEOS-10/GSW-Python) (Python implementation of the Thermodynamic Equation of Seawater 2010)

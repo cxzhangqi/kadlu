@@ -12,6 +12,42 @@ R1_IUGG = 6371009
 deg2rad = np.pi / 180.
 
 
+def DLDL_over_DXDY(lat, lat_deriv_order, lon_deriv_order):
+    """ Compute factor for transforming partial derivates in 
+        lat-lon to partial derivates in x-y.
+
+        Args: 
+            lat: float or array
+                Latitude of the positions(s) where the derivatives are to be evaluated
+            lat_deriv_order: int
+                Order of latitude-derivative
+            lon_deriv_order: int
+                Order of longitude-derivative
+
+        Returns:
+            ratio: float or array
+                Factor for transforming partial derivates in lat-lon to partial derivates in x-y
+    """
+    R = R1_IUGG
+    R2 = R * np.cos(lat * deg2rad)
+
+    m = lat_deriv_order
+    n = lon_deriv_order
+
+    if m + n == 0:
+        return 1
+
+    ratio = 1
+    
+    if m > 0:
+        ratio *= np.power(1./R, m)
+
+    if n > 0:
+        ratio *= np.power(1./R2, n)
+
+    return ratio
+
+
 def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False):
     """ Transform lat-lon coordinates to xy position coordinates.
 

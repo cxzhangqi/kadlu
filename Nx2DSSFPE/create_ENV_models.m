@@ -1,7 +1,7 @@
 clear
 global WD SSP
 addpath subroutines
-addpath /Users/dbarclay/Documents/MatlabScripts/Bathymetry/map
+addpath /home/oliskir/src/meridian/kadlu/Nx2DSSFPE
 
 lon_ref = 142.1;
 lat_ref = 11.2;

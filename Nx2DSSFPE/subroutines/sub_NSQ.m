@@ -17,7 +17,7 @@ global ENV
 
 
 
-ENV.NSQ.field = ones(size(ENV.NSQ.field));
+%%%OLI ENV.NSQ.field = ones(size(ENV.NSQ.field));
 
 
 

@@ -62,11 +62,11 @@ if (dista==dx/2)||(dista>=wd_x_next),
     DwdDy(:,isnewbathy) = ones(size(Z,1),1)*DwdDy_new(isnewbathy); %
     % DDwdDyy(:,isnewbathy) = ones(size(Z,1),1)*DDwdDyy_new(isnewbathy); %
     Z_sub_wd(:,isnewbathy) = abs(Z(:,isnewbathy))-wd_mask(:,isnewbathy);
-    fprintf('   Updating bathymetry at %.2f m\n',dista)
-%    fprintf('z=%.2f\n', wd_new(1))
-%    fprintf('x=%.1f\n', x(1))
-%    fprintf('y=%.1f\n', y(1))
-%    fprintf('grad=%.4f\n', DwdDy_new(1:4))
+    % fprintf('   Updating bathymetry at %.2f m\n',dista)
+%%%OLI     fprintf('z=%.2f\n', wd_new(91))
+%%%OLI     fprintf('x=%.1f\n', x(91))
+%%%OLI     fprintf('y=%.1f\n', y(91))
+%%%OLI     fprintf('grad=%.4E\n', DwdDy_new(91))
 end
 
 % water column
@@ -112,7 +112,7 @@ if ~isempty(find(isnew_env,1)),
     d2denin(:,isnew_env) = - SECH2 /smoothing_length_rho/2 .* ( TANH/smoothing_length_rho.*(1+DwdDy(:,isnew_env).^2) );%+ DDwdDyy(:,isnew_env) );
     d2denin(:,isnew_env) =  (rhob-rhow)/2 * d2denin(:,isnew_env);
     
-    fprintf('   Updating phase screen at %.2f m\n\n',dista)
+    % fprintf('   Updating phase screen at %.2f m\n\n',dista)
     isnewnsq = 1;
 end
 

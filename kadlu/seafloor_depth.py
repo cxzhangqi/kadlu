@@ -26,10 +26,13 @@ class SeafloorDepth():
         depth = self.interp.eval_xy(x=x, y=y)
         depth *= (-1.)
 
-        # flat seafloor with depth of 1000 m:
-###        depth = 10000 * np.ones(self.n)
-        gradient = np.zeros(self.n)
+        gradient = self.interp.eval_xy(x=x, y=y, y_deriv_order=1)
+        gradient *= (-1.)
 
-###        print(depth[0], x[0], y[0])
+        # flat seafloor with depth of 10 km:
+###        depth = 10000 * np.ones(self.n)
+###        gradient = np.zeros(self.n)
+
+###        print(depth[0], gradient[0], x[0], y[0])
 
         return depth, gradient

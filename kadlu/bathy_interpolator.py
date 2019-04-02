@@ -14,7 +14,7 @@
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from kadlu.bathy_reader import BathyReader, LatLon
-from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad
+from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY
 from scipy.interpolate import griddata
 
 from sys import platform as sys_pf
@@ -43,7 +43,7 @@ class GridData():
         self.z = z
         self.method = method
 
-    def __call__(self, theta, phi, grid=False):
+    def __call__(self, theta, phi, grid=False, dtheta=0, dphi=0):
         """ Interpolate data
 
             theta and phi can be floats or arrays.
@@ -65,6 +65,10 @@ class GridData():
                    2nd coordinate of the points where the interpolation is to be evaluated
                 grid: bool
                    Specify how to combine elements of theta and phi.
+                dtheta: int
+                    Order of theta-derivative
+                dphi: int
+                    Order of phi-derivative
 
             Returns:
                 zi: Interpolated values
@@ -134,7 +138,7 @@ class BathyInterpolator():
         self.lon_nodes = lon
         self.bathy = bathy
 
-    def eval_xy(self, x, y, grid=False):
+    def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
 
             x and y can be floats or arrays.
@@ -156,6 +160,10 @@ class BathyInterpolator():
                    y-coordinate of the positions(s) where the bathymetry is to be evaluated
                 grid: bool
                    Specify how to combine elements of x and y.
+                x_deriv_order: int
+                    Order of x-derivative
+                y_deriv_order: int
+                    Order of y-derivative
 
             Returns:
                 zi: Interpolated bathymetry values
@@ -168,7 +176,11 @@ class BathyInterpolator():
             lat = np.reshape(lat, newshape=(M*N))
             lon = np.reshape(lon, newshape=(M*N))
 
-        zi = self.eval_ll(lat=lat, lon=lon)
+        zi = self.eval_ll(lat=lat, lon=lon, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+
+        if x_deriv_order + y_deriv_order > 0:
+            r = DLDL_over_DXDY(lat=lat, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+            zi *= r
 
         if grid:
             zi = np.reshape(zi, newshape=(M,N))
@@ -181,7 +193,7 @@ class BathyInterpolator():
 
         return zi
 
-    def eval_ll(self, lat, lon, grid=False):
+    def eval_ll(self, lat, lon, grid=False, lat_deriv_order=0, lon_deriv_order=0):
         """ Interpolate bathymetry grid in latitude and longitude coordinates (LL).
 
             lat and lot can be floats or arrays.
@@ -196,22 +208,29 @@ class BathyInterpolator():
             and lon=(lon_1,...,lon_M). Note that in this case, the lengths 
             of lat and lon do not have to be the same.
 
+            Bathymetry values are given in meters and derivates are given in meters 
+            per radians^n, where n is the overall derivative order.
+
             Args: 
                 lat: float or array
-                   latitude of the positions(s) where the bathymetry is to be evaluated
+                    latitude of the positions(s) where the bathymetry is to be evaluated
                 lon: float or array
-                   longitude of the positions(s) where the bathymetry is to be evaluated
+                    longitude of the positions(s) where the bathymetry is to be evaluated
                 grid: bool
-                   Specify how to combine elements of lat and lon.
+                    Specify how to combine elements of lat and lon.
+                lat_deriv_order: int
+                    Order of latitude-derivative
+                lon_deriv_order: int
+                    Order of longitude-derivative
 
             Returns:
-                zi: Interpolated bathymetry values
+                zi: Interpolated bathymetry values (or derivates)
         """
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = torad(lat, lon)
 
-        zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid)
+        zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
         if np.ndim(self.bathy) == 1 and np.ndim(zi) == 2:
             zi = np.swapaxes(zi, 0, 1)

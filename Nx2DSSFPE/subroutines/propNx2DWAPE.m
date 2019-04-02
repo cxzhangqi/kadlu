@@ -143,7 +143,11 @@ for jj=1:numstep
 
     psi = fft(U.*ifft(psi));    nfft = nfft+2; 
 
-%    if jj==2,
+%    if jj<2,
+%        jj
+%        for kkk=1:28
+%            fprintf('%.8E%+.8Ej  \n', [real(U(kkk,1)); imag(U(kkk,1))])
+%        end
 %        psi(:,1)
 %    end
 

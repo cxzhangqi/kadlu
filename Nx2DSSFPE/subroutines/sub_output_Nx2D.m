@@ -49,12 +49,6 @@ if dista ~= 0,
     %     Ez((Ez_z==Inf),:,iout_Ez)=sum(abs(tmp).^2).*(Z(2)-Z(1)); %depth-integrated sound intensity over the water column
     % end
     Ez(:,:,iout_Ez) = (Ez_ifft_kernel*psi)*exp(1i*k0*dista)/sqrt(dista).*sqrt(denin(round(Ez_z/(Z(2)-Z(1)))+1,:)); 
-
-    if iout_Ez < 5,
-        iout_Ez
-        Ez(1,1,iout_Ez)
-    end
-    
     psi = ifft(psi)*exp(1i*k0*dista)/sqrt(dista).*sqrt(denin);   nfft = nfft+1; 
 else
     psi = ifft(psi);   nfft = nfft+1; 

@@ -12,8 +12,8 @@ class ModelOutput():
         self.nzhalf = int(Z.shape[0] / 2)
 
         # this are used for storing the calculated 3d field values
-#        self.Ez_z = np.array([.1]) 
-        self.Ez_z = (np.arange(99, dtype=float) + 0.5) * 10. 
+        self.Ez_z = np.array([.1]) 
+#        self.Ez_z = (np.arange(99, dtype=float) + 0.5) * 10. 
         self.Ez_z = self.Ez_z[:, np.newaxis] 
         self.Ez_y = Y[0,:]  # y values (azimuthal)
         self.Ez = np.empty(shape=(len(self.Ez_z), ny, len(x)), dtype=complex)  # sound intensity values
@@ -39,10 +39,6 @@ class ModelOutput():
             B = np.sqrt(denin[idx])
 
             self.Ez[:,:,self.iout_Ez-1] = A * B * np.exp(1j * self.k0 * dista) / np.sqrt(dista) 
-
-            if self.iout_Ez < 5:
-                print('\n',self.iout_Ez)
-                print(self.Ez[0,0,self.iout_Ez-1])
 
             psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dista) / np.sqrt(dista) * np.sqrt(denin)
             nfft += 1 

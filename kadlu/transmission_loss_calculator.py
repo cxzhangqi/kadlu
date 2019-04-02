@@ -27,6 +27,10 @@ class TransmissionLossCalculator():
 
     def run(self, frequency, source_depth):
 
+
+        import time
+        start = time.time()
+
         # frequency in Hz
         freq = frequency  
         
@@ -43,15 +47,15 @@ class TransmissionLossCalculator():
         smoothing_length_ssp = np.finfo(float).eps  # machine epsilon
 
         # radial step size
-        dr = 1000 #lambda0 / 2
+        dr = lambda0 / 2 #1000
 
         # azimuthal step size
-        azimuthal_step = 45 / 180 * np.pi  #1/180 * np.pi
+        azimuthal_step = 1/180 * np.pi  #45 / 180 * np.pi  #
 
         # vertical range
         ThinknessOfArtificialAbsorpLayer_ratio_z = 6
         vertical_range = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
-        vertical_step = 1000 #10
+        vertical_step = 10  #1000 #
 
         # create grids
         Y, Z, x, y, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
@@ -112,7 +116,7 @@ class TransmissionLossCalculator():
 
         # PE marching starts here
         is_halfstep = True    # initially, half step to dx/2
-###        for jj in range(1,3):
+###        for jj in range(1,10):
         for jj in range(1, nx+1):
     
             print("loop: {0}/{1}".format(jj, nx+1), end="\r")
@@ -131,9 +135,12 @@ class TransmissionLossCalculator():
             psi = np.fft.fft(U * np.fft.ifft(psi, axis=0), axis=0)    
             nfft += 2 
 
-#            if jj==2:                
-#                for g in range(len(psi)):
-#                    print('{0:.4f}'.format(psi[g,0]))
+#            if jj < 2:
+#                print('jj ', jj)
+#                for n in range(U.shape[0]):
+#                    print(U[n,0])
+#
+#                print(psi[:,0])
 
             # (3) x+dx/2 --> x+dx free propagation
             dista = dista + dr
@@ -160,10 +167,12 @@ class TransmissionLossCalculator():
         # rearrange y axis (azimuthal) so values are increasing order
         y = np.fft.fftshift(y)
 
-
         import matplotlib.pyplot as plt
         plot_r = x[1:]
         plot_theta = np.fft.fftshift(np.squeeze(mout.Ez_y))
+
+        end = time.time()
+        print('Calculation completed in {0:.1f} seconds'.format(end - start))
 
         if True:
             SPfield = np.fft.fftshift(np.squeeze(mout.Ez[0,:,1:]), axes=0)
@@ -181,6 +190,8 @@ class TransmissionLossCalculator():
             XX, YY = np.meshgrid(x, z)
             fig = plt.contourf(XX, YY, ZZ, 100)
             plt.colorbar(fig)
+            ax = plt.gca()
+            ax.invert_yaxis()
             plt.show()
 
 

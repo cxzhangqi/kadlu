@@ -112,7 +112,7 @@ if ~isempty(find(isnew_env,1)),
     d2denin(:,isnew_env) = - SECH2 /smoothing_length_rho/2 .* ( TANH/smoothing_length_rho.*(1+DwdDy(:,isnew_env).^2) );%+ DDwdDyy(:,isnew_env) );
     d2denin(:,isnew_env) =  (rhob-rhow)/2 * d2denin(:,isnew_env);
     
-    % fprintf('   Updating phase screen at %.2f m\n\n',dista)
+    fprintf('   Updating phase screen at %.2f m\n\n',dista)
     isnewnsq = 1;
 end
 

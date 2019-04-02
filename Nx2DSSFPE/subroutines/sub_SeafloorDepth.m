@@ -17,7 +17,7 @@ tmp0 = zeros(size(x)); tmp1 = ones(size(x));  % zeros and ones
 
 
 
-ENV.WD.field = ones(size(ENV.WD.field)) * 10000;
+%%%OLI  ENV.WD.field = ones(size(ENV.WD.field)) * 10000;
 
 
 

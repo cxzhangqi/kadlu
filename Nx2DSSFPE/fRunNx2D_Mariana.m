@@ -35,7 +35,7 @@ smoothing_length_ssp = []; % empty uses default
 
 % -------------------------------------
 icase = 'Mariana_Nx2D_longrng';
-isSingle = 1; isplot = 0;
+isSingle = 0; isplot = 0;
 
 % --- acoustic source  ---
 xs = 0;
@@ -50,22 +50,22 @@ c0 = ENV.c0;
 lambda0 = c0./freq(end);  % reference wavelength, choose smallest one
 
 % r  (PE marching direction)
-%%%OLI steplength = lambda0/2;  % dx in meters
-steplength = 1000;  % dx in meters
+steplength = lambda0/2;  % dx in meters
+%%%OLI steplength = 1000;  % dx in meters
 rmax = 50e3;% m
 ndxout = 1; %2; 
 numstep = round(rmax/steplength);  % number of marching steps and distance
 
 % theta
 Ltheta = 2*pi;%*model_domain.ThinknessOfArtificialAbsorpLayer_ratio_y/(-1+model_domain.ThinknessOfArtificialAbsorpLayer_ratio_y);
-%%%OLI dtheta = 1/180*pi;
-dtheta = 45/180*pi;
+dtheta = 1/180*pi;
+%%%OLI dtheta = 45/180*pi;
 ntheta = ceil(Ltheta/dtheta); if mod(ntheta,2)==1, ntheta = ntheta+1; end
 ndy_3DSliceout=1;
 
 % z
-%%%OLI dz = 10;
-dz = 1000;
+dz = 10;
+%%%OLI dz = 1000;
 ThinknessOfArtificialAbsorpLayer_ratio_z = 6;   % The default value (4) will be used if it is an empty variable
 nz = 2*12e3/ThinknessOfArtificialAbsorpLayer_ratio_z*(ThinknessOfArtificialAbsorpLayer_ratio_z+1)/dz;
 nz = round(nz/2)*2;  % nz must be an even number
@@ -120,7 +120,6 @@ plot_r = r(2:end);
 plot_theta = fftshift(squeeze(Ez_y(:,:,1)));
 [R,TH] = meshgrid(plot_r,plot_theta);
 [X,Y] = pol2cart(TH,R);
-
 
 for idz = 1:length(Ez_z);
     

@@ -8,7 +8,8 @@ import math
 
 class TransmissionLossCalculator():
 
-    def __init__(self, bathymetry, sound_speed):
+    def __init__(self, bathymetry, sound_speed, step_size=None, range=50e3,\
+            angular_bin=1, vertical_bin=10, max_depth=12e3):
 
         self.bathy = bathymetry
         self.sound_speed = sound_speed
@@ -23,6 +24,12 @@ class TransmissionLossCalculator():
         self.ndx_ChangeNSQ = math.inf  # how often to update water column (inf => range-independent SSP)
 
         self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
+
+        self.step_size = step_size
+        self.range = range
+        self.angular_bin = angular_bin
+        self.vertical_bin = vertical_bin
+        self.max_depth = max_depth
 
 
     def run(self, frequency, source_depth):
@@ -47,18 +54,21 @@ class TransmissionLossCalculator():
         smoothing_length_ssp = np.finfo(float).eps  # machine epsilon
 
         # radial step size
-        dr = lambda0 / 2 #1000
+        if self.step_size is None:
+            dr = lambda0 / 2
+        else:
+            dr = self.step_size
 
         # azimuthal step size
-        azimuthal_step = 1/180 * np.pi  #45 / 180 * np.pi  #
+        azimuthal_step = self.angular_bin / 180 * np.pi
 
         # vertical range
         ThinknessOfArtificialAbsorpLayer_ratio_z = 6
-        vertical_range = 2 * 12e3 / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
-        vertical_step = 10  #1000 #
+        vertical_range = 2 * self.max_depth / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
+        vertical_step = self.vertical_bin
 
         # create grids
-        Y, Z, x, y, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=50e3,\
+        Y, Z, x, y, z, kz, nx, ny, nz = self._create_grids(radial_step=dr, radial_range=self.range,\
                 azimuthal_step=azimuthal_step, azimuthal_range=2*np.pi,\
                 vertical_step=vertical_step, vertical_range=vertical_range)
 
@@ -174,9 +184,10 @@ class TransmissionLossCalculator():
         end = time.time()
         print('Calculation completed in {0:.1f} seconds'.format(end - start))
 
-        if True:
-            SPfield = np.fft.fftshift(np.squeeze(mout.Ez[0,:,1:]), axes=0)
-            SPfield = 20 * np.log10(np.abs(SPfield))
+        SPfield = np.fft.fftshift(np.squeeze(mout.Ez[0,:,1:]), axes=0)
+        SPfield = 20 * np.log10(np.abs(SPfield))
+
+        if False:
             R, TH = np.meshgrid(plot_r, plot_theta)
             XX = R * np.cos(TH)
             YY = R * np.sin(TH)
@@ -184,7 +195,7 @@ class TransmissionLossCalculator():
             plt.colorbar(fig)
             plt.show()
 
-        if True:
+        if False:
             fig=plt.figure()
             ZZ = 20 * np.log10(np.abs(Af[:,:]))
             XX, YY = np.meshgrid(x, z)
@@ -193,6 +204,8 @@ class TransmissionLossCalculator():
             ax = plt.gca()
             ax.invert_yaxis()
             plt.show()
+
+        return SPfield
 
 
     def _create_grids(self, radial_step, radial_range,\

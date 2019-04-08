@@ -19,8 +19,17 @@ from kadlu.transmission_loss_calculator import TransmissionLossCalculator
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
 
 def test_can_initialize_TL_calculator():
-    c = TransmissionLossCalculator(bathymetry=None, sound_speed=None)
+    TransmissionLossCalculator(bathymetry=None, sound_speed=None)
 
 def test_run_TL_calculator():
-    c = TransmissionLossCalculator(bathymetry=None, sound_speed=None)
-    c.run(frequency=10, source_depth=9905)
+    calc = TransmissionLossCalculator(bathymetry=None, sound_speed=None, step_size=1000, range=10e3, angular_bin=45, vertical_bin=1000)
+    field = calc.run(frequency=10, source_depth=9900)
+    expected = np.array([[-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+        [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+        [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+        [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+        [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+        [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+        [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+        [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535]])
+    np.testing.assert_array_almost_equal(field, expected, decimal=3)

@@ -12,12 +12,57 @@ from datetime import datetime
 from enum import Enum
 import urllib.request
 
+# API for fetching from ECMWF data, requires definition of .cdsapirc file with 
+# download URL / key pair.
+# Linux/UNIX config: https://cds.climate.copernicus.eu/api-how-to
+# Windows config: https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows
+import cdsapi
+
+# Enumerated class defining ERA parameters to use.
+class ERA5Wavevar(Enum):
+    significant_height_of_combined_wind_waves_and_swell = "swh"
+    mean_wave_direction = "mwd"
+    mean_wave_period = "mwp"
+
+# Linux/UNIX config: https://cds.climate.copernicus.eu/api-how-to
+# Windows config: https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows
+def fetchERA5(fetch_timestamp=datetime.now(), wavevar=ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell):
+
+    # Instantiate the cdsapi client.
+    c = cdsapi.Client()
+
+    # Peel off strings from fetch date for component parts of cdsapi request.
+    fetch_year = fetch_timestamp.strftime("%Y") 
+    fetch_month = fetch_timestamp.strftime("%m")
+    fetch_day = fetch_timestamp.strftime("%d")
+    fetch_hour = fetch_timestamp.strftime("%H:%M")
+
+    # Build a target filename under which the data will be stored.
+    target_filename = 'ERA5_reanalysis_{}_{}.grb2'.format(wavevar.name, fetch_timestamp.strftime("%Y-%m-%d_%Hh"))
+
+    # Establish a request to obtain the targeted wavevar at the timestamp indicated.
+    c.retrieve(
+    'reanalysis-era5-single-levels',
+    {
+        'product_type':'reanalysis',
+        'format':'grib',
+        'variable':wavevar.name,
+        'year':fetch_year,
+        'month':fetch_month,
+        'day':fetch_day,
+        'time':fetch_hour
+    },
+    target_filename)
+
+    ### Handle storage here.
+
 def loadERA5():
 ### ECMWF ERA5 Format:
 # Source: see ecmwf_era5_grib_load.py, cdsapi API calls
 
     # Sample target file
-    grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/03_Sample_ECMWF_ERA5/era5_reanalysis_sig_wave_swell_2018_Jan_00_hourly.grib'
+    #grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/03_Sample_ECMWF_ERA5/era5_reanalysis_sig_wave_swell_2018_Jan_00_hourly.grib'
+    grib = 'ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2016-04-01_12h.grb2'
 
     # load grib structure from target.
     grbs=pygrib.open(grib)
@@ -25,7 +70,8 @@ def loadERA5():
     # Identify parameter and date for extraction.
     # Date field: validDate
     # Target date (not incl. time yet)
-    date_valid = datetime(2018,1,29)
+    #date_valid = datetime(2018,1,29)
+    date_valid = datetime(2016,4,1,12)
 
     # Short ECMWF codes:
     #   swh - Sig wave height
@@ -162,6 +208,7 @@ def fetchRDWPS(fetch_timestamp=datetime.now(), region=RDWPSRegion.gulf_st_lawren
     urllib.request.urlretrieve(fetchURLString, fetchURLFile)
 
     ### Handle storage here.
+
 
 
 def loadRDWPS():

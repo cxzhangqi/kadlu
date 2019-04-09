@@ -32,15 +32,16 @@ class ModelOutput():
             dz = self.Z[1,0] - self.Z[0,0]
 
             idx = np.squeeze(np.round(self.Ez_z/dz).astype(int))
+            
             if np.ndim(idx) == 0:
                 idx = np.array([idx])
 
-            A = np.matmul(self.Ez_ifft_kernel, psi)
-            B = np.sqrt(denin[idx])
+            A, B = self._calc_A_B_matrices(psi, denin, idx)
 
-            self.Ez[:,:,self.iout_Ez-1] = A * B * np.exp(1j * self.k0 * dista) / np.sqrt(dista) 
+            self.Ez[:,:,self.iout_Ez-1] = self._calc_Ez(A, B, dista)
 
-            psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dista) / np.sqrt(dista) * np.sqrt(denin)
+            psi = self._calc_psi(psi, dista, denin)
+
             nfft += 1 
 
         else:
@@ -52,3 +53,23 @@ class ModelOutput():
         Af = np.squeeze(Af)
 
         return Af, nfft
+
+    def _calc_A_B_matrices(self, psi, denin, idx):
+        A = np.matmul(self.Ez_ifft_kernel, psi)
+        B = np.sqrt(denin[idx])
+        return A, B
+
+    def _calc_Ez(self, A, B, dista):
+        y = A * B * np.exp(1j * self.k0 * dista) / np.sqrt(dista) 
+        return y
+
+    def _calc_psi(self, psi, dista, denin):
+        psi = np.fft.ifft(psi, axis=0) * self._calc_g(dista) * _calc_f(denin)
+        return psi
+
+    def _calc_g(self, dista):
+        return np.exp(1j * self.k0 * dista) / np.sqrt(dista)
+
+def _calc_f(denin):
+        return np.sqrt(denin)
+

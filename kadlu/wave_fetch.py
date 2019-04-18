@@ -242,6 +242,21 @@ class WaveFetch():
         return (grb, title_text)
 
     def fetchRDWPS(self, region=RDWPSRegion.gulf_st_lawrence, wavevar=RDWPSWavevar.HTSGW, fetch_timestamp=None):
+        """ Locate and download grib file of modeled wave parameter data to 
+            WaveFetch specified location, given the RDWPS model region, variable of 
+            interest and timestamp for the model run. 
+
+            Args: 
+                region: RDWPSRegion
+                    Region among those modeled by EC / CMC as RDWPS.
+                wavevar: RDWPSWavevar
+                    Variable to be fetched.
+                fetch_timestamp: datetime
+                    Date of file to be fetched.
+
+            Returns:
+                None.
+        """
 
         # Use module default timestamp if not overridden.
         if(fetch_timestamp is None):
@@ -269,17 +284,36 @@ class WaveFetch():
         else: # For WVDIR
             level_ref = 'TGL_0'
         
-        # Build URL
+        # Build URL targeting CMC RDWPS (In test: Gulf of St. Lawrence, regional forecast)
+        # Source (daily only): URL: http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/HH/CMC_rdwps_gulf-st-lawrence_PARAM_SFC_0_latlon0.05x0.05_YYYYMMDD00_PTTT.grib2
+        # HH Forecast product hour 00/03/06/09; PARAM - forecast parameter; YYYYMMDD (Current date); TTT - Target forecast out in 3hr intervals from 000 (?nowcast) to 48 hrs out
         fetchURLString = 'http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/' + fetch_forecast_hour + '/CMC_rdwps_' + hyph_region_name + '_' + wavevar.name + '_' + level_ref + '_latlon0.05x0.05_' + fetch_year + fetch_month + fetch_day + fetch_forecast_hour + '_P' + fetch_prediction_hour + '.grib2'
         self.fetch_filename = self.storage_location + 'CMC_rdwps_' + hyph_region_name + '_' + wavevar.name + '_' + level_ref + '_latlon0.05x0.05_' + fetch_year + fetch_month + fetch_day + fetch_forecast_hour + '_P' + fetch_prediction_hour + '.grib2'
 
         # Attempt to retrieve the referneced target.
         urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
 
-    def loadRDWPS(self, target_date = None, grib=None,):
+    def loadRDWPS(self, target_date = None, wavevar=RDWPSWavevar.HTSGW, grib=None):
+        """ Loads a single time interval slice from a specified grib file of modeled 
+            wave parameter data. Returns the grib structure and descriptive text 
+            indicating the extraction extent. 
+
+            Args: 
+                target_date: datetime
+                    Date of internal data product to be fetched.
+                wavevar: RDWPSWavevar
+                    Variable to be loaded.
+                grib: string
+                    Path and filename of grib file from which extraction is to be 
+                    loaded.
+
+            Returns:
+                grb:
+                title_text:
+        """
 
         # target_date: date for extraction.
-        # grib: target file for extraction
+        # grib: target path/file for extraction
 
         # If no gribfile argument is provided, default to the fetched file.
         if grib is None:
@@ -291,25 +325,23 @@ class WaveFetch():
             rep_hour = ((self.fetch_datetimestamp.hour % 24) // 6) * 6
             target_date = self.fetch_datetimestamp.replace(minute=0, hour=rep_hour, second=0, microsecond=0)
         
-        # CMC RDWPS (Gulf of St. Lawrence, regional forecast)
-        # Source (daily only): URL: http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/HH/CMC_rdwps_gulf-st-lawrence_PARAM_SFC_0_latlon0.05x0.05_YYYYMMDD00_PTTT.grib2
-        # HH Forecast product hour 00/03/06/09; PARAM - forecast parameter; YYYYMMDD (Current date); TTT - Target forecast out in 3hr intervals from 000 (?nowcast) to 48 hrs out
-#        grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/02_Sample_CMC_StL/CMC_rdwps_gulf-st-lawrence_HTSGW_SFC_0_latlon0.05x0.05_2019022100_P000.grib2'
-
         # load grib structure from target.
         grbs=pygrib.open(grib)
 
-        #hs	- significant height of combined wind waves and swell, metres (HTSGW)
-        #tp	- primary wave mean period, seconds (PKPER)
-        #dp	- primary wind wave direction, degrees true (i.e. 0 deg = North; proceeding clockwise) (WVDIR)
-        # Short ECMWF codes are used here too, RDWPS tokens appear to exist only on the file wrapper (see line grib = ...)
-        #   swh - Sig wave height
-        #   mwd - Mean wave direction (degrees)
-        #   mwp - Mean wave period (s)
-        #grb = grbs.select()[0]
-        grb = grbs.select(validDate=target_date,shortNameECMF='swh')[0]    
+        # Fetch slice of data corresponding to selected target date and wave variable.
+            #swh	- significant height of combined wind waves and swell, metres (HTSGW)
+            #mwp	- primary wave mean period, seconds (PKPER)
+            #mwd	- primary wind wave direction, degrees true (i.e. 0 deg = North; proceeding clockwise) (WVDIR)
+        grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
         
-        title_text = "Example 1: CMC-RDWPS\nSig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
+        if(wavevar == RDWPSWavevar.HTSGW):
+            title_text = "CMC-RDWPS Sig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
+        elif(wavevar == RDWPSWavevar.PKPER):
+            title_text = "CMC-RDWPS Mean Wave Period from GRIB\n({}) ".format(target_date)
+        elif(wavevar == RDWPSWavevar.WVDIR):
+            title_text = "CMC-RDWPS Mean Wave Direction from GRIB\n({}) ".format(target_date)
+        else:
+            title_text = "CMC-RDWPS\nUnknown variable from GRIB\n({}) ".format(target_date)
 
         return (grb, title_text)
 

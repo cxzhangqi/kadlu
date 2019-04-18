@@ -190,6 +190,21 @@ class WaveFetch():
 
         
     def fetchWWIII(self, region=WWIIIRegion.glo_30m, wavevar=WWIIIWavevar.hs, fetch_timestamp=None):
+        """ Locate and download grib file of WWIIU modeled wave parameter data to 
+            WaveFetch specified location, given the WWIII model region, variable of 
+            interest and timestamp for the model run. 
+
+            Args: 
+                region: WWIIIRegion
+                    Region among those modeled by NOAA as WWIII.
+                wavevar: WWIIIWavevar
+                    Variable to be fetched, WWIII nomenclature.
+                fetch_timestamp: datetime
+                    Date of file to be fetched.
+
+            Returns:
+                None.
+        """
 
         # Use module default timestamp if not overridden.
         if(fetch_timestamp is None):
@@ -203,24 +218,35 @@ class WaveFetch():
         fetchURLString = 'https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/' + fetch_year + '/' + fetch_month + '/gribs/multi_1.' + region.name + '.' + wavevar.name + '.' + fetch_year + fetch_month + '.grb2'
         self.fetch_filename = self.storage_location + 'multi_1.' + region.name + '.' + wavevar.name + '.' + fetch_year + fetch_month + '.grb2'
 
-        # Build target filename.
-
-        ### DEBUG ###
-        print("URL:{}\nFILE:{}".format(fetchURLString, self.fetch_filename))
-
         # Attempt to retrieve the referenced target.
         urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
 
-    def loadWWIII():
-        # NOAA WAVEWatch III Format:
-        # Source: URL form https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/YYYY/MM/gribs/multi_1.glo_30m.hs.WWWWMM.grb2 
-        # e.g. URL https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/2018/11/gribs/multi_1.glo_30m.hs.201811.grb2
+    def loadWWIII(self, target_date = None, wavevar=WWIIIWavevar.hs, grib=None):
+        """ Loads a single time interval slice from a specified grib file of 
+            WWIII modeled wave parameter data. Returns the grib structure and 
+            descriptive text indicating the extraction extent. 
 
+            Args: 
+                target_date: datetime
+                    Date of internal data product to be fetched.
+                wavevar: WWIIIWavevar
+                    Variable to be loaded.
+                grib: string
+                    Path and filename of grib file from which extraction is to 
+                    be loaded.
 
-        # Sample target file
-        grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/01_Sample_Wavewatch_III/multi_1.glo_30m.hs.201811.grb2'
-        #grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/01_Sample_Wavewatch_III/multi_1.glo_30m.hs.201712.grb2'
-        #grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/01_Sample_Wavewatch_III/multi_1.glo_30m.hs.201810.grb2'
+            Returns:
+                grb: grib structure object
+                    A single variable slice of grib data to plot (data, lat, 
+                    lon).
+                title_text:
+                    Title text snippet to be used in plotting, indicating the 
+                    variable and time slice.
+        """
+
+        # If no gribfile argument is provided, default to the fetched file.
+        if grib is None:
+            grib = self.fetch_filename
 
         # load grib structure from target.
         grbs=pygrib.open(grib)
@@ -228,29 +254,37 @@ class WaveFetch():
         # Identify parameter and date for extraction.
         # Date field: validDate
         # Target date (not incl. time yet)
-        date_valid = datetime(2018,11,2)
+# DEBUG        date_valid = datetime(2018,11,2)
+        if (target_date is None):
+            target_date = self.fetch_datetimestamp.replace(minute=0, hour=0, second=0, microsecond=0)
+        else:
+### Should any filtering on time be added here to enforce valid time intervals?
+            target_date = target_date
 
-        # Short ECMWF codes are used here too, WWIII tokens appear to exist only on the file wrapper (see line grib = ...)
-        #   swh - Sig wave height
-        #   mwd - Mean wave direction (degrees)
-        #   mwp - Mean wave period (s)
-        # Short ECMWF field: shortNameECMF --OR-- shortName 
-        grb = grbs.select(validDate=date_valid,shortNameECMF='swh')[0]
+        # Fetch the indicated slice from the overall Grib file.
+        grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
 
-        title_text = "Example 2: NWW3 Sig. Wave Height from GRIB\n({}) ".format(date_valid)
+        if(wavevar == WWIIIWavevar.hs):
+            title_text = "WW III Sig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
+        elif(wavevar == WWIIIWavevar.tp):
+            title_text = "WW III Mean Wave Period from GRIB\n({}) ".format(target_date)
+        elif(wavevar == WWIIIWavevar.dp):
+            title_text = "WW III Mean Wave Direction from GRIB\n({}) ".format(target_date)
+        else:
+            title_text = "WW III\nUnknown variable from GRIB\n({}) ".format(target_date)
 
         return (grb, title_text)
 
     def fetchRDWPS(self, region=RDWPSRegion.gulf_st_lawrence, wavevar=RDWPSWavevar.HTSGW, fetch_timestamp=None):
-        """ Locate and download grib file of modeled wave parameter data to 
-            WaveFetch specified location, given the RDWPS model region, variable of 
-            interest and timestamp for the model run. 
+        """ Locate and download grib file of EC/CMC modeled wave parameter data 
+            to WaveFetch specified location, given the RDWPS model region, 
+            variable of interest and timestamp for the model run. 
 
             Args: 
                 region: RDWPSRegion
                     Region among those modeled by EC / CMC as RDWPS.
                 wavevar: RDWPSWavevar
-                    Variable to be fetched.
+                    Variable to be fetched, EC nomenclature.
                 fetch_timestamp: datetime
                     Date of file to be fetched.
 
@@ -294,9 +328,9 @@ class WaveFetch():
         urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
 
     def loadRDWPS(self, target_date = None, wavevar=RDWPSWavevar.HTSGW, grib=None):
-        """ Loads a single time interval slice from a specified grib file of modeled 
-            wave parameter data. Returns the grib structure and descriptive text 
-            indicating the extraction extent. 
+        """ Loads a single time interval slice from a specified grib file of 
+            modeleted RDWPS wave parameter data. Returns the grib structure and 
+            descriptive text indicating the extraction extent. 
 
             Args: 
                 target_date: datetime
@@ -308,8 +342,11 @@ class WaveFetch():
                     loaded.
 
             Returns:
-                grb:
+                grb: grib structure object
+                    A single variable slice of grib data to plot (data, lat, lon).                    
                 title_text:
+                    Title text snippet to be used in plotting, indicating the 
+                    variable and time slice.
         """
 
         # target_date: date for extraction.
@@ -324,7 +361,10 @@ class WaveFetch():
 
             rep_hour = ((self.fetch_datetimestamp.hour % 24) // 6) * 6
             target_date = self.fetch_datetimestamp.replace(minute=0, hour=rep_hour, second=0, microsecond=0)
-        
+        else:
+### Should similar filtering on time be added here to enforce 6 hour intervals?
+            target_date = target_date
+
         # load grib structure from target.
         grbs=pygrib.open(grib)
 
@@ -346,6 +386,19 @@ class WaveFetch():
         return (grb, title_text)
 
     def plotSampleGrib(self,grb,title_text):
+        """ Plots a single time interval slice from a specified grib file to
+        test functionality. Takes the gribfile slice and title text as arguments,
+        generates a matplotlib plot as output. 
+
+            Args: 
+                grb: grib structure object
+                    A single variable slice of grib data to plot (data, lat, lon).
+                title_text: string
+                    String to appear as title text for the plot.
+
+            Returns:
+                None.
+        """
 
         # Instantiate plot
         plt.figure()
@@ -368,7 +421,7 @@ class WaveFetch():
         m.fillcontinents()
         m.drawmapboundary()
         m.drawparallels(np.arange(-90.,120.,5.),labels=[1,0,0,0])
-        m.drawmeridians(np.arange(-180.,180.,5.),labels=[0,0,0,1])
+        m.drawmeridians(np.arange(-180.,180.,10.),labels=[0,0,0,1])
 
         # Plot legend, title.
         plt.colorbar(cs,orientation='vertical')
@@ -379,23 +432,22 @@ class WaveFetch():
 
 def main():
 
-    # Test WWIII Fetch
-#    fetchWWIII(datetime(2017,2,3))
-    # Test RDWPS Fetch
 
     # Test ERA5 Load
 #    (grbsample, samp_title_text) = loadERA5()
 #    plotSampleGrib(grbsample, samp_title_text)
     
-    # Test WWIII Load
-#    (grbsample, samp_title_text) = loadWWIII()
-#    plotSampleGrib(grbsample, samp_title_text)
+    # Test WWIII end to end
+    wfTestWWIII = WaveFetch('/tmp/', datetime(2017, 2, 3, 0, 0, 0, 0), WaveSources.ECMWF_ERA5)
+    wfTestWWIII.fetchWWIII()
+    (grbsampleWWIII, samp_title_text_WWIII) = wfTestWWIII.loadWWIII()
+    wfTestWWIII.plotSampleGrib(grbsampleWWIII, samp_title_text_WWIII)
     
     # Test RDWPS end to end
-    wfTest = WaveFetch('/tmp/', datetime.now()  - timedelta(hours=3), WaveSources.EC_RDWPS)
-    wfTest.fetchRDWPS()
-    (grbsample, samp_title_text) = wfTest.loadRDWPS()
-    wfTest.plotSampleGrib(grbsample, samp_title_text)
+    wfTestRDWPS = WaveFetch('/tmp/', datetime.now()  - timedelta(hours=3), WaveSources.EC_RDWPS)
+    wfTestRDWPS.fetchRDWPS()
+    (grbsampleRDWPS, samp_title_textRDWPS) = wfTestRDWPS.loadRDWPS()
+    wfTestRDWPS.plotSampleGrib(grbsampleRDWPS, samp_title_textRDWPS)
 
 if __name__ == '__main__':
     main()

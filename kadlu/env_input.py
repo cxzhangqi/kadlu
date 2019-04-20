@@ -45,10 +45,10 @@ class EnvInput():
         # updated in _update_phase_screen()
         self.H_c = np.empty(m, dtype=complex)
         self.n2in = np.empty(m, dtype=complex)
-        self.H_rho = np.empty(m, dtype=complex)
+        self.H_rho = np.empty(m, dtype=float)
         self.ddenin = np.empty(m, dtype=complex)   
         self.d2denin = np.empty(m, dtype=complex)
-        self.denin = np.empty(m, dtype=complex)
+        self.denin = np.empty(m, dtype=float)
 
 
         self.costheta = np.cos(Y[0,:])

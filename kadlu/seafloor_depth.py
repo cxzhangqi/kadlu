@@ -38,15 +38,15 @@ class SeafloorDepth():
             depth = 10000 * np.ones(self.n)
             gradient = np.zeros(self.n)
 
-
-###        sigma_x = 10000.
-###        sigma_y = 30000.
-###        xc = 0
-###        yc = 0
-###        exponent = (x-xc)**2 / (2*sigma_x**2) + (y-yc)**2 / (2*sigma_y**2)
-###        val = np.exp(-exponent)
-###        depth = val * 10000.
-###        gradient = depth * 0
+        if False:
+            sigma_x = 10000.
+            sigma_y = 30000.
+            xc = 0
+            yc = 0
+            exponent = (x-xc)**2 / (2*sigma_x**2) + (y-yc)**2 / (2*sigma_y**2)
+            val = np.exp(-exponent)
+            depth = val * 10000.
+            gradient = depth * 0
 
 ###        print(depth[90], gradient[90], x[90], y[90])
 

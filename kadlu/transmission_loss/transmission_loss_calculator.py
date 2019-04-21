@@ -98,12 +98,6 @@ class TransmissionLossCalculator():
             smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho,
             ThinknessOfArtificialAbsorpLayer_ratio_z=ThinknessOfArtificialAbsorpLayer_ratio_z)
 
-        # module handling updates of environmental input
-        env = EnvInput(Y=grid.Q, Z=grid.Z, xs=xs, ys=ys, dx=grid.dr, nx=grid.Nr, ny=grid.Nq,\
-            freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, ndx_ChangeNSQ=self.ndx_ChangeNSQ, c0=self.c0,\
-            cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow,\
-            smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho)
-
         # PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input)
 

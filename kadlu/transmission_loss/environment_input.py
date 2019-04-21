@@ -37,7 +37,7 @@ class EnvironmentInput():
         self.U = np.zeros(shape=self.grid.Z.shape, dtype=complex)
         print('U.shape: ', self.U.shape)
 
-        self.seafloor = SeafloorDepth(n)
+        self.seafloor = SeafloorDepth(flat_bottom_depth=10000)
         self.refractive_index = RefractiveIndex(m)
 
         self._unchanged = np.zeros(shape=n, dtype=bool)

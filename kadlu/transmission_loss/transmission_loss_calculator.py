@@ -38,7 +38,6 @@ class TransmissionLossCalculator():
 
     def run(self, frequency, source_depth, vertical_slice=True, depths=[.1]):
 
-
         import time
         start = time.time()
 
@@ -144,69 +143,98 @@ class TransmissionLossCalculator():
 
 
 class PEGrid():
-    """ Grid for Parabolic Equation solver
-        
+    """ Grid for Parabolic Equation solver.
+
+        Creates a regular cylindrical grid, where
+
+            r: radial distance
+            q: azimuthal angle
+            z: vertical depth
+
+        The radial (r) and vertical coordinates are in meters
+        while the angular coordinate (q) is in radians.
+
         Args:
             radial_step: float
-                Radial step size (in meters)
+                Radial step size
             radial_range: float
-                Radial range (in meters)
+                Radial range
             azimuthal_step: float
-                Angular step size (in radians)
+                Angular bin size
             azimuthal_range: float
-                Angular domain (in radians)
+                Angular domain
             vertical_step: float
-                Vertical step size (in meters)
+                Vertical bin size
             vertical_range: float
-                Vertical range (in meters)
+                Vertical range
+
+        Attributes:
+            r: 1d numpy array
+                Radial grid values
+            dr: float
+                Radial step size
+            Nr: int
+                Number of radial steps
+            q: 1d numpy array
+                Angular grid values
+            dq: float
+                Angular bin size
+            Nq: int
+                Number of angular bins
+            z: 1d numpy array
+                Vertical grid values
+            dz: float
+                Vertical bin size
+            Nz: int
+                Number of vertical bins
+            z: 1d numpy array
+                Wavenumber grid values
+            Q: 2d numpy array
+                Angular values of azimuthal-vertical matrix; has shape (Nz,Nq).
+            Z: 2d numpy array
+                Vertical values of azimuthal-vertical matrix; has shape (Nz,Nq).
     """
     def __init__(self, radial_step, radial_range,\
             azimuthal_step, azimuthal_range, vertical_step, vertical_range):
 
-        dx = radial_step
-        xmax = radial_range
-        dy = azimuthal_step
-        ymax = azimuthal_range
-        dz = vertical_step
-        zmax = vertical_range
+        # radial
+        self.r, self.dr, self.Nr = self.__make_radial_grid__(radial_step, radial_range)
 
-        # ------ x (radial) ------ 
-        nx = round(xmax / dx) # number of radial bins
-        x = np.arange(nx+1, dtype=float)
-        x *= dx
+        # azimuthal
+        self.q, self.dq, self.Nq = self.__make_azimuthal_grid__(azimuthal_step, azimuthal_range)
 
-        # ------ y (azimuthal) ------ 
-        ny = int(np.ceil(ymax / dy)) # number of angular bins
-        if ny%2==1: ny = ny + 1 # ensure even number of angular bins
-        y_pos = np.arange(start=0, stop=ny/2, step=1, dtype=float)
-        y_neg = np.arange(start=-ny/2, stop=0, step=1, dtype=float)
-        y = np.concatenate((y_pos, y_neg)) 
-        y *= dy
+        # vertical
+        self.z, self.dz, self.Nz = self.__make_vertical_grid__(vertical_step, vertical_range)
 
-        # ------ z (vertical) ------ 
-        nz = zmax / dz # number of vertical bins
-        nz = round(nz / 2) * 2  # ensure even number of vertical bins
-        Lz = nz * dz  
-        z_pos = np.arange(start=0, stop=nz/2, step=1, dtype=float)
-#        z_neg = np.arange(start=-1, stop=-nz/2-1, step=-1, dtype=float)
-        z_neg = np.arange(start=-nz/2, stop=0, step=1, dtype=float)
+        # wavenumber
+        L = self.Nz * self.dz  
+        self.kz = self.z * 2 * np.pi / (L * self.dz)
+
+        # mesh-grid
+        self.Q, self.Z = np.meshgrid(self.q, self.z)
+
+    def __make_radial_grid__(self, dr, rmax):
+        N = round(rmax / dr)
+        r = np.arange(N+1, dtype=float)
+        r *= dr
+        return r, dr, N
+
+    def __make_azimuthal_grid__(self, dq, qmax):
+        N = int(np.ceil(qmax / dq))
+        if N%2 == 1: 
+            N = N + 1 # ensure even number of angular bins
+
+        q_pos = np.arange(start=0, stop=N/2, step=1, dtype=float)
+        q_neg = np.arange(start=-N/2, stop=0, step=1, dtype=float)
+        q = np.concatenate((q_pos, q_neg)) 
+        q *= dq
+        return q, dq, N
+
+    def __make_vertical_grid__(self, dz, zmax):
+        N = zmax / dz
+        N = round(N / 2) * 2  # ensure even number of vertical bins
+        z_pos = np.arange(start=0, stop=N/2, step=1, dtype=float)
+        z_neg = np.arange(start=-N/2, stop=0, step=1, dtype=float)
         z = np.concatenate((z_pos, z_neg))
         z *= dz
-
-        # ------ kz (wavenumber) ------
-        kz = z * 2 * np.pi / (Lz * dz)
-
-        Y, Z = np.meshgrid(y, z)
-
-        self.r = x
-        self.q = y
-        self.z = z
-        self.kz = kz
-        self.Nr = nx
-        self.Nq = ny
-        self.Nz = nz
-        self.Q = Y
-        self.Z = Z
-        self.dr = dx
-        self.dq = dy
-        self.dz = dz
+        return z, dz, N

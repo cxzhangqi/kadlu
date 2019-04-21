@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.lib import scimath
-from kadlu.seafloor_depth import SeafloorDepth
-from kadlu.refractive_index import RefractiveIndex
+from kadlu.transmission_loss.seafloor_depth import SeafloorDepth
+from kadlu.transmission_loss.refractive_index import RefractiveIndex
 
 class EnvInput():
 
@@ -179,3 +179,5 @@ class EnvInput():
         self.d2denin[:,new_env] =  (self.rhob - self.rhow) / 2 * self.d2denin[:,new_env]
         
         print('Updating phase screen at {0:.2f} m'.format(dista))
+
+

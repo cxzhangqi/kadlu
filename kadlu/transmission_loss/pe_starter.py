@@ -11,54 +11,72 @@ class PEStarterMethod(Enum):
 
 
 class PEStarter():
-
-    def __init__(self, method='THOMSON', aperture=90):
+    """ Computes starting field for Parabolic-Equation propagator.
+        
+        Args:
+            ref_wavenumber: float or numpy array
+                Reference wavenumber(s)
+            grid: PEGrid
+                Computational grid
+            method: str
+                Options are: GAUSSIAN, GREENE, THOMSON
+            aperture: float
+                Aperture in degrees
+    """
+    def __init__(self, ref_wavenumber, grid, method='THOMSON', aperture=90):
 
         self.method = get_member(PEStarterMethod, method)
         self.aperture = aperture
+        self.k0 = ref_wavenumber
+        self.grid = grid
 
-    def eval(self, k0, zs, Z, kz):
-        """ Evaluate PE starter
+    def eval(self, zs):
+        """ Evaluate PE starter at specified source depth
             
             Args:
-                k0: float
-                    Reference wavenumber
                 zs: float
-                    Source depth
-                Z: 2d numpy array
-                    Depth at each grid point
-                kz: 1d numpy array
-                    ???
+                    Source depth in meters
         """
         if self.method is PEStarterMethod.GAUSSIAN:
-            psi = self._gaussian(k0, zs, Z)
+            psi = self._gaussian(zs)
         elif self.method is PEStarterMethod.GREENE:
-            psi = self._greene(k0, zs, Z)
+            psi = self._greene(zs)
         elif self.method is PEStarterMethod.THOMSON:
-            psi = self._thomson(k0, zs, Z, kz)
+            psi = self._thomson(zs)
             
         return psi
 
-    def _gaussian(self, k0, zs, Z):
+    def _gaussian(self, zs):
+        k0 = self.k0
+        Z = self.grid.Z
+        # compute psi
         psi = np.sqrt(k0) * np.exp( -0.5*k0**2 *(Z-zs)**2 )
         psi = psi - ( np.sqrt(k0) * np.exp( -0.5*k0**2 *(Z+zs)**2 ))
         psi = np.fft.fft(psi)
         return psi
 
-    def _greene(self, k0, zs, Z):
+    def _greene(self, zs):
         a = 1.4467
         b = .04201
         c = 3.0512
+        k0 = self.k0
+        Z = self.grid.Z
+        # compute psi        
         psi = np.sqrt(k0) * (a - b * k0**2 * (Z - zs)**2) * np.exp(-(k0**2 * (Z - zs)**2) / c )
         psi = psi - (np.sqrt(k0) * (a - b * k0**2 * (Z + zs)**2) * np.exp(-(k0**2 * (Z + zs)**2) / c ))
         psi = np.fft.fft(psi)
         return psi
 
-    def _thomson(self, k0, zs, Z, kz):
+    def _thomson(self, zs):
+        k0 = self.k0
+        kz = self.grid.kz
+        dz = self.grid.dz
+        Nz = self.grid.Nz
+        # compute psi
         psi = np.exp(-1j * np.pi / 4.) * 2 * scimath.sqrt(2 * np.pi) * np.sin(kz * zs) / scimath.sqrt(scimath.sqrt(k0**2 - kz**2))
         # normalize the starter
-        psi = psi / (Z[1,0] - Z[0,0])
-        psi[int(Z.shape[0]/2)] = 0  # <--- OBS: round down or up? 
+        psi = psi / dz
+        psi[int(Nz/2)] = 0 
         # taper the spectrum to obtain desired angle using Turkey window
         kcut1 = k0 * np.sin(self.aperture / 180 * np.pi) 
         kcut0 = k0 * np.sin((self.aperture - 1.5) / 180 * np.pi)

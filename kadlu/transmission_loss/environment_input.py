@@ -55,13 +55,15 @@ class EnvironmentInput():
         self.n2w_new = np.zeros(m)
         
         # updated in _update_phase_screen()
-        self.H_c = np.empty(m, dtype=complex)
         self.n2in = np.empty(m, dtype=complex)
+
+        self.H_c = np.empty(m, dtype=float)
         self.H_rho = np.empty(m, dtype=float)
-        self.ddenin = np.empty(m, dtype=complex)   
-        self.d2denin = np.empty(m, dtype=complex)
+        self.ddenin = np.empty(m, dtype=float)   
+        self.d2denin = np.empty(m, dtype=float)
         self.denin = np.empty(m, dtype=float)
 
+        self.sqrt_denin = np.empty(m, dtype=float)
 
         self.costheta = np.cos(Y[0,:])
         self.sintheta = np.sin(Y[0,:])
@@ -197,13 +199,14 @@ class EnvironmentInput():
         TANH = np.tanh(self.Z_sub_wd[:,new_env] / self.smoothing_length_rho / 2)
         self.H_rho[:,new_env] = (1 + TANH) / 2
         self.denin[:,new_env] = self.rhow + (self.rhob - self.rhow) * self.H_rho[:,new_env]
+        self.sqrt_denin[:,new_env] = np.sqrt(self.denin[:,new_env])
         
         SECH2 = 1 / np.cosh(self.Z_sub_wd[:,new_env] / self.smoothing_length_rho / 2)
         SECH2 = SECH2 * SECH2
         self.ddenin[:,new_env] =  SECH2 / self.smoothing_length_rho / 2 * np.sqrt(1 + self.DwdDy[:,new_env]**2)
         self.ddenin[:,new_env] =  (self.rhob - self.rhow) / 2 * self.ddenin[:,new_env]
 
-        self.d2denin[:,new_env] = -SECH2 / self.smoothing_length_rho / 2 * (TANH / self.smoothing_length_rho * (1+self.DwdDy[:,new_env]**2))
+        self.d2denin[:,new_env] = -SECH2 / self.smoothing_length_rho / 2 * (TANH / self.smoothing_length_rho * (1 + self.DwdDy[:,new_env]**2))
         self.d2denin[:,new_env] =  (self.rhob - self.rhow) / 2 * self.d2denin[:,new_env]
         
         print('Updating phase screen at {0:.2f} m'.format(dista))

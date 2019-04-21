@@ -23,8 +23,8 @@ class PEPropagator():
         # initial Nx2D free propagator
         fr_half, fr_full = self.__free_propagator__()
 
-        print('fr_half:', fr_half.shape)
-        print('fr_full:', fr_full.shape)
+        print('fr_half.shape:', fr_half.shape)
+        print('fr_full.shape:', fr_full.shape)
 
         # output field at 0
         output.collect(dist=0, psi=psi)

@@ -48,15 +48,15 @@ class OutputCollector():
             if np.ndim(idx) == 0:
                 idx = np.array([idx])
 
-            denin = self.env_input.denin
+            sqrt_denin = self.env_input.sqrt_denin
 
             A = np.matmul(self.Ez_ifft_kernel, psi)
-            B = np.sqrt(denin[idx])
+            B = sqrt_denin[idx]
 
             self.Ez[:,:,self.iout_Ez-1] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
 
             if self.vertical_slice:
-                psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * np.sqrt(denin)
+                psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * sqrt_denin
 
         else:
             if self.vertical_slice:

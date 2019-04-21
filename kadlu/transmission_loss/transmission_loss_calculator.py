@@ -36,7 +36,7 @@ class TransmissionLossCalculator():
         self.max_depth = max_depth
 
 
-    def run(self, frequency, source_depth):
+    def run(self, frequency, source_depth, vertical_slice=True, depths=[.1]):
 
 
         import time
@@ -101,7 +101,7 @@ class TransmissionLossCalculator():
         # PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input)
 
-        output = propagator.run(psi=psi, vertical_slice=True, depths=[.1])
+        output = propagator.run(psi=psi, vertical_slice=vertical_slice, depths=depths)
 
 
         # ------- output ------- #

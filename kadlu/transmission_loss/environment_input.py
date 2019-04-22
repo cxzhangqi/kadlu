@@ -8,10 +8,13 @@ class EnvironmentInput():
                     ndx_ChangeNSQ, c0, cb, bloss, rhob, rhow,\
                     smoothing_length_ssp, smoothing_length_rho,\
                     ThinknessOfArtificialAbsorpLayer_ratio_z,\
-                    bathymetry=None, flat_seafloor_depth=None,\
+                    bathymetry=None, ignore_bathy_gradient=False, flat_seafloor_depth=None, \
                     sound_speed=None):
 
+        assert bathymetry or flat_seafloor_depth, 'bathymetry or flat_seafloor_depth must be provided'
+
         self.bathymetry = bathymetry
+        self.ignore_bathy_gradient = ignore_bathy_gradient
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
 
@@ -125,7 +128,7 @@ class EnvironmentInput():
             self.wd_x_next = dista + self.ndx_ChangeWD * self.dx
             
             # get bathymetry
-            wd_new, DwdDy_new = self.__seafloor_depth__(x=x, y=y)
+            wd_new, DwdDy_new = self.__seafloor_depth__(dista)
             wd_new = wd_new[np.newaxis,:]
             DwdDy_new = DwdDy_new[np.newaxis,:]
             #MATLAB: [wd_new(:),DwdDy_new(:)]  = sub_SeafloorDepth(x,y);
@@ -216,28 +219,28 @@ class EnvironmentInput():
         print('Updating phase screen at {0:.2f} m'.format(dista))
 
 
-    def __seafloor_depth__(self, x, y):
-        """ Compute seafloor depth and gradient at position (x,y).
+    def __seafloor_depth__(self, radius):
+        """ Compute seafloor depth and gradient at the specified distance from the source.
+
+            The depth and gradient are computed at angles given by self.costheta 
+            and self.sintheta.
 
             The depth is positive below the sea surface, positive above.
 
-            The gradient is computed in the direction of (x,y) from origo.
+            The gradient is computed in the direction perpendicular to the circle.
 
             Args:
-                x: 1d numpy array
-                    x coordinates
-                y: 1d numpy array
-                    y coordinates
+                radius: float
+                    Distance from source in meters
 
             Returns:
                 depth: 1d numpy array
-                    Depth at the specified positions
+                    Depth at each point
                 gradient: 1d numpy array
-                    Gradient at the specified positions
+                    Gradient at each point
         """
-        assert len(x) == len(y), 'x and y must have the same length'
-
-        print('*** Obs: gradient has wrong direction ***')
+        x = self.xs + self.costheta * radius
+        y = self.ys + self.sintheta * radius
 
         if self.flat_seafloor_depth:
             n = len(x)
@@ -247,7 +250,13 @@ class EnvironmentInput():
         else:
             depth = self.bathymetry.eval_xy(x=x, y=y)
             depth *= (-1.)
-            gradient = self.bathymetry.eval_xy(x=x, y=y, y_deriv_order=1)
-            gradient *= (-1.)
 
+            if self.ignore_bathy_gradient:
+                gradient = np.zeros(n)
+            else:            
+                dfdx = self.bathymetry.eval_xy(x=x, y=y, x_deriv_order=1)
+                dfdy = self.bathymetry.eval_xy(x=x, y=y, y_deriv_order=1)
+                gradient = self.costheta * dfdx + self.sintheta * dfdy
+                gradient *= (-1.)
+            
         return depth, gradient

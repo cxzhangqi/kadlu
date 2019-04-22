@@ -9,10 +9,11 @@ import math
 
 class TransmissionLossCalculator():
 
-    def __init__(self, bathymetry, sound_speed, step_size=None, range=50e3,\
+    def __init__(self, bathymetry=None, flat_seafloor_depth=None, sound_speed=None, step_size=None, range=50e3,\
             angular_bin_size=1, vertical_bin_size=10, max_depth=12e3):
 
-        self.bathy = bathymetry
+        self.bathymetry = bathymetry
+        self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
 
         self.starter_method = 'THOMSON'
@@ -36,7 +37,8 @@ class TransmissionLossCalculator():
         self.max_depth = max_depth
 
 
-    def run(self, frequency, source_depth, vertical_slice=True, depths=[.1]):
+    def run(self, frequency, source_depth, vertical_slice=True, depths=[.1],\
+            ignore_bathy_gradient=False):
 
         import time
         start = time.time()
@@ -96,7 +98,7 @@ class TransmissionLossCalculator():
             cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow,\
             smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho,
             ThinknessOfArtificialAbsorpLayer_ratio_z=ThinknessOfArtificialAbsorpLayer_ratio_z,\
-            flat_seafloor_depth=10000)
+            bathymetry=self.bathymetry, flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient)
 
         # PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input)

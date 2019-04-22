@@ -3,7 +3,6 @@ from numpy.lib import scimath
 from kadlu.transmission_loss.pe_starter import PEStarter
 from kadlu.transmission_loss.pe_propagator import PEPropagator
 from kadlu.transmission_loss.environment_input import EnvironmentInput
-from kadlu.transmission_loss.env_input import EnvInput
 import math
 
 

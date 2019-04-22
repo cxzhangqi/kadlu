@@ -95,7 +95,8 @@ class TransmissionLossCalculator():
             freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, ndx_ChangeNSQ=self.ndx_ChangeNSQ, c0=self.c0,\
             cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow,\
             smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho,
-            ThinknessOfArtificialAbsorpLayer_ratio_z=ThinknessOfArtificialAbsorpLayer_ratio_z)
+            ThinknessOfArtificialAbsorpLayer_ratio_z=ThinknessOfArtificialAbsorpLayer_ratio_z,\
+            flat_seafloor_depth=10000)
 
         # PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input)

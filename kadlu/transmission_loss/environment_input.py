@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.lib import scimath
-from kadlu.transmission_loss.seafloor_depth import SeafloorDepth
 from kadlu.transmission_loss.refractive_index import RefractiveIndex
 
 class EnvironmentInput():
@@ -8,7 +7,13 @@ class EnvironmentInput():
     def __init__(self, ref_wavenumber, grid, xs, ys, freq, ndx_ChangeWD,\
                     ndx_ChangeNSQ, c0, cb, bloss, rhob, rhow,\
                     smoothing_length_ssp, smoothing_length_rho,\
-                    ThinknessOfArtificialAbsorpLayer_ratio_z):
+                    ThinknessOfArtificialAbsorpLayer_ratio_z,\
+                    bathymetry=None, flat_seafloor_depth=None,\
+                    sound_speed=None):
+
+        self.bathymetry = bathymetry
+        self.flat_seafloor_depth = flat_seafloor_depth
+        self.sound_speed = sound_speed
 
         self.k0 = ref_wavenumber
 
@@ -37,7 +42,6 @@ class EnvironmentInput():
         self.U = np.zeros(shape=self.grid.Z.shape, dtype=complex)
         print('U.shape: ', self.U.shape)
 
-        self.seafloor = SeafloorDepth(flat_bottom_depth=10000)
         self.refractive_index = RefractiveIndex(m)
 
         self._unchanged = np.zeros(shape=n, dtype=bool)
@@ -121,7 +125,7 @@ class EnvironmentInput():
             self.wd_x_next = dista + self.ndx_ChangeWD * self.dx
             
             # get bathymetry
-            wd_new, DwdDy_new = self.seafloor.get_depth(x=x, y=y)
+            wd_new, DwdDy_new = self.__seafloor_depth__(x=x, y=y)
             wd_new = wd_new[np.newaxis,:]
             DwdDy_new = DwdDy_new[np.newaxis,:]
             #MATLAB: [wd_new(:),DwdDy_new(:)]  = sub_SeafloorDepth(x,y);
@@ -212,3 +216,38 @@ class EnvironmentInput():
         print('Updating phase screen at {0:.2f} m'.format(dista))
 
 
+    def __seafloor_depth__(self, x, y):
+        """ Compute seafloor depth and gradient at position (x,y).
+
+            The depth is positive below the sea surface, positive above.
+
+            The gradient is computed in the direction of (x,y) from origo.
+
+            Args:
+                x: 1d numpy array
+                    x coordinates
+                y: 1d numpy array
+                    y coordinates
+
+            Returns:
+                depth: 1d numpy array
+                    Depth at the specified positions
+                gradient: 1d numpy array
+                    Gradient at the specified positions
+        """
+        assert len(x) == len(y), 'x and y must have the same length'
+
+        print('*** Obs: gradient has wrong direction ***')
+
+        if self.flat_seafloor_depth:
+            n = len(x)
+            depth = self.flat_seafloor_depth * np.ones(n)
+            gradient = np.zeros(n)
+
+        else:
+            depth = self.bathymetry.eval_xy(x=x, y=y)
+            depth *= (-1.)
+            gradient = self.bathymetry.eval_xy(x=x, y=y, y_deriv_order=1)
+            gradient *= (-1.)
+
+        return depth, gradient

@@ -82,26 +82,32 @@ class PEPropagator():
             self.progress_bar = progress_bar
 
 
-    def run(self, psi, vertical_slice=True, depths=[.1]):
+    def run(self, psi, depths=[.1], vertical_slice=True):
         """ Propagate the pressure field to the boundary of the computional domain.
+
+            The sound pressure is computed at every grid point on 
+            one or several horizontal planes at user-specified depth(s).
+
+            Optionally, the sound pressure may also be computed at every 
+            every grid point on a vertical plane intersecting the source position.
             
             Args:
                 psi: 2d numpy array
-                    Starting pressure field computed with the PEStarter.
+                    Starting sound pressure field computed with the PEStarter.
                     Has shape (Nz,Nq) where Nz and Nq are the number of 
                     vertical and angular grid points, respectively.
+                depths: list of floats
+                    Depths at which horizontal slices of the sound pressure 
+                    field are computed.
                 vertical_slice: bool
-                    Compute the sound pressure field at all grid points on 
+                    Compute the sound pressure at all grid points on 
                     a vertical plane intersecting the source position. 
                     Note: This will slow down the computation.
 
             Returns:
-                psi: numpy array
-                    Initial sound pressure field along the vertical 
-                    axis at zero range. Has shape (Nz,1) where Nz is 
-                    the number of vertical grid points.
+                output: OutputCollector
+                    Result of the computation
         """
-
         # output collector
         output = OutputCollector(ref_wavenumber=self.k0, grid=self.grid, env_input=self.env_input,\
             vertical_slice=vertical_slice, depths=depths)
@@ -141,7 +147,18 @@ class PEPropagator():
 
 
     def __free_propagator__(self):
+        """ Compure matrices used to propagate the sound pressure field 
+            in the radial direction by half or the entire grid spacing.
 
+            The matrices have shape (Nz,Nz) where Nz and Nq are the number 
+            of vertical and angular grid points, respectively.
+
+            Returns:
+                fr_half: 2d numpy array
+                    Half-step free propagation matrix. 
+                fr_full: 2d numpy array
+                    Full-step free propagation matrix.
+        """
         k0 = self.k0
         dr = self.grid.dr
         kz = self.grid.kz

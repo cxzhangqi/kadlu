@@ -1,3 +1,40 @@
+# ================================================================================ #
+#   Authors: Fabio Frazao and Oliver Kirsebom                                      #
+#   Contact: fsfrazao@dal.ca, oliver.kirsebom@dal.ca                               #
+#   Organization: MERIDIAN (https://meridian.cs.dal.ca/)                           #
+#   Team: Data Analytics                                                           #
+#   Project: ketos                                                                 #
+#   Project goal: The ketos library provides functionalities for handling          #
+#   and processing acoustic data and applying deep neural networks to sound        #
+#   detection and classification tasks.                                            #
+#                                                                                  #
+#   License: GNU GPLv3                                                             #
+#                                                                                  #
+#       This program is free software: you can redistribute it and/or modify       #
+#       it under the terms of the GNU General Public License as published by       #
+#       the Free Software Foundation, either version 3 of the License, or          #
+#       (at your option) any later version.                                        #
+#                                                                                  #
+#       This program is distributed in the hope that it will be useful,            #
+#       but WITHOUT ANY WARRANTY; without even the implied warranty of             #
+#       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              #
+#       GNU General Public License for more details.                               # 
+#                                                                                  #
+#       You should have received a copy of the GNU General Public License          #
+#       along with this program.  If not, see <https://www.gnu.org/licenses/>.     #
+# ================================================================================ #
+
+""" Parabolic Equation propagator module within the kadlu library
+
+    This module provides an implementation of the Parabolic Equation 
+    propagation scheme for numerically solving the wave equation 
+    for sound pressure.
+
+    Contents:
+        TransmissionLossCalculator class:
+        PEGrid class 
+"""
+
 import numpy as np
 from numpy.lib import scimath
 from kadlu.transmission_loss.pe_starter import PEStarter
@@ -7,27 +44,99 @@ import math
 
 
 class TransmissionLossCalculator():
+    """ Compute the reduction in intensity (transmission loss) of 
+        sound waves propagating in an underwater environment.
 
-    def __init__(self, bathymetry=None, flat_seafloor_depth=None, sound_speed=None, step_size=None, range=50e3,\
-            angular_bin_size=1, vertical_bin_size=10, max_depth=12e3):
+        The wave equation is solved numerically using the 
+        parabolic equation method.
+
+        The computation is performed on a regular, cylindrical 
+        grid with axes r, q, z:
+
+            r: radial distance in meters
+            q: azimuthal angle in radians
+            z: vertical depth in meters
+
+        Args:
+            bathymetry: BathyInterpolator
+                Interpolated bathymetry data
+            flat_seafloor_depth: float
+                Depth of flat seafloor in meters. Useful for testing purposes. 
+                If flat_seafloor_depth is specified, the bathymetry input 
+                argument will be ignored. 
+            sound_speed: SoundSpeedInterpolator
+                Interpolated sound-speed profile. If None is specified, a uniform 
+                sound-speed profile equal to the reference sound speed will be assumed.
+            ref_sound_speed: float
+                Reference sound speed in meters/second.
+            water_density: float 
+                Water density in grams/cm^3
+            bottom_sound_speed: float
+                Homogenous bottom sound speed in meters/seconds
+            bottom_loss: float
+                Homogenous bottom attenuation in dB/lambda, where lambda is the reference 
+                wave length given by lambda = ref_sound_speed / frequency
+            bottom_density: float
+                Homogenous bottom density in grams/cm^3
+            step_size: float
+                Radial step size in meters. If None is specified (default), the step size 
+                is computed as lambda/2, where lambda = ref_sound_speed / frequency is 
+                the reference wave length.
+            range: float
+                Radial range in meters
+            angular_bin_size: float
+                Angular bin size in degrees
+            vertical_bin_size: float
+                Vertical bin size in meters
+            max_depth: float
+                Vertical range in meters
+            starter_method: str
+                PE starter method. Options are: GAUSSIAN, GREENE, THOMSON
+            starter_aperture: float
+                Aperture of PE starter in degrees
+            bathy_update: int
+                How often the bathymetry data is updated. 
+                If for example bathy_update=3, the bathymetry is updated at every 3rd step 
+                of the propagation algorithm.
+            sound_speed_update: int
+                How often the sound-speed data is updated. 
+                If for example sound_speed_update=3, the sound speed is updated at every 3rd step 
+                of the propagation algorithm. By default sound_speed_update is set to infinity, 
+                corresponding to a range-independent sound speed profile.
+            verbose: bool
+                Print information during execution
+            progress_bar: bool
+                Show progress bar. Only shown if verbose if False.            
+
+        Attributes:
+            k0: float
+                Reference wavenumber in inverse meters
+            grid: PEGrid
+                Computational grid
+            env_input: EnviromentInput
+                Environmental data
+            verbose: bool
+                Print information during execution
+            progress_bar: bool
+                Show progress bar. Only shown if verbose if False.            
+
+        Example:
+    """
+    def __init__(self, bathymetry=None, flat_seafloor_depth=None, sound_speed=None, ref_sound_speed=1500,\
+            water_density=1.0, bottom_sound_speed=1700, bottom_loss=0.5, bottom_density=1.5,\
+            step_size=None, range=50e3, angular_bin_size=1, vertical_bin_size=10, max_depth=12e3,\
+            starter_method='THOMSON', starter_aperture=88,\
+            bathy_update=3, sound_speed_update=math.inf, verbose=False, progress_bar=True):
 
         self.bathymetry = bathymetry
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
 
-        self.starter_method = 'THOMSON'
-        self.starter_aperture = 88
-
-        self.c0 = 1500      # reference sound speed in m/s
-        self.rhow = 1       # water density
-        self.cb = 1700      # homogeneous bottom sound speed
-        self.bloss = 0.5    # homogeneous bottom attenuation db/lambda
-        self.rhob = 1.5     # homogeneous bottom density
-        self.ndx_ChangeWD = 3 #1  how often to update bathymetry
-
-        self.ndx_ChangeNSQ = math.inf  # how often to update water column (inf => range-independent SSP)
-
-        self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
+        self.c0 = ref_sound_speed
+        self.rhow = water_density
+        self.cb = bottom_sound_speed
+        self.bloss = bottom_loss
+        self.rhob = bottom_density
 
         self.step_size = step_size
         self.range = range
@@ -35,10 +144,38 @@ class TransmissionLossCalculator():
         self.vertical_bin_size = vertical_bin_size
         self.max_depth = max_depth
 
+        self.starter_method = starter_method
+        self.starter_aperture = starter_aperture
 
-    def run(self, frequency, source_depth, vertical_slice=True, depths=[.1],\
-            ignore_bathy_gradient=False):
+        self.ndx_ChangeWD = max(1, bathy_update)
+        self.ndx_ChangeNSQ = max(1, sound_speed_update)
+        if sound_speed is None:
+            self.ndx_ChangeNSQ = math.inf
 
+        self.verbose = verbose
+        self.progress_bar = progress_bar
+
+        self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
+
+        if self.verbose:
+            print('Bathymetry will be updated every {0} steps'.format(self.ndx_ChangeWD))
+            if self.ndx_ChangeNSQ is math.inf:
+                print('Range-independent sound-speed profile')
+            else:
+                print('Sound speed will be updated every {0} steps'.format(self.ndx_ChangeNSQ))
+                
+
+    def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=True,\
+            ignore_bathy_gradient=False, verbose=False, progress_bar=True):
+        """ Compute the transmission loss at the specified frequency, source depth, 
+            and receiver depths.
+            
+            Args:
+                verbose: bool
+                    Print information during execution
+                progress_bar: bool
+                    Show progress bar. Only shown if verbose if False.
+        """
         import time
         start = time.time()
 
@@ -100,9 +237,10 @@ class TransmissionLossCalculator():
             bathymetry=self.bathymetry, flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient)
 
         # PE propagator
-        propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input)
+        propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\
+                                verbose=verbose, progress_bar=progress_bar)
 
-        output = propagator.run(psi=psi, vertical_slice=vertical_slice, depths=depths)
+        output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
 
 
         # ------- output ------- #

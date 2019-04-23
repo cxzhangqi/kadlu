@@ -1,5 +1,12 @@
 from setuptools import setup
 
+#
+# create distribution and upload to pypi.org with:
+#  
+#   $ python setup.py sdist bdist_wheel
+#   $ twine upload dist/*
+#
+
 setup(name='kadlu',
       version='0.0.1',
       description="MERIDIAN's Ocean Soundscape Toolbox (OST) written in Python",

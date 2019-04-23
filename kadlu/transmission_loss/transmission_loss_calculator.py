@@ -166,7 +166,7 @@ class TransmissionLossCalculator():
                 
 
     def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=True,\
-            ignore_bathy_gradient=False, verbose=False, progress_bar=True):
+            ignore_bathy_gradient=False):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
             
@@ -238,7 +238,7 @@ class TransmissionLossCalculator():
 
         # PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\
-                                verbose=verbose, progress_bar=progress_bar)
+                                verbose=self.verbose, progress_bar=self.progress_bar)
 
         output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
 

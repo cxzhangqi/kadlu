@@ -42,13 +42,17 @@ from kadlu.transmission_loss.model_output import OutputCollector
 
 class PEPropagator():
 
-    def __init__(self, ref_wavenumber, grid, env_input, progress_bar=True):
+    def __init__(self, ref_wavenumber, grid, env_input, verbose=False, progress_bar=True):
 
         self.k0 = ref_wavenumber
         self.grid = grid
         self.env_input = env_input
-        self.progress_bar = progress_bar
-
+        self.verbose = verbose
+        if self.verbose:
+            self.progress_bar = False
+        else:
+            self.progress_bar = progress_bar
+            
 
     def run(self, psi, vertical_slice=True, depths=[.1]):
 

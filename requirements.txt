@@ -8,3 +8,4 @@ cftime
 netCDF4
 h5py
 pygdal==1.11.3.3
+tqdm

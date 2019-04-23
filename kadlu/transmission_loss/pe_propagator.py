@@ -35,17 +35,19 @@
 """
 
 import numpy as np
+from tqdm import tqdm
 from numpy.lib import scimath
 from kadlu.transmission_loss.model_output import OutputCollector
 
 
 class PEPropagator():
 
-    def __init__(self, ref_wavenumber, grid, env_input):
+    def __init__(self, ref_wavenumber, grid, env_input, progress_bar=True):
 
         self.k0 = ref_wavenumber
         self.grid = grid
         self.env_input = env_input
+        self.progress_bar = progress_bar
 
 
     def run(self, psi, vertical_slice=True, depths=[.1]):
@@ -54,13 +56,8 @@ class PEPropagator():
         output = OutputCollector(ref_wavenumber=self.k0, grid=self.grid, env_input=self.env_input,\
             vertical_slice=vertical_slice, depths=depths)
 
-        print('psi.shape: ', psi.shape)
-
         # initial Nx2D free propagator
         fr_half, fr_full = self.__free_propagator__()
-
-        print('fr_half.shape:', fr_half.shape)
-        print('fr_full.shape:', fr_full.shape)
 
         # output field at 0
         output.collect(dist=0, psi=psi)
@@ -69,10 +66,8 @@ class PEPropagator():
         dist = 0
         Nr = self.grid.Nr
         dr = self.grid.dr
-        for step in range(1, Nr+1):
+        for _ in tqdm(range(1, Nr+1), disable = not self.progress_bar):
     
-            print("loop: {0}/{1}".format(step, Nr+1), end="\r")
-
             # (1) r --> r + dr/2 free propagation
             psi = fr_half * psi
 

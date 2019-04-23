@@ -41,7 +41,35 @@ from kadlu.transmission_loss.model_output import OutputCollector
 
 
 class PEPropagator():
+    """ Propagates the sound pressure field from zero range to the boundary 
+        of the computational domain using a parabolic-equation numerical scheme.
+        
+        Args:
+            ref_wavenumber: float
+                Reference wavenumber in inverse meters
+            grid: PEGrid
+                Computational grid
+            env_input: EnviromentInput
+                Environmental data
+            verbose: bool
+                Print information during execution
+            progress_bar: bool
+                Show progress bar. Only shown if verbose if False.            
 
+        Attributes:
+            k0: float
+                Reference wavenumber in inverse meters
+            grid: PEGrid
+                Computational grid
+            env_input: EnviromentInput
+                Environmental data
+            verbose: bool
+                Print information during execution
+            progress_bar: bool
+                Show progress bar. Only shown if verbose if False.            
+
+        Example:
+    """
     def __init__(self, ref_wavenumber, grid, env_input, verbose=False, progress_bar=True):
 
         self.k0 = ref_wavenumber
@@ -52,9 +80,27 @@ class PEPropagator():
             self.progress_bar = False
         else:
             self.progress_bar = progress_bar
-            
+
 
     def run(self, psi, vertical_slice=True, depths=[.1]):
+        """ Propagate the pressure field to the boundary of the computional domain.
+            
+            Args:
+                psi: 2d numpy array
+                    Starting pressure field computed with the PEStarter.
+                    Has shape (Nz,Nq) where Nz and Nq are the number of 
+                    vertical and angular grid points, respectively.
+                vertical_slice: bool
+                    Compute the sound pressure field at all grid points on 
+                    a vertical plane intersecting the source position. 
+                    Note: This will slow down the computation.
+
+            Returns:
+                psi: numpy array
+                    Initial sound pressure field along the vertical 
+                    axis at zero range. Has shape (Nz,1) where Nz is 
+                    the number of vertical grid points.
+        """
 
         # output collector
         output = OutputCollector(ref_wavenumber=self.k0, grid=self.grid, env_input=self.env_input,\

@@ -51,11 +51,21 @@ class PEStarter():
     """ Computes starting field for Parabolic-Equation propagator.
         
         Args:
-            ref_wavenumber: float or numpy array
+            ref_wavenumber: float
                 Reference wavenumber in inverse meters
             grid: PEGrid
                 Computational grid
             method: str
+                Options are: GAUSSIAN, GREENE, THOMSON
+            aperture: float
+                Aperture in degrees
+
+        Attributes:
+            k0: float
+                Reference wavenumber in inverse meters
+            grid: PEGrid
+                Computational grid
+            method: PEStarterMethod
                 Options are: GAUSSIAN, GREENE, THOMSON
             aperture: float
                 Aperture in degrees

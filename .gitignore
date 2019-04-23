@@ -13,3 +13,5 @@ pyost.egg-info/*
 *.vscode
 kadlu.egg-info/*
 playroom/bathy.mat
+build/*
+Nx2DSSFPE/mat_Mariana_Nx2D_longrng*

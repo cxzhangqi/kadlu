@@ -34,7 +34,7 @@
 """
 
 import numpy as np
-#from tqdm import tqdm
+from tqdm import tqdm
 from numpy.lib import scimath
 from kadlu.transmission_loss.model_output import OutputCollector
 
@@ -121,8 +121,7 @@ class PEPropagator():
         dist = 0
         Nr = self.grid.Nr
         dr = self.grid.dr
-###        for _ in tqdm(range(1, Nr+1), disable = not self.progress_bar):
-        for _ in range(1, Nr+1):
+        for _ in tqdm(range(1, Nr+1), disable = not self.progress_bar):
     
             # (1) r --> r + dr/2 free propagation
             psi = fr_half * psi

@@ -1,3 +1,37 @@
+# ================================================================================ #
+#   Authors: Casey Hillard and Oliver Kirsebom                                     #
+#   Contact: oliver.kirsebom@dal.ca                                                #
+#   Organization: MERIDIAN (https://meridian.cs.dal.ca/)                           #
+#   Team: Data Analytics                                                           #
+#   Project: kadlu                                                                 #
+#   Project goal: The kadlu library provides functionalities for modeling          #
+#   underwater noise due to environmental source such as waves.                    #
+#                                                                                  #
+#   License: GNU GPLv3                                                             #
+#                                                                                  #
+#       This program is free software: you can redistribute it and/or modify       #
+#       it under the terms of the GNU General Public License as published by       #
+#       the Free Software Foundation, either version 3 of the License, or          #
+#       (at your option) any later version.                                        #
+#                                                                                  #
+#       This program is distributed in the hope that it will be useful,            #
+#       but WITHOUT ANY WARRANTY; without even the implied warranty of             #
+#       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              #
+#       GNU General Public License for more details.                               # 
+#                                                                                  #
+#       You should have received a copy of the GNU General Public License          #
+#       along with this program.  If not, see <https://www.gnu.org/licenses/>.     #
+# ================================================================================ #
+
+""" Environment input module within the kadlu library
+
+    This module handles loading and pre-processing of environment data for the 
+    the transmission-loss calculation.
+
+    Contents:
+        OutputCollector EnvironmentInput
+"""
+
 import numpy as np
 from numpy.lib import scimath
 from kadlu.transmission_loss.refractive_index import RefractiveIndex
@@ -19,8 +53,6 @@ class EnvironmentInput():
         self.sound_speed = sound_speed
 
         self.k0 = ref_wavenumber
-
-        self.ThinknessOfArtificialAbsorpLayer_ratio_z = 1. / absorption_layer
 
         self.smoothing_length_ssp = smoothing_length_ssp
         self.smoothing_length_rho = smoothing_length_rho
@@ -91,10 +123,10 @@ class EnvironmentInput():
         self.rhow = rhow
 
         # boudary conditions on z
-        ArtificialAbsorpCoeff =  1. / np.log10(np.e) / np.pi
-        ThinknessOfArtificialAbsorpLayer = np.max(np.abs(self.grid.z)) / self.ThinknessOfArtificialAbsorpLayer_ratio_z
+        absorption_coefficient =  1. / np.log10(np.e) / np.pi
+        ThinknessOfArtificialAbsorpLayer = absorption_layer * np.max(np.abs(self.grid.z))
         D = ThinknessOfArtificialAbsorpLayer / 3
-        self.atten0 = 1j * ArtificialAbsorpCoeff * np.exp(-(np.abs(self.grid.Z) - np.max(np.abs(self.grid.z)))**2 / D**2)
+        self.atten0 = 1j * absorption_coefficient * np.exp(-(np.abs(self.grid.Z) - np.max(np.abs(self.grid.z)))**2 / D**2)
 
 
 

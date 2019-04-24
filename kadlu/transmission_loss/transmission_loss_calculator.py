@@ -1,12 +1,11 @@
 # ================================================================================ #
-#   Authors: Fabio Frazao and Oliver Kirsebom                                      #
-#   Contact: fsfrazao@dal.ca, oliver.kirsebom@dal.ca                               #
+#   Authors: Casey Hillard and Oliver Kirsebom                                     #
+#   Contact: oliver.kirsebom@dal.ca                                                #
 #   Organization: MERIDIAN (https://meridian.cs.dal.ca/)                           #
 #   Team: Data Analytics                                                           #
-#   Project: ketos                                                                 #
-#   Project goal: The ketos library provides functionalities for handling          #
-#   and processing acoustic data and applying deep neural networks to sound        #
-#   detection and classification tasks.                                            #
+#   Project: kadlu                                                                 #
+#   Project goal: The kadlu library provides functionalities for modeling          #
+#   underwater noise due to environmental source such as waves.                    #
 #                                                                                  #
 #   License: GNU GPLv3                                                             #
 #                                                                                  #
@@ -200,6 +199,13 @@ class TransmissionLossCalculator():
         if self.verbose:
             import time
             start = time.time()
+            print('Begin transmission-loss calculation')
+            print('Source depth is: ', source_depth)
+            print('Computing the transmission loss at depths: ', receiver_depth)
+            if ignore_bathy_gradient:
+                print('Ignoring bathymetry gradient')
+            if vertical_slice:
+                print('Computing the transmission loss on a vertical plane intersecting the source position')
 
         # frequency in Hz
         freq = frequency  

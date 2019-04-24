@@ -273,7 +273,7 @@ class TransmissionLossCalculator():
         output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
 
         # sound presure in dB
-        sound_pressure = np.fft.fftshift(output.Ez[:,:,1:], axes=1)
+        sound_pressure = np.fft.fftshift(output.field_horiz[:,:,1:], axes=1)
         sound_pressure = 20 * np.log10(np.abs(sound_pressure))
         sound_pressure = np.squeeze(sound_pressure)
 
@@ -294,20 +294,21 @@ class TransmissionLossCalculator():
 
         import matplotlib.pyplot as plt
         plot_r = grid.r[1:]
-        plot_theta = np.fft.fftshift(np.squeeze(output.Ez_y))
+        plot_theta = np.fft.fftshift(np.squeeze(grid.q))
 
 
         if False:
             R, TH = np.meshgrid(plot_r, plot_theta)
             XX = R * np.cos(TH)
             YY = R * np.sin(TH)
-            fig = plt.contourf(XX, YY, SPfield, 100)
+            fig = plt.contourf(XX, YY, sound_pressure, 100)
             plt.colorbar(fig)
             plt.show()
 
         if False:
             fig=plt.figure()
-            ZZ = 20 * np.log10(np.abs(output.Af[:,:]))
+            q0 = np.argwhere(grid.q >= 0)[0] # angular bin index            
+            ZZ = 20 * np.log10(np.abs(output.field_vert[:,:,q0]))
             XX, YY = np.meshgrid(grid.r, z)
             fig = plt.contourf(XX, YY, ZZ, 100)
             plt.colorbar(fig)

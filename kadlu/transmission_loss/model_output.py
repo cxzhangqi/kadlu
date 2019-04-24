@@ -74,30 +74,24 @@ class OutputCollector():
         self.vertical_slice = vertical_slice
         self.env_input = env_input
 
-        Z = self.grid.Z
-        Y = self.grid.Q
+        Nr = self.grid.Nr
+        Nq = self.grid.Nq
+        Nz = self.grid.Nz
+        Nd = len(depths)
+
+        # vertical slices
+        self.counter_vert = 0
+        self.field_vert = np.empty(shape=(int(Nz/2), Nr+1, Nq), dtype=complex)
+
+        # horizontal slices
+        self.counter_horiz = 0
+        self.depths = np.array(depths)
+        self.depths = self.depths[:, np.newaxis]
+        self.field_horiz = np.empty(shape=(Nd, Nq, Nr+1), dtype=complex)  # sound intensity values
+
+        # ifft kernel
         kz = self.grid.kz
-        x = self.grid.r 
-        ny = self.grid.Nq
-        nz = self.grid.Nz
-
-        self.counter = 0
-        self.Af = np.empty(shape=(int(nz/2), len(self.grid.r)), dtype=complex)
-
-
-        # which points to be output?
-        self.yso = np.argwhere(Y[0,:] >= 0)[0]
-        self.nzhalf = int(Z.shape[0] / 2)
-
-        # this are used for storing the calculated 3d field values
-        self.Ez_z = np.array(depths) 
-        self.Ez_z = self.Ez_z[:, np.newaxis] 
-        self.Ez_y = Y[0,:]  # y values (azimuthal)
-        self.Ez = np.empty(shape=(len(self.Ez_z), ny, len(x)), dtype=complex)  # sound intensity values
-
-        self.Ez_ifft_kernel = np.exp(1j * np.matmul(self.Ez_z, kz[np.newaxis,:])) / len(kz)
-
-        self.iout_Ez = 0
+        self.ifft_kernel = np.exp(1j * np.matmul(self.depths, kz[np.newaxis,:])) / len(kz)
 
 
     def collect(self, dist, psi):
@@ -112,22 +106,20 @@ class OutputCollector():
                     Has shape (Nz,Nq) where Nz and Nq are the number of 
                     vertical and angular grid points, respectively.
         """
-        self.iout_Ez += 1
+        self.counter_horiz += 1
 
         if dist != 0:
             dz = self.grid.dz
-
-            idx = np.squeeze(np.round(self.Ez_z/dz).astype(int))
-            
+            idx = np.squeeze(np.round(self.depths/dz).astype(int))
             if np.ndim(idx) == 0:
                 idx = np.array([idx])
 
             sqrt_denin = self.env_input.sqrt_denin
 
-            A = np.matmul(self.Ez_ifft_kernel, psi)
+            A = np.matmul(self.ifft_kernel, psi)
             B = sqrt_denin[idx]
 
-            self.Ez[:,:,self.iout_Ez-1] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
+            self.field_horiz[:,:,self.counter_horiz-1] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
 
             if self.vertical_slice:
                 psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * sqrt_denin
@@ -137,5 +129,6 @@ class OutputCollector():
                 psi = np.fft.ifft(psi, axis=0)
 
         if self.vertical_slice:
-            self.Af[:, self.counter] = np.squeeze(psi[:self.nzhalf, self.yso])
-            self.counter += 1
+            n = int(self.grid.Nz / 2)
+            self.field_vert[:, self.counter_vert, :] = psi[:n, :]
+            self.counter_vert += 1

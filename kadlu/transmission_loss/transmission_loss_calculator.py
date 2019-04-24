@@ -164,9 +164,10 @@ class TransmissionLossCalculator():
         self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
 
         if self.verbose:
+            print('\nTransmission loss calculator successfully initialized')
             print('Bathymetry will be updated every {0} steps'.format(self.ndx_ChangeWD))
             if self.ndx_ChangeNSQ is math.inf:
-                print('Range-independent sound-speed profile')
+                print('Adopting range-independent sound-speed profile')
             else:
                 print('Sound speed will be updated every {0} steps'.format(self.ndx_ChangeNSQ))
                 
@@ -213,25 +214,27 @@ class TransmissionLossCalculator():
         vertical_range = 2 * self.max_depth * (1. + self.absorption_layer)
         vertical_step = self.vertical_bin_size
 
+        # construct the computational grid
         grid = PEGrid(radial_step=dr, radial_range=self.range,\
                 azimuthal_step=azimuthal_step, azimuthal_range=2*np.pi,\
                 vertical_step=vertical_step, vertical_range=vertical_range)
 
-        print('\nnx,ny,nz: ', grid.Nr, grid.Nq, grid.Nz)
-        print('x.shape: ', grid.r.shape)
-        print('y.shape: ', grid.q.shape)
-        print('z.shape: ', grid.z.shape)
-        print('Y.shape: ', grid.Q.shape)
-        print('Z.shape: ', grid.Z.shape)
-        print('y: {0:.3f},{1:.3f}...{2:.3f},{3:.3f},{4:.3f}...,{5:.3f},{6:.3f}'.format(grid.q[0],grid.q[1],grid.q[int(grid.Nq/2)-1],grid.q[int(grid.Nq/2)],grid.q[int(grid.Nq/2)+1],grid.q[-2],grid.q[-1]))
-        print('dx: {0:.1f} m'.format(grid.dr))
-
+        if self.verbose:
+            print('Computational grid:')
+            print('range (r) x angle (q) x depth (z)')
+            print('Dimensions: {0} x {1} x {2}'.format(grid.Nr, grid.Nq, grid.Nz))
+            print('min(r) = {0:.1f}, max(r) = {1:.1f}, delta(r) = {2:.1f}'.format(np.min(grid.r), np.max(grid.r), grid.dr))
+            print('min(q) = {0:.1f}, max(q) = {1:.1f}, delta(q) = {2:.1f}'.format(np.min(grid.q)*180./np.pi, np.max(grid.q)*180./np.pi, grid.dq*180./np.pi))
+            print('min(z) = {0:.1f}, max(z) = {1:.1f}, delta(z) = {2:.1f}'.format(np.min(grid.z), np.max(grid.z), grid.dz))
+ 
         # PE starter
         starter = PEStarter(ref_wavenumber=k0, grid=grid, method=self.starter_method, aperture=self.starter_aperture)
 
         # initial field
         psi = starter.eval(zs) * np.ones(shape=(1,grid.Nq))
-        print('psi.shape: ', psi.shape)
+
+        if self.verbose:
+            print('Initial field computed')
 
         # module handling updates of environmental input
         env_input = EnvironmentInput(ref_wavenumber=k0, grid=grid, xs=xs, ys=ys,\

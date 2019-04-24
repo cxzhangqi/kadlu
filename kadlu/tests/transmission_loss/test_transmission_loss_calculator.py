@@ -24,7 +24,7 @@ def test_can_initialize_TL_calculator():
 
 def test_run_TL_calculator():
     calc = TransmissionLossCalculator(bathymetry=None, sound_speed=None, flat_seafloor_depth=10000,\
-        step_size=1000, range=10e3, angular_bin_size=45, vertical_bin_size=1000, progress_bar=False)
+        step_size=1000, range=10e3, angular_bin_size=45, vertical_bin_size=1000, verbose=True, progress_bar=False)
     field = calc.run(frequency=10, source_depth=9900)
     expected = np.array([[-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\

@@ -200,12 +200,12 @@ class TransmissionLossCalculator():
             import time
             start = time.time()
             print('Begin transmission-loss calculation')
-            print('Source depth is: ', source_depth)
-            print('Computing the transmission loss at depths: ', receiver_depth)
+            print('Source depth is:', source_depth)
+            print('Computing the transmission loss at depths:', receiver_depths)
             if ignore_bathy_gradient:
                 print('Ignoring bathymetry gradient')
             if vertical_slice:
-                print('Computing the transmission loss on a vertical plane intersecting the source position')
+                print('Computing the transmission loss on a vertical plane')
 
         # frequency in Hz
         freq = frequency  

@@ -1,12 +1,11 @@
 # ================================================================================ #
-#   Authors: Fabio Frazao and Oliver Kirsebom                                      #
-#   Contact: fsfrazao@dal.ca, oliver.kirsebom@dal.ca                               #
+#   Authors: Casey Hillard and Oliver Kirsebom                                     #
+#   Contact: oliver.kirsebom@dal.ca                                                #
 #   Organization: MERIDIAN (https://meridian.cs.dal.ca/)                           #
 #   Team: Data Analytics                                                           #
-#   Project: ketos                                                                 #
-#   Project goal: The ketos library provides functionalities for handling          #
-#   and processing acoustic data and applying deep neural networks to sound        #
-#   detection and classification tasks.                                            #
+#   Project: kadlu                                                                 #
+#   Project goal: The kadlu library provides functionalities for modeling          #
+#   underwater noise due to environmental source such as waves.                    #
 #                                                                                  #
 #   License: GNU GPLv3                                                             #
 #                                                                                  #

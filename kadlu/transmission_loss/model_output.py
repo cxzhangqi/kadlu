@@ -60,15 +60,17 @@ class OutputCollector():
                 Computational grid
             env_input: EnviromentInput
                 Environmental data
+            vertical_slice: bool
+                Compute the sound pressure at all grid points on 
+                a vertical plane intersecting the source position. 
+                Note: This will slow down the computation.
 
         Example:
     """
-
-    def __init__(self, ref_wavenumber, grid, env_input, vertical_slice=True, depths=[.1]):
+    def __init__(self, ref_wavenumber, grid, env_input, depths=[.1], vertical_slice=True):
 
         self.k0 = ref_wavenumber
         self.grid = grid
-        # sound intensity on the vertical x-z plane crossing the source
         self.vertical_slice = vertical_slice
         self.env_input = env_input
 
@@ -99,7 +101,17 @@ class OutputCollector():
 
 
     def collect(self, dist, psi):
-
+        """ Post-processe and collect output data at specified distance
+            from the source.
+            
+            Args:
+                dist: float
+                    Radial distance from the source in meters
+                psi: 2d numpy array
+                    Sound pressure field at the specified radial distance. 
+                    Has shape (Nz,Nq) where Nz and Nq are the number of 
+                    vertical and angular grid points, respectively.
+        """
         self.iout_Ez += 1
 
         if dist != 0:

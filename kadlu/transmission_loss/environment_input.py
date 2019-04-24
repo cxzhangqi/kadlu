@@ -72,14 +72,10 @@ class EnvironmentInput():
         self.U = np.zeros(shape=m, dtype=complex)
         self._unchanged = np.zeros(shape=n, dtype=bool)
 
-        self.wd_x_next = 0
-
         self.wd_old = np.empty(shape=(1,n))
         self.wd_mask = np.empty(m)
         self.DwdDy = np.empty(m)
         self.Z_sub_wd = np.empty(m)
-
-        self.NSQ_x_next = 0
 
         self.n2w = np.zeros(m)
         self.n2w_new = np.zeros(m)
@@ -100,6 +96,8 @@ class EnvironmentInput():
         # how often is bathymetry and sound-speed data updated
         self.dn_bathy = max(1, steps_btw_bathy_updates)
         self.dn_sound_speed = max(1, steps_btw_sound_speed_updates)
+        self.dist_next_bathy_update = 0
+        self.dist_next_sound_speed_update = 0
         
         # complex bottom sound speed
         self.bottom_density = bottom_density
@@ -185,10 +183,10 @@ class EnvironmentInput():
 
         new_bathy = self._unchanged
 
-        if (dist == self.dr/2) or (dist >= self.wd_x_next):
+        if (dist == self.dr/2) or (dist >= self.dist_next_bathy_update):
             
             # next distance at which to update bathymetry
-            self.wd_x_next = dist + self.dn_bathy * self.dr
+            self.dist_next_bathy_update = dist + self.dn_bathy * self.dr
             
             # get bathymetry
             wd_new, DwdDy_new = self.__seafloor_depth__(dist)
@@ -214,10 +212,10 @@ class EnvironmentInput():
 
         new_refr = self._unchanged
 
-        if (dist == self.dr/2) or ((dist >= self.NSQ_x_next) and not self._range_independent):  # update water column
+        if (dist == self.dr/2) or ((dist >= self.dist_next_sound_speed_update) and not self._range_independent):  # update water column
 
             # next distance at which to update water column
-            self.NSQ_x_next = dist + self.dn_sound_speed * self.dr
+            self.dist_next_sound_speed_update = dist + self.dn_sound_speed * self.dr
 
             # interpolate water nsq
             self.n2w_new = np.copy(self.n2w)

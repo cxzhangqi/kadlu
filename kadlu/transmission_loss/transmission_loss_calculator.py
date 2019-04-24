@@ -177,11 +177,25 @@ class TransmissionLossCalculator():
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
             
+            The transmission loss is computed at every grid point on 
+            one or several horizontal planes at the specified receiver depth(s).
+
             Args:
-                verbose: bool
-                    Print information during execution
-                progress_bar: bool
-                    Show progress bar. Only shown if verbose if False.
+                frequency: float
+                    Sound frequency in Hz
+                source_depth: float
+                    Source depth in meters
+                receiver_depths: list of floats
+                    Depths of receivers. 
+                vertical_slice: bool
+                    Compute the transmission loss at all grid points on 
+                    a vertical plane intersecting the source position. 
+                    Note: This will slow down the computation.
+                ignore_bathy_gradient: bool
+                    Set the bathymetry gradient to zero everywhere.
+                    This can be used to speed up the interpolation of the bathymetry 
+                    data if the depth only changes gradually, implying that the gradient 
+                    can be ignored.
         """
         if self.verbose:
             import time

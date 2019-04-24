@@ -89,7 +89,12 @@ class TransmissionLossCalculator():
             vertical_bin_size: float
                 Vertical bin size in meters
             max_depth: float
-                Vertical range in meters
+                Maximum depth in meters. The vertical range used for the computation is  
+                [-z_max,z_max], where z_max = max_depth * (1 + absorption_layer). 
+            absorption_layer: float
+                Thickness of the artificial absorption layer expressed as a fraction of the vertical range.
+                For example, if the vertical range is 1.2 km (max_depth=1200) and absorption_layer=1./6. 
+                (the default value), the thickness of the artificial absorption layer will be 200 meters.
             starter_method: str
                 PE starter method. Options are: GAUSSIAN, GREENE, THOMSON
             starter_aperture: float
@@ -125,7 +130,7 @@ class TransmissionLossCalculator():
     def __init__(self, bathymetry=None, flat_seafloor_depth=None, sound_speed=None, ref_sound_speed=1500,\
             water_density=1.0, bottom_sound_speed=1700, bottom_loss=0.5, bottom_density=1.5,\
             step_size=None, range=50e3, angular_bin_size=1, vertical_bin_size=10, max_depth=12e3,\
-            starter_method='THOMSON', starter_aperture=88,\
+            absorption_layer=1./6., starter_method='THOMSON', starter_aperture=88,\
             bathy_update=3, sound_speed_update=math.inf, verbose=False, progress_bar=True):
 
         self.bathymetry = bathymetry
@@ -143,6 +148,7 @@ class TransmissionLossCalculator():
         self.angular_bin_size = angular_bin_size
         self.vertical_bin_size = vertical_bin_size
         self.max_depth = max_depth
+        self.absorption_layer = absorption_layer
 
         self.starter_method = starter_method
         self.starter_aperture = starter_aperture
@@ -204,8 +210,7 @@ class TransmissionLossCalculator():
         azimuthal_step = self.angular_bin_size / 180 * np.pi
 
         # vertical range
-        ThinknessOfArtificialAbsorpLayer_ratio_z = 6
-        vertical_range = 2 * self.max_depth / ThinknessOfArtificialAbsorpLayer_ratio_z * (ThinknessOfArtificialAbsorpLayer_ratio_z + 1)
+        vertical_range = 2 * self.max_depth * (1. + self.absorption_layer)
         vertical_step = self.vertical_bin_size
 
         grid = PEGrid(radial_step=dr, radial_range=self.range,\
@@ -233,7 +238,7 @@ class TransmissionLossCalculator():
             freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, ndx_ChangeNSQ=self.ndx_ChangeNSQ, c0=self.c0,\
             cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow,\
             smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho,
-            ThinknessOfArtificialAbsorpLayer_ratio_z=ThinknessOfArtificialAbsorpLayer_ratio_z,\
+            absorption_layer=self.absorption_layer,\
             bathymetry=self.bathymetry, flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient)
 
         # PE propagator

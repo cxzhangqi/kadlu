@@ -7,7 +7,7 @@ class EnvironmentInput():
     def __init__(self, ref_wavenumber, grid, xs, ys, freq, ndx_ChangeWD,\
                     ndx_ChangeNSQ, c0, cb, bloss, rhob, rhow,\
                     smoothing_length_ssp, smoothing_length_rho,\
-                    ThinknessOfArtificialAbsorpLayer_ratio_z,\
+                    absorption_layer,\
                     bathymetry=None, ignore_bathy_gradient=False, flat_seafloor_depth=None, \
                     sound_speed=None):
 
@@ -20,7 +20,7 @@ class EnvironmentInput():
 
         self.k0 = ref_wavenumber
 
-        self.ThinknessOfArtificialAbsorpLayer_ratio_z = ThinknessOfArtificialAbsorpLayer_ratio_z
+        self.ThinknessOfArtificialAbsorpLayer_ratio_z = 1. / absorption_layer
 
         self.smoothing_length_ssp = smoothing_length_ssp
         self.smoothing_length_rho = smoothing_length_rho

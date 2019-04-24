@@ -49,8 +49,8 @@ class OutputCollector():
                 Depths at which horizontal slices of the sound pressure 
                 field are computed.
             vertical_slice: bool
-                Compute the sound pressure at all grid points on 
-                a vertical plane intersecting the source position. 
+                For all angular bins, compute the sound pressure on a
+                vertical plane intersecting the source position. 
                 Note: This will slow down the computation.
 
         Attributes:
@@ -61,9 +61,25 @@ class OutputCollector():
             env_input: EnviromentInput
                 Environmental data
             vertical_slice: bool
-                Compute the sound pressure at all grid points on 
-                a vertical plane intersecting the source position. 
+                For all angular bins, compute the sound pressure on a
+                vertical plane intersecting the source position. 
                 Note: This will slow down the computation.
+            counter: int
+                Counter that keeps track of the radial step number. 
+                Increments by 1 unit for every call to the collect method.
+            field_vert: 3d numpy array
+                Vertical slices of the sound pressure field. Has shape 
+                (int(Nz/2), Nr+1, Nq) where Nz,Nr,Nq are the number of 
+                grid points in the vertical, radial and azimuthal direction.
+            depths: numpy array
+                Receiver depths in meters
+            field_horiz: 3d numpy array
+                Horizontal slices of the sound pressure field at the specified 
+                depths. Has shape (Nd, Nq, Nr+1) where Nd is the number of depths, 
+                while Nq and Nr are the number of azimuthal and radial grid points, 
+                respectively.
+            ifft_kernel: numpy array
+                Matrix used to compute the horizontal field.
 
         Example:
     """
@@ -79,12 +95,12 @@ class OutputCollector():
         Nz = self.grid.Nz
         Nd = len(depths)
 
+        self.counter = 0
+
         # vertical slices
-        self.counter_vert = 0
         self.field_vert = np.empty(shape=(int(Nz/2), Nr+1, Nq), dtype=complex)
 
         # horizontal slices
-        self.counter_horiz = 0
         self.depths = np.array(depths)
         self.depths = self.depths[:, np.newaxis]
         self.field_horiz = np.empty(shape=(Nd, Nq, Nr+1), dtype=complex)  # sound intensity values
@@ -106,7 +122,7 @@ class OutputCollector():
                     Has shape (Nz,Nq) where Nz and Nq are the number of 
                     vertical and angular grid points, respectively.
         """
-        self.counter_horiz += 1
+        self.counter += 1
 
         if dist != 0:
             dz = self.grid.dz
@@ -119,7 +135,7 @@ class OutputCollector():
             A = np.matmul(self.ifft_kernel, psi)
             B = sqrt_denin[idx]
 
-            self.field_horiz[:,:,self.counter_horiz-1] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
+            self.field_horiz[:,:,self.counter-1] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
 
             if self.vertical_slice:
                 psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * sqrt_denin
@@ -130,5 +146,4 @@ class OutputCollector():
 
         if self.vertical_slice:
             n = int(self.grid.Nz / 2)
-            self.field_vert[:, self.counter_vert, :] = psi[:n, :]
-            self.counter_vert += 1
+            self.field_vert[:, self.counter-1, :] = psi[:n, :]

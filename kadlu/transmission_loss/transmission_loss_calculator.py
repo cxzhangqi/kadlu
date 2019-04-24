@@ -183,8 +183,9 @@ class TransmissionLossCalculator():
                 progress_bar: bool
                     Show progress bar. Only shown if verbose if False.
         """
-        import time
-        start = time.time()
+        if self.verbose:
+            import time
+            start = time.time()
 
         # frequency in Hz
         freq = frequency  
@@ -230,7 +231,7 @@ class TransmissionLossCalculator():
         # PE starter
         starter = PEStarter(ref_wavenumber=k0, grid=grid, method=self.starter_method, aperture=self.starter_aperture)
 
-        # initial field
+        # compute initial field
         psi = starter.eval(zs) * np.ones(shape=(1,grid.Nq))
 
         if self.verbose:
@@ -244,14 +245,26 @@ class TransmissionLossCalculator():
             absorption_layer=self.absorption_layer,\
             bathymetry=self.bathymetry, flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient)
 
-        # PE propagator
+        # Configure the PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\
                                 verbose=self.verbose, progress_bar=self.progress_bar)
 
+        # propagate
         output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
 
+        # sound presure in dB
+        sound_pressure = np.fft.fftshift(output.Ez[:,:,1:], axes=1)
+        sound_pressure = 20 * np.log10(np.abs(sound_pressure))
+        sound_pressure = np.squeeze(sound_pressure)
 
-        # ------- output ------- #
+        if self.verbose:
+            end = time.time()
+            print('Calculation completed in {0:.2f} seconds'.format(end - start))
+
+        return sound_pressure
+
+
+        # ------- plotting ------- #
 
         # take only first 1/2 of z axis (?)
         z = grid.z[:int(grid.Nz/2)]
@@ -263,11 +276,6 @@ class TransmissionLossCalculator():
         plot_r = grid.r[1:]
         plot_theta = np.fft.fftshift(np.squeeze(output.Ez_y))
 
-        end = time.time()
-        print('Calculation completed in {0:.1f} seconds'.format(end - start))
-
-        SPfield = np.fft.fftshift(np.squeeze(output.Ez[0,:,1:]), axes=0)
-        SPfield = 20 * np.log10(np.abs(SPfield))
 
         if False:
             R, TH = np.meshgrid(plot_r, plot_theta)
@@ -287,7 +295,6 @@ class TransmissionLossCalculator():
             ax.invert_yaxis()
             plt.show()
 
-        return SPfield
 
 
 class PEGrid():

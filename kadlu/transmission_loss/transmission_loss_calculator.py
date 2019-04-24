@@ -98,15 +98,13 @@ class TransmissionLossCalculator():
                 PE starter method. Options are: GAUSSIAN, GREENE, THOMSON
             starter_aperture: float
                 Aperture of PE starter in degrees
-            bathy_update: int
-                How often the bathymetry data is updated. 
-                If for example bathy_update=3, the bathymetry is updated at every 3rd step 
-                of the propagation algorithm.
-            sound_speed_update: int
-                How often the sound-speed data is updated. 
-                If for example sound_speed_update=3, the sound speed is updated at every 3rd step 
-                of the propagation algorithm. By default sound_speed_update is set to infinity, 
-                corresponding to a range-independent sound speed profile.
+            steps_btw_bathy_updates: int
+                How often the bathymetry data is updated. If for example steps_btw_bathy_updates=3, the 
+                bathymetry is updated at every 3rd step.
+            steps_btw_sound_speed_updates: int
+                How often the sound-speed data is updated. If for example steps_btw_sound_speed_updates=3, 
+                the sound speed is updated at every 3rd step. By default steps_btw_sound_speed_updates is 
+                set to infinity, corresponding to a range-independent sound speed profile.
             verbose: bool
                 Print information during execution
             progress_bar: bool
@@ -130,17 +128,18 @@ class TransmissionLossCalculator():
             water_density=1.0, bottom_sound_speed=1700, bottom_loss=0.5, bottom_density=1.5,\
             step_size=None, range=50e3, angular_bin_size=1, vertical_bin_size=10, max_depth=12e3,\
             absorption_layer=1./6., starter_method='THOMSON', starter_aperture=88,\
-            bathy_update=3, sound_speed_update=math.inf, verbose=False, progress_bar=True):
+            steps_btw_bathy_updates=1, steps_btw_sound_speed_updates=math.inf,\
+            verbose=False, progress_bar=True):
 
         self.bathymetry = bathymetry
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
 
         self.c0 = ref_sound_speed
-        self.rhow = water_density
+        self.water_density = water_density
         self.cb = bottom_sound_speed
-        self.bloss = bottom_loss
-        self.rhob = bottom_density
+        self.bottom_loss = bottom_loss
+        self.bottom_density = bottom_density
 
         self.step_size = step_size
         self.range = range
@@ -152,10 +151,10 @@ class TransmissionLossCalculator():
         self.starter_method = starter_method
         self.starter_aperture = starter_aperture
 
-        self.ndx_ChangeWD = max(1, bathy_update)
-        self.ndx_ChangeNSQ = max(1, sound_speed_update)
+        self.steps_btw_bathy_updates = max(1, steps_btw_bathy_updates)
+        self.steps_btw_sound_speed_updates = max(1, steps_btw_sound_speed_updates)
         if sound_speed is None:
-            self.ndx_ChangeNSQ = math.inf
+            self.steps_btw_sound_speed_updates = math.inf
 
         self.verbose = verbose
         self.progress_bar = progress_bar
@@ -164,11 +163,11 @@ class TransmissionLossCalculator():
 
         if self.verbose:
             print('\nTransmission loss calculator successfully initialized')
-            print('Bathymetry will be updated every {0} steps'.format(self.ndx_ChangeWD))
-            if self.ndx_ChangeNSQ is math.inf:
+            print('Bathymetry will be updated every {0} steps'.format(self.steps_btw_bathy_updates))
+            if self.steps_btw_sound_speed_updates is math.inf:
                 print('Adopting range-independent sound-speed profile')
             else:
-                print('Sound speed will be updated every {0} steps'.format(self.ndx_ChangeNSQ))
+                print('Sound speed will be updated every {0} steps'.format(self.steps_btw_sound_speed_updates))
                 
 
     def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=True,\
@@ -187,8 +186,8 @@ class TransmissionLossCalculator():
                 receiver_depths: list of floats
                     Depths of receivers. 
                 vertical_slice: bool
-                    Compute the transmission loss at all grid points on 
-                    a vertical plane intersecting the source position. 
+                    For all angular bins, compute the sound pressure on a
+                    vertical plane intersecting the source position. 
                     Note: This will slow down the computation.
                 ignore_bathy_gradient: bool
                     Set the bathymetry gradient to zero everywhere.
@@ -219,8 +218,9 @@ class TransmissionLossCalculator():
         lambda0 = self.c0 / freq        
         k0 = 2 * np.pi * freq / self.c0  
 
-        smoothing_length_rho = self.c0 / freq / 4
-        smoothing_length_ssp = np.finfo(float).eps  # machine epsilon
+        # smoothing lengths
+        smoothing_length_density = self.c0 / freq / 4
+        smoothing_length_sound_speed = np.finfo(float).eps
 
         # radial step size
         if self.step_size is None:
@@ -258,12 +258,15 @@ class TransmissionLossCalculator():
             print('Initial field computed')
 
         # module handling updates of environmental input
-        env_input = EnvironmentInput(ref_wavenumber=k0, grid=grid, xs=xs, ys=ys,\
-            freq=freq, ndx_ChangeWD=self.ndx_ChangeWD, ndx_ChangeNSQ=self.ndx_ChangeNSQ, c0=self.c0,\
-            cb=self.cb, bloss=self.bloss, rhob=self.rhob, rhow=self.rhow,\
-            smoothing_length_ssp=smoothing_length_ssp, smoothing_length_rho=smoothing_length_rho,
-            absorption_layer=self.absorption_layer,\
-            bathymetry=self.bathymetry, flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient)
+        env_input = EnvironmentInput(ref_wavenumber=k0, grid=grid, xs=xs, ys=ys, freq=freq,\
+            steps_btw_bathy_updates=self.steps_btw_bathy_updates,\
+            steps_btw_sound_speed_updates=self.steps_btw_sound_speed_updates,\
+            c0=self.c0, cb=self.cb, bottom_loss=self.bottom_loss,\
+            bottom_density=self.bottom_density, water_density=self.water_density,\
+            smoothing_length_sound_speed=smoothing_length_sound_speed, smoothing_length_density=smoothing_length_density,
+            absorption_layer=self.absorption_layer, bathymetry=self.bathymetry,\
+            flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient,\
+            verbose=self.verbose)
 
         # Configure the PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\

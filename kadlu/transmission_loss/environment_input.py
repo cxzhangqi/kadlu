@@ -70,24 +70,29 @@ class EnvironmentInput():
         n = grid.Nq
 
         # allocate memory
-        self.U = np.zeros(shape=m, dtype=complex)
+
+        # bathymetry
         self._unchanged = np.zeros(shape=n, dtype=bool)
-        self.depths_old = np.empty(shape=(1,n))
-        self.depths = np.empty(m)
-        self.gradients = np.empty(m)
+        self.depth_old = np.empty(shape=(1,n))
+        self.depth = np.empty(m)
+        self.gradient = np.empty(m)
         self.height_above_seafloor = np.empty(m)
 
+        # refractive index squared of water, n_w^2
         self.n2w = np.zeros(m)
         self.n2w_new = np.zeros(m)
         
-        # updated in update_phase_screen()
-        self.n2in = np.empty(m, dtype=complex)
+        # derived real quantities
         self.H_c = np.empty(m, dtype=float)
         self.H_rho = np.empty(m, dtype=float)
         self.ddenin = np.empty(m, dtype=float)   
         self.d2denin = np.empty(m, dtype=float)
         self.denin = np.empty(m, dtype=float)
         self.sqrt_denin = np.empty(m, dtype=float)
+
+        # derived complex quantities
+        self.n2in = np.empty(m, dtype=complex)
+        self.U = np.zeros(m, dtype=complex)
 
         # compute cos(theta) and sin(theta) for all angular bins
         self.costheta = np.cos(grid.q)
@@ -109,6 +114,7 @@ class EnvironmentInput():
         cb = cb - 1j * cbi
         self.n2b = (c0 / cb)**2
 
+        # water density
         self.water_density = water_density
 
         # boudary conditions in vertical dimension (z)
@@ -142,39 +148,53 @@ class EnvironmentInput():
 
 
     def __update_env_model__(self, dist):
+        """ Load the environment data at the specified distance from the source.
 
-        new_env = self.__update_env_input__(dist)[0]
-        new_env_any = np.any(new_env)
+            Then update the environment model, by computing the attributes
 
-        if new_env_any:
+                * 
+
+            Args:
+                dist: float
+                    Distance from source in meters
+
+            Returns:
+                new_any: bool
+                    True, if one or more angular bins bins experience a change in the environment attributes.
+                new: 1d numpy array
+                    Indices of those angular bins that experience a change in the environment attributes.
+        """
+        new = self.__update_env_input__(dist)[0]
+        new_any = np.any(new)
+
+        if new_any:
 
             # smooth ssp
-            self.H_c[:,new_env] = (1 + np.tanh(self.height_above_seafloor[:,new_env] / self.smoothing_length_sound_speed / 2)) / 2
-            self.n2in[:,new_env] = self.n2w[:,new_env] + (self.n2b - self.n2w[:,new_env]) * self.H_c[:,new_env]
-            itmp = (self.depths[0,:] == 0) 
+            self.H_c[:,new] = (1 + np.tanh(self.height_above_seafloor[:,new] / self.smoothing_length_sound_speed / 2)) / 2
+            self.n2in[:,new] = self.n2w[:,new] + (self.n2b - self.n2w[:,new]) * self.H_c[:,new]
+            itmp = (self.depth[0,:] == 0) 
             if np.any(itmp):
                 self.n2in[0,itmp] = self.n2b
             
             # smooth density
-            TANH = np.tanh(self.height_above_seafloor[:,new_env] / self.smoothing_length_density / 2)
-            self.H_rho[:,new_env] = (1 + TANH) / 2
-            self.denin[:,new_env] = self.water_density + (self.bottom_density - self.water_density) * self.H_rho[:,new_env]
-            self.sqrt_denin[:,new_env] = np.sqrt(self.denin[:,new_env])
+            TANH = np.tanh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
+            self.H_rho[:,new] = (1 + TANH) / 2
+            self.denin[:,new] = self.water_density + (self.bottom_density - self.water_density) * self.H_rho[:,new]
+            self.sqrt_denin[:,new] = np.sqrt(self.denin[:,new])
             
-            SECH2 = 1 / np.cosh(self.height_above_seafloor[:,new_env] / self.smoothing_length_density / 2)
+            SECH2 = 1 / np.cosh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
             SECH2 = SECH2 * SECH2
-            self.ddenin[:,new_env] =  SECH2 / self.smoothing_length_density / 2 * np.sqrt(1 + self.gradients[:,new_env]**2)
-            self.ddenin[:,new_env] =  (self.bottom_density - self.water_density) / 2 * self.ddenin[:,new_env]
+            self.ddenin[:,new] =  SECH2 / self.smoothing_length_density / 2 * np.sqrt(1 + self.gradient[:,new]**2)
+            self.ddenin[:,new] =  (self.bottom_density - self.water_density) / 2 * self.ddenin[:,new]
 
-            self.d2denin[:,new_env] = -SECH2 / self.smoothing_length_density / 2 * (TANH / self.smoothing_length_density * (1 + self.gradients_mask[:,new_env]**2))
-            self.d2denin[:,new_env] =  (self.bottom_density - self.water_density) / 2 * self.d2denin[:,new_env]
+            self.d2denin[:,new] = -SECH2 / self.smoothing_length_density / 2 * (TANH / self.smoothing_length_density * (1 + self.gradient[:,new]**2))
+            self.d2denin[:,new] =  (self.bottom_density - self.water_density) / 2 * self.d2denin[:,new]
 
-        return new_env_any, new_env
+        return new_any, new
 
 
     def __update_env_input__(self, dist):
-        """ Load the environment data (i.e. bathymetry and sound speed) at 
-            the specified distance from the source.
+        """ Load the environment data at the specified distance from the source.
 
             Args:
                 dist: float
@@ -185,12 +205,20 @@ class EnvironmentInput():
                     Indices of those angular bins that experience a change in 
                     bathymetry and/or sound speed.
         """
-        new = np.logical_or(self.__update_bathy__(dist), self.__update_refractive_index__(dist))
+        new = np.logical_or(self.__update_bathy__(dist), self.__update_sound_speed__(dist))
         return new
 
 
     def __update_bathy__(self, dist):
-        """ Load bathymetry the specified distance from the source.
+        """ Load bathymetry at the specified distance from the source.
+
+            This updates the attributes 
+            
+                * depth
+                * gradient
+                * height_above_seafloor
+                * dist_next_bathy_update
+                * depth_old
 
             Args:
                 dist: float
@@ -205,66 +233,91 @@ class EnvironmentInput():
 
         if (dist == self.dr/2) or (dist >= self.dist_next_bathy_update):
             
-            print('Updating bathymetry at {0:.2f} m'.format(dist))
+            if self.verbose:
+                print('Updating bathymetry at {0:.2f} m'.format(dist))
 
             # next distance at which to update bathymetry
             self.dist_next_bathy_update = dist + self.dn_bathy * self.dr
             
             # get bathymetry
-            depths_new, gradients_new = self.__seafloor_depth__(dist)
+            depth_new, gradient_new = self.__seafloor_depth__(dist)
 
             # which bins have changed bathymetry?
-            new = np.logical_and(self.depths_old != depths_new, np.logical_not(np.isnan(depths_new)))
+            new = np.logical_and(self.depth_old != depth_new, np.logical_not(np.isnan(depth_new)))
 
-            self.depths_old = depths_new
+            # update 'old' attribute
+            self.depth_old = depth_new
 
             # number of vertical bins
             Nz = self.grid.Nz
 
             # mask those entries that haven't changed
-            self.depths[:,new[0]] = np.ones((Nz,1)) * depths_new[new]
-            self.gradients[:,new[0]] = np.ones((Nz,1)) * gradients_new[new]
+            self.depth[:,new[0]] = np.ones((Nz,1)) * depth_new[new]
+            self.gradient[:,new[0]] = np.ones((Nz,1)) * gradient_new[new]
 
             # update height above seafloor matrix
-            self.height_above_seafloor[:,new[0]] = np.abs(self.Z[:,new[0]]) - self.depths[:,new[0]]
+            self.height_above_seafloor[:,new[0]] = np.abs(self.Z[:,new[0]]) - self.depth[:,new[0]]
             
         new = np.squeeze(new)
 
         return new
 
 
-    def __update_refractive_index__(self, dist):
+    def __update_sound_speed__(self, dist):
+        """ Load sound speed at the specified distance from the source.
 
-        new_refr = self._unchanged
+            This updates the attributes
+            
+                * n2w
+                * n2w_new
+                * dist_next_sound_speed_update
 
-        if (dist == self.dr/2) or ((dist >= self.dist_next_sound_speed_update) and not self._range_independent):  # update water column
+            Args:
+                dist: float
+                    Distance from source in meters
 
-            # next distance at which to update water column
+            Returns:
+                new: 1d numpy array
+                    Indices of those angular bins that experience a change in 
+                    sound speed.
+        """
+        new = self._unchanged
+
+        if (dist == self.dr/2) or ((dist >= self.dist_next_sound_speed_update) and not self._range_independent):
+
+            if self.verbose:
+                print('Updating sound speed at {0:.2f} m'.format(dist))
+
+            # next distance at which to update sound speed
             self.dist_next_sound_speed_update = dist + self.dn_sound_speed * self.dr
 
-            # interpolate water nsq
             self.n2w_new = np.copy(self.n2w)
-            IDZ = (self.Z <= 0)
-            idy = np.nonzero(IDZ)[1]
-            IDZ = np.nonzero(IDZ)
-            self.n2w_new[IDZ] = self.__refractive_index__(dist, IDZ)   #sub_NSQ(x(idy).',y(idy).',Z(IDZ));
 
-            k = self.Z.shape
+            # z-q grid points with negative z (i.e. below sea surface)
+            below_sea_surf = np.nonzero(self.Z <= 0)
+
+            # load refractive index squared
+            self.n2w_new[below_sea_surf] = self.__refractive_index__(dist, below_sea_surf)
+
+            # number of vertical bins
+            Nz = self.grid.Nz
+
+            # z indeces below sea surface
             one = np.array([0], dtype=int)
-            indeces = np.arange(start=k[0]-1, step=-1, stop=k[0]/2, dtype=int)
+            indeces = np.arange(start=Nz-1, step=-1, stop=Nz/2, dtype=int)
             indeces = np.concatenate([one, indeces])
 
-            new_refr = np.any(self.n2w[indeces,:] - self.n2w_new[indeces,:] != 0, axis=0)
+            # which z-q grid points have changed refractive index?
+            new = np.any(self.n2w[indeces,:] - self.n2w_new[indeces,:] != 0, axis=0)
 
-            indeces2 = np.arange(start=1, step=1, stop=k[0]/2, dtype=int)
+            # mirror sound-speed profile above/below sea surface
+            indeces2 = np.arange(start=1, step=1, stop=Nz/2, dtype=int)
+            self.n2w_new[np.ix_(indeces2, new)] = self.n2w_new[np.ix_(indeces[1:], new)]
 
-            self.n2w_new[np.ix_(indeces2, new_refr)] = self.n2w_new[np.ix_(indeces[1:], new_refr)]
+            # update 'current' attribute
+            self.n2w[:,new] = self.n2w_new[:,new]       
 
-            self.n2w[:,new_refr] = self.n2w_new[:,new_refr]       
-
-        print('refr: ', new_refr.shape)
-
-        return new_refr
+        return new
 
 
     def __seafloor_depth__(self, dist):
@@ -328,7 +381,10 @@ class EnvironmentInput():
                     Refractive index squared. Has shape (Nz,Nq) where Nz and Nq 
                     are the number of vertical and angular bins, respectively.
         """
-        print(' WARNING: Adopting uniform sound-speed profile')
+
+        print('\n *** WARNING: Adopting uniform sound-speed profile\n')
+
+        # idy = np.nonzero(IDZ)[1]
 
         n = self.Z[IDZ].shape
 

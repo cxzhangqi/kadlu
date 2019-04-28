@@ -173,6 +173,22 @@ class EnvironmentInput():
 
 
     def __update_env_input__(self, dist):
+        """ Update the environment data (i.e. bathymetry and sound speed) at 
+            the specified distance from the source.
+
+            Args:
+                dist: float
+                    Distance from source in meters
+
+            Returns:
+                new: 1d numpy array
+                    Indices of those entries that experience a change in 
+                    bathymetry and/or sound speed. 
+        """
+        print(self.__update_bathy__(dist))
+        print(self.__update_refractive_index__(dist))
+
+
         new = np.logical_or(self.__update_bathy__(dist), self.__update_refractive_index__(dist))
         return new
 

@@ -173,13 +173,11 @@ class EnvironmentInput():
 
 
     def __update_env_input__(self, dist):
-        x = self.xs + self.costheta * dist
-        y = self.ys + self.sintheta * dist
-        new = np.logical_or(self.__update_bathy__(x, y, dist), self.__update_refractive_index__(x, dist))
+        new = np.logical_or(self.__update_bathy__(dist), self.__update_refractive_index__(dist))
         return new
 
 
-    def __update_bathy__(self, x, y, dist):
+    def __update_bathy__(self, dist):
 
         new_bathy = self._unchanged
 
@@ -208,7 +206,7 @@ class EnvironmentInput():
         return new_bathy
 
 
-    def __update_refractive_index__(self, x, dist):
+    def __update_refractive_index__(self, dist):
 
         new_refr = self._unchanged
 
@@ -222,7 +220,7 @@ class EnvironmentInput():
             IDZ = (self.Z <= 0)
             idy = np.nonzero(IDZ)[1]
             IDZ = np.nonzero(IDZ)
-            self.n2w_new[IDZ] = self.__refractive_index__(x=x[idy], YZ=self.Z[IDZ])   #sub_NSQ(x(idy).',y(idy).',Z(IDZ));
+            self.n2w_new[IDZ] = self.__refractive_index__(dist, IDZ)   #sub_NSQ(x(idy).',y(idy).',Z(IDZ));
 
             k = self.Z.shape
             one = np.array([0], dtype=int)
@@ -241,10 +239,10 @@ class EnvironmentInput():
 
 
     def __seafloor_depth__(self, dist):
-        """ Compute seafloor depth and gradient at the specified distance from the source.
+        """ Compute seafloor depth and gradient.
 
-            The depth and gradient are computed at angles given by self.costheta 
-            and self.sintheta.
+            The computation is performed at equally spaced points on a circle, 
+            at the specified distance from the source.
 
             The depth is positive below the sea surface, positive above.
 
@@ -283,14 +281,25 @@ class EnvironmentInput():
         return depth, gradient
 
 
-    def __refractive_index__(self, x, YZ):
+    def __refractive_index__(self, dist, IDZ):
+        """ Compute refractive index squared. 
 
-        # Input:
-        #  x: radial distance
-        #  YZ: YZ grid
-        # returns:
-        #  1) refractive index squared on YZ grid a distance=x
+            The computation is performed at equally spaced points on a circle, 
+            at the specified distance from the source.
 
-        nsq = np.ones(shape=YZ.shape)
+            Args:
+                dist: float
+                    Distance from source in meters
+
+            Returns:
+                nsq: 2d numpy array
+                    Refractive index squared. Has shape (Nz,Nq) where Nz and Nq 
+                    are the number of vertical and angular bins, respectively.
+        """
+        print(' WARNING: Adopting uniform sound-speed profile')
+
+        n = self.Z[IDZ].shape
+
+        nsq = np.ones(n)
 
         return nsq

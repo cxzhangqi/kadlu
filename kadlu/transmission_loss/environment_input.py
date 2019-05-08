@@ -36,6 +36,32 @@ import numpy as np
 from numpy.lib import scimath
 
 class EnvironmentInput():
+    """ Compute the reduction in intensity (transmission loss) of 
+
+        Args:
+            ref_wavenumber: float
+                Reference wavenumber in inverse meters
+            grid: PEGrid
+                Computational grid
+            xs: float
+                Source x coordinate in meters
+            ys: float
+                Source y coordinate in meters
+            freq: float
+                Frequency in Hz
+            steps_btw_bathy_updates: int
+                How often the bathymetry data is updated. If for example steps_btw_bathy_updates=3, the 
+                bathymetry is updated at every 3rd step.
+            steps_btw_sound_speed_updates: int
+                How often the sound-speed data is updated. If for example steps_btw_sound_speed_updates=3, 
+                the sound speed is updated at every 3rd step. By default steps_btw_sound_speed_updates is 
+                set to infinity, corresponding to a range-independent sound speed profile.
+            
+
+        Attributes:
+
+        Example:
+    """
 
     def __init__(self, ref_wavenumber, grid, xs, ys, freq,\
             steps_btw_bathy_updates, steps_btw_sound_speed_updates,\
@@ -152,7 +178,13 @@ class EnvironmentInput():
 
             Then update the environment model, by computing the attributes
 
-                * 
+                * H_c
+                * n2in
+                * H_rho
+                * denin
+                * sqrt_denin
+                * ddenin
+                * d2denin
 
             Args:
                 dist: float
@@ -177,17 +209,17 @@ class EnvironmentInput():
                 self.n2in[0,itmp] = self.n2b
             
             # smooth density
-            TANH = np.tanh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
-            self.H_rho[:,new] = (1 + TANH) / 2
+            _tanh = np.tanh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
+            self.H_rho[:,new] = (1 + _tanh) / 2
             self.denin[:,new] = self.water_density + (self.bottom_density - self.water_density) * self.H_rho[:,new]
             self.sqrt_denin[:,new] = np.sqrt(self.denin[:,new])
             
-            SECH2 = 1 / np.cosh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
-            SECH2 = SECH2 * SECH2
-            self.ddenin[:,new] =  SECH2 / self.smoothing_length_density / 2 * np.sqrt(1 + self.gradient[:,new]**2)
+            _sech2 = 1 / np.cosh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
+            _sech2 = _sech2 * _sech2
+            self.ddenin[:,new] =  _sech2 / self.smoothing_length_density / 2 * np.sqrt(1 + self.gradient[:,new]**2)
             self.ddenin[:,new] =  (self.bottom_density - self.water_density) / 2 * self.ddenin[:,new]
 
-            self.d2denin[:,new] = -SECH2 / self.smoothing_length_density / 2 * (TANH / self.smoothing_length_density * (1 + self.gradient[:,new]**2))
+            self.d2denin[:,new] = -_sech2 / self.smoothing_length_density / 2 * (_tanh / self.smoothing_length_density * (1 + self.gradient[:,new]**2))
             self.d2denin[:,new] =  (self.bottom_density - self.water_density) / 2 * self.d2denin[:,new]
 
         return new_any, new

@@ -226,7 +226,7 @@ class TransmissionLossCalculator():
             import time
             start = time.time()
             print('Begin transmission-loss calculation')
-            print('Source depth is:', source_depth)
+            print('Source depth is: {0} m'.format(source_depth))
             print('Computing the transmission loss at depths:', receiver_depths)
             if ignore_bathy_gradient:
                 print('Ignoring bathymetry gradient')
@@ -352,7 +352,7 @@ class TransmissionLossCalculator():
         if np.ndim(self.TL_dB) == 2:
             tl = self.TL_dB
         elif np.ndim(self.TL_dB) == 3:
-            tl = self.TL_dB[:,:,depth_index]
+            tl = self.TL_dB[depth_index,:,:]
 
         r = self.grid.r[1:]
         q = np.fft.fftshift(np.squeeze(self.grid.q))
@@ -364,8 +364,8 @@ class TransmissionLossCalculator():
         fig = plt.contourf(x, y, tl, 100)
 
         ax = plt.gca()
-        ax.set_xlabel('Longitudinal displacement (m)')
-        ax.set_ylabel('Latitudinal displacement (m)')
+        ax.set_xlabel('x(m)')
+        ax.set_ylabel('y (m)')
         plt.title('Transmission loss at {0:.1f} meters depth'.format(self.receiver_depths[depth_index]))
 
         plt.colorbar(fig, format='%+2.0f dB')

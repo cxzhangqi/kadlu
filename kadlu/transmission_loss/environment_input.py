@@ -168,7 +168,8 @@ class EnvironmentInput():
             self.U[:, indices] = np.exp(1j * self.dr * self.k0 * (-1 + scimath.sqrt( self.n2in[:,indices] + self.attenuation[:,indices] +\
                 1/2 / self.k0**2 * (self.d2denin[:,indices] / self.denin[:,indices] - 3/2 * (self.ddenin[:,indices] / self.denin[:,indices])**2))))
 
-            print('Computing U matrix {0:.2f} m'.format(dist))
+            if self.verbose:
+                print('Computing U matrix {0:.2f} m'.format(dist))
 
         return self.U
 
@@ -413,8 +414,8 @@ class EnvironmentInput():
                     Refractive index squared. Has shape (Nz,Nq) where Nz and Nq 
                     are the number of vertical and angular bins, respectively.
         """
-
-        print('\n *** WARNING: Adopting uniform sound-speed profile\n')
+        if self.verbose:
+            print('\n *** WARNING: Adopting uniform sound-speed profile\n')
 
         # idy = np.nonzero(IDZ)[1]
 

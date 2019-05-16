@@ -41,6 +41,12 @@ from kadlu.transmission_loss.pe_propagator import PEPropagator
 from kadlu.transmission_loss.environment_input import EnvironmentInput
 import math
 
+from sys import platform as sys_pf
+if sys_pf == 'darwin':
+    import matplotlib
+    matplotlib.use("TkAgg")
+from matplotlib import pyplot as plt
+
 
 class TransmissionLossCalculator():
     """ Compute the reduction in intensity (transmission loss) of 
@@ -121,6 +127,19 @@ class TransmissionLossCalculator():
                 Print information during execution
             progress_bar: bool
                 Show progress bar. Only shown if verbose if False.            
+            grid: PEGrid
+                Computational grid
+            TL_dB: numpy array
+                Transmission loss in dB on a horizontal plane at the specified depths. 
+                Has shape (Nd, Nq, Nr) where Nd is the number of depths, Nq is number of 
+                angular bins, and Nr is the number of radial steps. If Nd=1, the first dimension
+                is discarded. 
+            TL_dB_vert: numpy array
+                Transmission loss in dB on a vertical plane for all angular bins. 
+                Has shape (Nz/2, Nr+1, Nq) where Nz is the number of vertical grid points, Nr is 
+                the number of radial steps, and Nq is number of angular bins. 
+            receiver_depths: list of floats
+                Depths of receivers. 
 
         Example:
     """
@@ -168,7 +187,12 @@ class TransmissionLossCalculator():
                 print('Adopting range-independent sound-speed profile')
             else:
                 print('Sound speed will be updated every {0} steps'.format(self.steps_btw_sound_speed_updates))
-                
+
+        self.receiver_depths = None
+        self.grid = None
+        self.TL_db = None
+        self.TL_db_vert = None                
+
 
     def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=True,\
             ignore_bathy_gradient=False):
@@ -176,7 +200,10 @@ class TransmissionLossCalculator():
             and receiver depths.
             
             The transmission loss is computed at every grid point on 
-            one or several horizontal planes at the specified receiver depth(s).
+            one or several horizontal planes at the specified receiver depth(s), 
+            and optionally also on vertical planes for all angular bins.
+
+            The results are stored in the attributes TL_dB and TL_dB_vert.
 
             Args:
                 frequency: float
@@ -275,50 +302,121 @@ class TransmissionLossCalculator():
         # propagate
         output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
 
-        # sound presure in dB
-        sound_pressure = np.fft.fftshift(output.field_horiz[:,:,1:], axes=1)
-        sound_pressure = 20 * np.log10(np.abs(sound_pressure))
-        sound_pressure = np.squeeze(sound_pressure)
+        # transmission loss in dB (horizontal plane)
+        TL_dB = np.fft.fftshift(output.field_horiz[:,:,1:], axes=1)
+        TL_dB = 20 * np.log10(np.abs(TL_dB))
+        TL_dB = np.squeeze(TL_dB)
+
+        # transmission loss in dB (vertical plane)
+        TL_dB_vert = 20 * np.log10(np.abs(output.field_vert[:,:,:]))
+        TL_dB_vert = np.squeeze(TL_dB_vert)
 
         if self.verbose:
             end = time.time()
             print('Calculation completed in {0:.2f} seconds'.format(end - start))
 
-        return sound_pressure
+        # hang on to the relevant data
+        self.grid = grid
+        self.TL_dB = TL_dB
+        self.TL_dB_vert = TL_dB_vert
+        self.receiver_depths = receiver_depths
 
 
-        # ------- plotting ------- #
+    def plot_TL(self, depth_index=0):
+        """ Plot the transmission loss on a horizontal plane at fixed depth.
 
-        # take only first 1/2 of z axis (?)
-        z = grid.z[:int(grid.Nz/2)]
+            The argument `depth_index` referes to the array `receiver_depths` 
+            provided has input argument for the `run` method when the 
+            transmission loss was calculated.
 
-        # rearrange y axis (azimuthal) so values are increasing order
-        y = np.fft.fftshift(grid.q)
+            Returns None if the transmission loss has not been computed.
 
-        import matplotlib.pyplot as plt
-        plot_r = grid.r[1:]
-        plot_theta = np.fft.fftshift(np.squeeze(grid.q))
+            Args:
+                depth_index: int
+                    Depth index.
+
+            Returns:
+                fig: matplotlib.figure.Figure
+                    A figure object.
+        """
+        # check that transmission loss has been calculated
+        if self.TL_dB is None:
+            print("Use the run method to calculate the transmission loss before plotting")
+            return None
+
+        # check that depth_index is valid
+        if depth_index >= len(self.receiver_depths):
+            print('ERROR: Invalid depth index. The depth index cannot be larger than {0}'.format(len(self.receiver_depths)))
+            exit(1)
+
+        if np.ndim(self.TL_dB) == 2:
+            tl = self.TL_dB
+        elif np.ndim(self.TL_dB) == 3:
+            tl = self.TL_dB[:,:,depth_index]
+
+        r = self.grid.r[1:]
+        q = np.fft.fftshift(np.squeeze(self.grid.q))
+
+        r, q = np.meshgrid(r, q)
+        x = r * np.cos(q)
+        y = r * np.sin(q)
+
+        fig = plt.contourf(x, y, tl, 100)
+
+        ax = plt.gca()
+        ax.set_xlabel('Longitudinal displacement (m)')
+        ax.set_ylabel('Latitudinal displacement (m)')
+        plt.title('Transmission loss at {0:.1f} meters depth'.format(self.receiver_depths[depth_index]))
+
+        plt.colorbar(fig, format='%+2.0f dB')
+
+        return fig
 
 
-        if False:
-            R, TH = np.meshgrid(plot_r, plot_theta)
-            XX = R * np.cos(TH)
-            YY = R * np.sin(TH)
-            fig = plt.contourf(XX, YY, sound_pressure, 100)
-            plt.colorbar(fig)
-            plt.show()
+    def plot_TL_vert(self, angle=0):
+        """ Plot the transmission loss on a vertical plane for a selected angular bin.
 
-        if False:
-            fig=plt.figure()
-            q0 = np.argwhere(grid.q >= 0)[0] # angular bin index            
-            ZZ = 20 * np.log10(np.abs(output.field_vert[:,:,q0]))
-            XX, YY = np.meshgrid(grid.r, z)
-            fig = plt.contourf(XX, YY, ZZ, 100)
-            plt.colorbar(fig)
-            ax = plt.gca()
-            ax.invert_yaxis()
-            plt.show()
+            Returns None if the transmission loss has not been computed.
 
+            Args:
+                angle: float
+                    Angle in degrees with respect to the longitudinal axis
+
+            Returns:
+                fig: matplotlib.figure.Figure
+                    A figure object.
+        """
+        # check that transmission loss has been calculated
+        if self.TL_dB_vert is None:
+            print("Use the run method with option vertical_slice set to True to calculate the transmission loss before plotting")
+            return None
+
+        z = self.grid.z[:int(self.grid.Nz/2)]
+        x, y = np.meshgrid(self.grid.r, z)
+
+        # find nearest angular bin
+        if angle <= 180:
+            q0 = angle * np.pi / 180
+        else:
+            q0 = (angle - 360) * np.pi / 180
+
+        idx = np.abs(self.grid.q - q0).argmin()
+
+        tl = np.squeeze(self.TL_dB_vert[:,:,idx])
+
+        fig = plt.figure()
+        fig = plt.contourf(x, y, tl, 100)
+
+        plt.colorbar(fig, format='%+2.0f dB')
+
+        ax = plt.gca()
+        ax.invert_yaxis()
+        ax.set_xlabel('Range (m)')
+        ax.set_ylabel('Depth (m)')
+        angle = self.grid.q[idx] * 180 / np.pi
+        plt.title('Transmission loss at {0:.2f} degrees'.format(angle))
+
+        return fig
 
 
 class PEGrid():

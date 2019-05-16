@@ -15,6 +15,14 @@ global ENV
 x = x(:); y = y(:); % making sure every vector is in columns 
 tmp0 = zeros(size(x)); tmp1 = ones(size(x));  % zeros and ones
 
+
+
+%%%OLI  ENV.WD.field = ones(size(ENV.WD.field)) * 10000;
+%%%OLI xsave = x;
+%%%OLI ysave = y;
+
+
+
 [nx,ny] = size(ENV.WD.field); % check dimensions 
 if nx > 1,
     x(x<ENV.WD.x0)=ENV.WD.x0; x(x>=ENV.WD.x1)=ENV.WD.x1-1e-6;
@@ -93,6 +101,22 @@ if nargout == 4,
     n = [dx./norm; dy./norm; dz./norm]; % normalization
 end
 
+
+
+%%%OLI sigma_x = 10000;
+%%%OLI sigma_y = 30000;
+%%%OLI xc = 0;
+%%%OLI yc = 0;
+%%%OLI exponent = ((xsave-xc).^2)./(2*sigma_x^2) + ((ysave-yc).^2)./(2*sigma_y^2);
+%%%OLI val = exp(-exponent);
+%%%OLI f = val * 10000;
+
+%%%OLI ystep = 10.;
+%%%OLI yp = ysave + ystep;
+%%%OLI exponentp = ((xsave-xc).^2)./(2*sigma_x^2) + ((yp-yc).^2)./(2*sigma_y^2);
+%%%OLI valp = exp(-exponentp);
+%%%OLI fp = valp * 10000;
+%%%OLI dy = (fp - f) / ystep;
 
 return
 

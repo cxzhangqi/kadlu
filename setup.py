@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 #
 # create distribution and upload to pypi.org with:
@@ -14,7 +14,7 @@ setup(name='kadlu',
       author='Mark Thomas, Oliver Kirsebom',
       author_email='markthomas@dal.ca, oliver.kirsebom@dal.ca',
       license='GNU General Public License v3.0',
-      packages=['kadlu'],
+      packages=find_packages(),
       install_requires=[
           'numpy',
           'arlpy',

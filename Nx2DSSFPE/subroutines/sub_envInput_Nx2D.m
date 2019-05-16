@@ -63,6 +63,10 @@ if (dista==dx/2)||(dista>=wd_x_next),
     % DDwdDyy(:,isnewbathy) = ones(size(Z,1),1)*DDwdDyy_new(isnewbathy); %
     Z_sub_wd(:,isnewbathy) = abs(Z(:,isnewbathy))-wd_mask(:,isnewbathy);
     % fprintf('   Updating bathymetry at %.2f m\n',dista)
+%%%OLI     fprintf('z=%.2f\n', wd_new(91))
+%%%OLI     fprintf('x=%.1f\n', x(91))
+%%%OLI     fprintf('y=%.1f\n', y(91))
+%%%OLI     fprintf('grad=%.4E\n', DwdDy_new(91))
 end
 
 % water column
@@ -80,7 +84,7 @@ if (dista==dx/2)||((dista>=NSQ_x_next)&&~range_independent),  % update water col
     n2w_new(IDZ) = sub_NSQ(x(idy).',y(idy).',Z(IDZ));
     clear IDZ
     isnewNSQ = any((n2w([1 size(Z,1):-1:size(Z,1)/2+2],:) ...
-        -n2w_new([1 size(Z,1):-1:size(Z,1)/2+2],:))~=0,1);
+        -n2w_new([1 size(Z,1):-1:size(Z,1)/2+2],:))~=0,1);        
     n2w_new(2:size(Z,1)/2,isnewNSQ) = n2w_new(size(Z,1):-1:size(Z,1)/2+2,isnewNSQ);
     n2w(:,isnewNSQ) = n2w_new(:,isnewNSQ);
     rhow = ENV.rhow;       % water density
@@ -94,7 +98,7 @@ if ~isempty(find(isnew_env,1)),
     H_c(:,isnew_env) = (1 + tanh(Z_sub_wd(:,isnew_env)/smoothing_length_ssp/2) )/2;
     n2in(:,isnew_env) = n2w(:,isnew_env)+(n2b-n2w(:,isnew_env)).*H_c(:,isnew_env);
     itmp = (wd_mask(1,:)==0); if any(itmp), n2in(1,itmp) = n2b; end
-    
+
     % smooth density
     TANH = tanh(Z_sub_wd(:,isnew_env)/smoothing_length_rho/2);
     H_rho(:,isnew_env) = (1 + TANH) /2;

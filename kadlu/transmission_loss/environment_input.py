@@ -424,3 +424,31 @@ class EnvironmentInput():
         nsq = np.ones(n)
 
         return nsq
+
+
+    def seafloor_depth_transect(self, dist, angle):
+        """ Compute seafloor depth along a straight line from the source position.
+
+            Args:
+                dist: numpy array
+                    Distance from source in meters
+                angle: float
+                    Angle in degrees
+
+            Returns:
+                depth: numpy array
+                    Depth at each point. 
+        """
+        angle_rad = angle * np.pi / 180.
+        x = self.xs + np.cos(angle_rad) * dist
+        y = self.ys + np.sin(angle_rad) * dist
+
+        if self.flat_seafloor_depth:
+            n = len(x)
+            depth = self.flat_seafloor_depth * np.ones(n)
+
+        else:
+            depth = self.bathymetry.eval_xy(x=x, y=y)
+            depth *= (-1.)
+            
+        return depth

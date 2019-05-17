@@ -41,7 +41,7 @@ def test_run_TL_calculator():
     calc = TransmissionLossCalculator(bathymetry=None, sound_speed=None, flat_seafloor_depth=10000,\
         step_size=1000, range=10e3, angular_bin_size=45, vertical_bin_size=1000, verbose=True, progress_bar=False)
     calc.run(frequency=10, source_depth=9900)
-    field = calc.TL_dB
+    field = calc.TL
     expected = np.array([[-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
@@ -51,3 +51,7 @@ def test_run_TL_calculator():
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535]])
     np.testing.assert_array_almost_equal(field, expected, decimal=3)
+
+    import matplotlib.pyplot as plt
+    calc.plot_vertical(angle=0, show_bathy=True)
+    plt.show()

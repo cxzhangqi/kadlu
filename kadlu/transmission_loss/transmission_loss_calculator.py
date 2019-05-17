@@ -414,18 +414,9 @@ class TransmissionLossCalculator():
         # bathy
         bathy = self.env_input.seafloor_depth_transect(dist=self.grid.r, angle=angle)
 
-        # min and max transmission loss *above* seafloor
-        above = np.argwhere(y < bathy)
-        tl_min = np.min(tl[above])
-        tl_max = np.max(tl[above])
-
-        a = np.unravel_index(np.argmin(tl, axis=None), tl.shape)
-        b = np.unravel_index(np.argmax(tl, axis=None), tl.shape)
-
-        print(tl_min, tl_max)
-        print(a, b)
-        print(x.shape, y.shape, tl[above].shape)
-
+        # min and max transmission loss (excluding sea surface bin)
+        tl_min = np.min(tl[1:,:])
+        tl_max = np.max(tl[1:,:])
 
         fig = plt.figure()
         fig = plt.contourf(x, y, tl, 100, vmin=tl_min, vmax=tl_max)

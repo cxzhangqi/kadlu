@@ -15,7 +15,7 @@ before_script:
 run-tests:
  type: test
  script:
-  - pytest --doctest-modules
+  - pytest --doctest-modules kadlu/
 
 create-docs:
  type: deploy

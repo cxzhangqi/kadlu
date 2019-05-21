@@ -2,10 +2,7 @@ Installation
 =============
 
 Kadlu is most easily installed using the Anaconda package manager.
-Anaconda is freely available from: ::
-
-    https://docs.anaconda.com/anaconda/install/
-    
+Anaconda is freely available from `docs.anaconda.com/anaconda/install <https://docs.anaconda.com/anaconda/install/>`_. 
 Make sure you get the Python 3.x version. Also, note that the Download button takes you to the macOS installer regardless of your OS, so make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
 
 Clone the Kadlu repository: ::

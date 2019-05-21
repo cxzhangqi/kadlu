@@ -2,7 +2,7 @@ Introduction
 ============
 
 Kadlu is a software package for modeling underwater noise.
-It was developed for the purpose of modeling noise due to waves and rain in shallow coastal waters, but contains tools that would be useful to many other noise modeling tasks.
+It was developed for the purpose of modeling noise due to waves and rain in shallow coastal waters, but contains tools useful for many other noise modeling tasks.
 
 Kadlu is written in Python and utilizes a number of powerful software packages 
 including NumPy, HDF5, NetCDF-4, and GDAL.

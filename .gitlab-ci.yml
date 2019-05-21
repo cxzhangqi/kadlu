@@ -9,8 +9,8 @@ stages:
 before_script:
   - source activate kadlu_env
 
-after_script:
-  - rm -rf kadlu/tests/assets/tmp/*
+#after_script:
+#  - rm -rf kadlu/tests/assets/tmp/*
 
 run-tests:
  type: test

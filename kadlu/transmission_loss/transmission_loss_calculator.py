@@ -129,17 +129,19 @@ class TransmissionLossCalculator():
                 Show progress bar. Only shown if verbose if False.            
             grid: PEGrid
                 Computational grid
-            TL_dB: numpy array
+            TL: numpy array
                 Transmission loss in dB on a horizontal plane at the specified depths. 
                 Has shape (Nd, Nq, Nr) where Nd is the number of depths, Nq is number of 
                 angular bins, and Nr is the number of radial steps. If Nd=1, the first dimension
                 is discarded. 
-            TL_dB_vert: numpy array
+            TL_vertical: numpy array
                 Transmission loss in dB on a vertical plane for all angular bins. 
                 Has shape (Nz/2, Nr+1, Nq) where Nz is the number of vertical grid points, Nr is 
                 the number of radial steps, and Nq is number of angular bins. 
             receiver_depths: list of floats
                 Depths of receivers. 
+            env_input: EnvironmentInput
+                Module holding environment data
 
         Example:
     """
@@ -190,8 +192,9 @@ class TransmissionLossCalculator():
 
         self.receiver_depths = None
         self.grid = None
-        self.TL_db = None
-        self.TL_db_vert = None                
+        self.TL = None
+        self.TL_vertical = None                
+        self.env_input = None
 
 
     def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=True,\
@@ -226,7 +229,7 @@ class TransmissionLossCalculator():
             import time
             start = time.time()
             print('Begin transmission-loss calculation')
-            print('Source depth is:', source_depth)
+            print('Source depth is: {0} m'.format(source_depth))
             print('Computing the transmission loss at depths:', receiver_depths)
             if ignore_bathy_gradient:
                 print('Ignoring bathymetry gradient')
@@ -303,13 +306,13 @@ class TransmissionLossCalculator():
         output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
 
         # transmission loss in dB (horizontal plane)
-        TL_dB = np.fft.fftshift(output.field_horiz[:,:,1:], axes=1)
-        TL_dB = 20 * np.log10(np.abs(TL_dB))
-        TL_dB = np.squeeze(TL_dB)
+        TL = np.fft.fftshift(output.field_horiz[:,:,1:], axes=1)
+        TL = 20 * np.log10(np.abs(TL))
+        TL = np.squeeze(TL)
 
         # transmission loss in dB (vertical plane)
-        TL_dB_vert = 20 * np.log10(np.abs(output.field_vert[:,:,:]))
-        TL_dB_vert = np.squeeze(TL_dB_vert)
+        TL_vertical = 20 * np.ma.log10(np.abs(output.field_vert[:,:,:]))
+        TL_vertical = np.squeeze(TL_vertical)
 
         if self.verbose:
             end = time.time()
@@ -317,12 +320,13 @@ class TransmissionLossCalculator():
 
         # hang on to the relevant data
         self.grid = grid
-        self.TL_dB = TL_dB
-        self.TL_dB_vert = TL_dB_vert
+        self.TL = TL
+        self.TL_vertical = TL_vertical
         self.receiver_depths = receiver_depths
+        self.env_input = env_input
 
 
-    def plot_TL(self, depth_index=0):
+    def plot(self, depth_index=0):
         """ Plot the transmission loss on a horizontal plane at fixed depth.
 
             The argument `depth_index` referes to the array `receiver_depths` 
@@ -340,7 +344,7 @@ class TransmissionLossCalculator():
                     A figure object.
         """
         # check that transmission loss has been calculated
-        if self.TL_dB is None:
+        if self.TL is None:
             print("Use the run method to calculate the transmission loss before plotting")
             return None
 
@@ -349,10 +353,10 @@ class TransmissionLossCalculator():
             print('ERROR: Invalid depth index. The depth index cannot be larger than {0}'.format(len(self.receiver_depths)))
             exit(1)
 
-        if np.ndim(self.TL_dB) == 2:
-            tl = self.TL_dB
-        elif np.ndim(self.TL_dB) == 3:
-            tl = self.TL_dB[:,:,depth_index]
+        if np.ndim(self.TL) == 2:
+            tl = self.TL
+        elif np.ndim(self.TL) == 3:
+            tl = self.TL[depth_index,:,:]
 
         r = self.grid.r[1:]
         q = np.fft.fftshift(np.squeeze(self.grid.q))
@@ -364,8 +368,8 @@ class TransmissionLossCalculator():
         fig = plt.contourf(x, y, tl, 100)
 
         ax = plt.gca()
-        ax.set_xlabel('Longitudinal displacement (m)')
-        ax.set_ylabel('Latitudinal displacement (m)')
+        ax.set_xlabel('x(m)')
+        ax.set_ylabel('y (m)')
         plt.title('Transmission loss at {0:.1f} meters depth'.format(self.receiver_depths[depth_index]))
 
         plt.colorbar(fig, format='%+2.0f dB')
@@ -373,7 +377,7 @@ class TransmissionLossCalculator():
         return fig
 
 
-    def plot_TL_vert(self, angle=0):
+    def plot_vertical(self, angle=0, show_bathy=False):
         """ Plot the transmission loss on a vertical plane for a selected angular bin.
 
             Returns None if the transmission loss has not been computed.
@@ -381,13 +385,15 @@ class TransmissionLossCalculator():
             Args:
                 angle: float
                     Angle in degrees with respect to the longitudinal axis
+                show_bathy: bool
+                    Display bathymetry superimposed on transmission loss
 
             Returns:
                 fig: matplotlib.figure.Figure
                     A figure object.
         """
         # check that transmission loss has been calculated
-        if self.TL_dB_vert is None:
+        if self.TL_vertical is None:
             print("Use the run method with option vertical_slice set to True to calculate the transmission loss before plotting")
             return None
 
@@ -402,10 +408,18 @@ class TransmissionLossCalculator():
 
         idx = np.abs(self.grid.q - q0).argmin()
 
-        tl = np.squeeze(self.TL_dB_vert[:,:,idx])
+        # transmission loss
+        tl = np.squeeze(self.TL_vertical[:,:,idx])
+
+        # bathy
+        bathy = self.env_input.seafloor_depth_transect(dist=self.grid.r, angle=angle)
+
+        # min and max transmission loss (excluding sea surface bin)
+        tl_min = np.min(tl[1:,:])
+        tl_max = np.max(tl[1:,:])
 
         fig = plt.figure()
-        fig = plt.contourf(x, y, tl, 100)
+        fig = plt.contourf(x, y, tl, 100, vmin=tl_min, vmax=tl_max)
 
         plt.colorbar(fig, format='%+2.0f dB')
 
@@ -416,6 +430,9 @@ class TransmissionLossCalculator():
         angle = self.grid.q[idx] * 180 / np.pi
         plt.title('Transmission loss at {0:.2f} degrees'.format(angle))
 
+        if show_bathy:
+            plt.plot(self.grid.r, bathy, 'w')
+            
         return fig
 
 

@@ -1,0 +1,16 @@
+{# layout.html #}
+{# Import the theme's layout. #}
+{% extends "!layout.html" %}
+
+{% set css_files = css_files + ['_static/style.css'] %}
+{% block extrahead %}
+<link href="https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,700" rel="stylesheet"/> 
+<link href="https://fonts.googleapis.com/css?family=Old+Standard+TT" rel="stylesheet"/>
+{% endblock %}
+
+{% block projectdetails  %}
+
+  <div class="version">Underwater acoustic detection and classification with deep neural networks</div>
+  <img id="kadlu-logo" src="{{ pathto('_static/' + 'kadlu_logo.png', 1) }}" alt="Kadlu logo"/>
+
+{% endblock %}

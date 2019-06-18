@@ -169,15 +169,32 @@ class WaveFetch():
             },
             self.fetch_filename)
         
+    def loadERA5(self, target_date = None, wavevar=ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell, grib=None):
+        """ Loads a single time interval slice from a specified grib file of 
+            ERA5 modeled wave parameter data. Returns the grib structure and 
+            descriptive text indicating the extraction extent. 
 
-    def loadERA5(self):
+            Args: 
+                target_date: datetime
+                    Date of internal data product to be fetched.
+                wavevar: ERA5Wavevar
+                    Variable to be loaded.
+                grib: string
+                    Path and filename of grib file from which extraction is to 
+                    be loaded.
 
-    ### ECMWF ERA5 Format:
-    # Source: see ecmwf_era5_grib_load.py, cdsapi API calls
+            Returns:
+                grb: grib structure object
+                    A single variable slice of grib data to plot (data, lat, 
+                    lon).
+                title_text:
+                    Title text snippet to be used in plotting, indicating the 
+                    variable and time slice.
+        """
 
-        # Sample target file
-        #grib = '/home/hilliard/MARIN/08_BigData/50_MERIDIAN/05_kadlu/03_Sample_ECMWF_ERA5/era5_reanalysis_sig_wave_swell_2018_Jan_00_hourly.grib'
-        grib = 'ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2016-04-01_12h.grb2'
+        # If no gribfile argument is provided, default to the fetched file.
+        if grib is None:
+            grib = self.fetch_filename
 
         # load grib structure from target.
         grbs=pygrib.open(grib)
@@ -185,32 +202,29 @@ class WaveFetch():
         # Identify parameter and date for extraction.
         # Date field: validDate
         # Target date (not incl. time yet)
-        #date_valid = datetime(2018,1,29)
-        date_valid = datetime(2016,4,1,12)
+        if (target_date is None):
+            target_date = self.fetch_datetimestamp.replace(minute=0, hour=0, second=0, microsecond=0)
+        else:
+### Should any filtering on time be added here to enforce valid time intervals?
+            target_date = target_date
 
-        # Short ECMWF codes:
-        #   swh - Sig wave height
-        #   mwd - Mean wave direction (degrees)
-        #   mwp - Mean wave period (s)
-        # Short ECMWF field: shortNameECMF --OR-- shortName 
+        # Fetch the indicated slice from the overall Grib file.
+        grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
 
-        # Attempt load of matching data.
-        #grb = grbs.select(validDate=date_valid,name='Significant height of combined wind waves and swell')[0]
-        grb = grbs.select(validDate=date_valid,shortNameECMF='swh')[0]
+        if(wavevar == ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell):
+            title_text = "ERA5 Sig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
+        elif(wavevar == ERA5Wavevar.mean_wave_period):
+            title_text = "ERA5 Mean Wave Period from GRIB\n({}) ".format(target_date)
+        elif(wavevar == ERA5Wavevar.mean_wave_direction):
+            title_text = "ERA5 Mean Wave Direction from GRIB\n({}) ".format(target_date)
+        else:
+            title_text = "ERA5\nUnknown variable from GRIB\n({}) ".format(target_date)
 
-        # Build title text to match.
-        title_text = "Example 3: ECMWF ERA5 Wave Height from GRIB\n({}) ".format(date_valid)
-
-        # Spatial components
-        # longitudeOfFirstGridPointInDegrees
-        # latitutdeOfFirstGridPointInDegrees
-        # Ni
-        # Nj
         return (grb, title_text)
 
         
     def fetchWWIII(self, region=WWIIIRegion.glo_30m, wavevar=WWIIIWavevar.hs, fetch_timestamp=None):
-        """ Locate and download grib file of WWIII modeled wave parameter data to 
+        """ Locate and download grib file of WWIII modelled wave parameter data to 
             storage location, given the WWIII model region, variable of 
             interest and timestamp for the model run. 
 
@@ -302,7 +316,7 @@ class WaveFetch():
         return (grb, title_text)
 
     def fetchRDWPS(self, region=RDWPSRegion.gulf_st_lawrence, wavevar=RDWPSWavevar.HTSGW, fetch_timestamp=None):
-        """ Locate and download grib file of EC/CMC modeled wave parameter data 
+        """ Locate and download grib file of EC/CMC modelled wave parameter data 
             to storage location, given the RDWPS model region, variable
             of interest and timestamp for the model run. 
 
@@ -468,8 +482,8 @@ def main():
     wfTestERA5 = WaveFetch('/home/hilliard/storage/kadlu_storage/', datetime(2018, 1, 1, 0, 0, 0, 0), WaveSources.ECMWF_ERA5)
     wfTestERA5.fetchERA5()
     # Test ERA5 Load
-#    (grbsample, samp_title_text) = loadERA5()
-#    plotSampleGrib(grbsample, samp_title_text)
+    (grbsample, samp_title_text) = wfTestERA5.loadERA5()
+    wfTestERA5.plotSampleGrib(grbsample, samp_title_text)
     '''    
     # Test WWIII end to end
 #    wfTestWWIII = WaveFetch('/tmp/', datetime(2017, 2, 3, 0, 0, 0, 0), WaveSources.ECMWF_ERA5)

@@ -73,13 +73,15 @@ libraries using pip and apt-get. It should work out of the box on newer Ubuntu s
 
 ## Notebook tutorials
 
- 1. [Extract bathymetry data from a matlab file](docs/demo_notebooks/read_bathy.ipynb)
+ 1. [Extract bathymetry data from a matlab file](docs/source/tutorials/read_bathy_tutorial/read_bathy_tutorial.ipynb)
 
- 2. [Polar and planar coordinates](docs/demo_notebooks/coordinates.ipynb)
+ 2. [Polar and planar coordinates](docs/source/tutorials/coordinates_tutorial/coordinates_tutorial.ipynb)
 
- 3. [Interpolate bathymetry data](docs/demo_notebooks/interp_bathy.ipynb)
+ 3. [Interpolate bathymetry data](docs/source/tutorials/interp_bathy_tutorial/interp_bathy_tutorial.ipynb)
 
- 4. [How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)](docs/demo_notebooks/CHS.ipynb)
+ 4. [How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)](docs/source/tutorials/CHS_tutorial/CHS_tutorial.ipynb)
+ 
+ 5. [Calculate transmission loss](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/blob/master/docs/source/tutorials/calc_tl_tutorial/calc_tl_tutorial.ipynb)
 
 
 ## Useful resources

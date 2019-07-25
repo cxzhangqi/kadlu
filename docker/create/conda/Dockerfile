@@ -17,9 +17,6 @@ RUN conda env create -f /app/environment.yml
 RUN echo "source activate $(head -1 /app/environment.yml | cut -d' ' -f2)" > ~/.bashrc
 ENV PATH /opt/conda/envs/$(head -1 /app/environment.yml | cut -d' ' -f2)/bin:$PATH
 
-# instal gsw from conda-forge
-RUN conda install -c conda-forge gsw
-
 # Install the kadlu package using pip
 RUN python setup.py sdist
 RUN pip install dist/kadlu-0.0.1.tar.gz

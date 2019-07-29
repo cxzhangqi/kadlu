@@ -24,6 +24,7 @@ create-docs:
   - pip install --upgrade pip
   - pip install sphinx
   - pip install sphinx_rtd_theme
+  - cd docs/ && pip install sphinx_mer_rtd_theme-0.4.3.dev0.tar.gz && cd ..
  script:
   - cd docs/ && make html && cd ..
  only:

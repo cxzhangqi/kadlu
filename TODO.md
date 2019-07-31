@@ -1,6 +1,7 @@
 ### TODO:
 
 - [ ] Exception module
+    - [ ] Identify list of exceptions to be caught / addressed within scope of software
 - [ ] Creating analogue to bathy_reader for wave data
     - [ ] wave_fetch -- retrieval of data to "read"
         - [ ] Implement storage configuration
@@ -10,7 +11,9 @@
         - [ ] Add fetch handler for DalCoast data
         - [ ] Modify all fetch modules to simultaneously fetch 3 parameters (or N parameters as more are integrated into modeling)
         - [ ] Tidy comments / re-check for comments requesting fixes / modifications
-        - [ ] Migrate test cases in main () out
+        - [ ] Migrate test cases in main () out to either:
+            - [ ] CI elements
+            - [ ] Guides within python notebooks
     - [ ] wave_reader module
         - [ ] Generalize extraction from GRIB to match with needs of model component (to be provided)
 - [ ] Generalize fetch method within wave_fetch 

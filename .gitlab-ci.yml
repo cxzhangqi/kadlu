@@ -1,4 +1,4 @@
-image: oliskir/kadlu:v0.0.1
+image: oliskir/kadlu:v0.0.2
 
 stages:
 - build

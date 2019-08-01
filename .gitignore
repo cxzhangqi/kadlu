@@ -13,4 +13,8 @@ pyost.egg-info/*
 *.vscode
 kadlu.egg-info/*
 urllib.request
-
+playroom/bathy.mat
+build/*
+Nx2DSSFPE/mat_Mariana_Nx2D_longrng*
+.ipynb_checkpoints
+*.prof

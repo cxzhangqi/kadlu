@@ -8,6 +8,7 @@ WORKDIR /app
 COPY kadlu/ /app/kadlu
 COPY setup.py /app
 COPY environment.yml /app/environment.yml
+COPY sphinx_mer_rtd_theme-0.4.3.dev0.tar.gz /app
 
 # Create conda environment
 RUN conda env create -f /app/environment.yml
@@ -19,3 +20,4 @@ ENV PATH /opt/conda/envs/$(head -1 /app/environment.yml | cut -d' ' -f2)/bin:$PA
 # Install the kadlu package using pip
 RUN python setup.py sdist
 RUN pip install dist/kadlu-0.0.1.tar.gz
+RUN pip install sphinx_mer_rtd_theme-0.4.3.dev0.tar.gz

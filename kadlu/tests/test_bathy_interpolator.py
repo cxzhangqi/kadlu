@@ -16,7 +16,7 @@ import os
 import numpy as np
 from kadlu.bathy_reader import BathyReader, LatLon
 from kadlu.bathy_interpolator import BathyInterpolator
-from kadlu.util import R1_IUGG, deg2rad, XYtoLL, LLtoXY
+from kadlu.utils import R1_IUGG, deg2rad, XYtoLL, LLtoXY
 
 # Degree to radian conversion factor
 deg2rad = np.pi / 180.
@@ -268,7 +268,7 @@ def test_can_interpolate_geotiff_data():
     # --- 4 latitudes ---
     lats = [43.3, 43.2, 43.7, 43.5]
     # --- 4 longitudes --- 
-    lons = [-119.6, -119.8, -119.2, -119.3]
+    lons = [-59.6, -59.8, -59.2, -59.3]
     # interpolate
     depths = interp.eval_ll(lat=lats, lon=lons)
     zi = list()
@@ -289,7 +289,7 @@ def test_can_interpolate_geotiff_data_in_xy():
     interp = BathyInterpolator(bathy_reader=reader, method='nearest')
     depth = interp.eval_xy(x=-20e3, y=20e3)
     assert depth == -82.
-    depth = interp.eval_ll(lat=43.69, lon=-119.75)
+    depth = interp.eval_ll(lat=43.69, lon=-59.75)
     assert depth == -82.
     depth = interp.eval_xy(x=-30e3, y=40e3)
     assert depth == -43.
@@ -312,12 +312,12 @@ def test_can_interpolate_geotiff_data_in_ll():
     path = path_to_assets + '/tif/CA2_4300N06000W.tif'
     reader = BathyReader(path)
     interp = BathyInterpolator(bathy_reader=reader, method='nearest')
-    depth = interp.eval_ll(lat=43.6, lon=-119.8)
+    depth = interp.eval_ll(lat=43.6, lon=-59.8)
     assert depth == -188.
-    depth = interp.eval_ll(lat=43.2, lon=-119.8)
+    depth = interp.eval_ll(lat=43.2, lon=-59.8)
     assert depth == pytest.approx(-2011.7, abs=0.1)
     a = [43.6, 43.2]
-    b = [-119.8, -119.8]
+    b = [-59.8, -59.8]
     depth = interp.eval_ll(lat=a, lon=b)
     assert depth[0] == -188.
     assert depth[1] == pytest.approx(-2011.7, abs=0.1)
@@ -326,3 +326,59 @@ def test_can_interpolate_geotiff_data_in_ll():
     assert depth[1][1] == pytest.approx(-2011.7, abs=0.1)
     assert depth[0][1] == -188.
     assert depth[1][0] == pytest.approx(-2011.7, abs=0.1)
+
+def test_can_interpolate_gradient_ll():
+    class Reader():
+        def __init__(self, latlon_SW=None, latlon_NE=None):
+            _=None
+        def read(self, latlon_SW=None, latlon_NE=None):
+            lats = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+            lons = np.array([0.0, 2.0, 4.0, 6.0, 8.0])
+            depths = np.array([[-100, -100, -100, -100, -100],\
+                            [-200, -200, -200, -200, -200],\
+                            [-300, -300, -300, -300, -300],\
+                            [-400, -400, -400, -400, -400],\
+                            [-500, -500, -500, -500, -500]])   
+            return lats, lons, depths
+
+    reader = Reader()
+    interp = BathyInterpolator(bathy_reader=reader)
+    # interpolate as usual
+    depth = interp.eval_ll(lat=1.0, lon=1.0)
+    assert depth == pytest.approx(-200, abs=0.001)
+    # interpolate lat-gradient
+    dzdy = interp.eval_ll(lat=1.0, lon=1.0, lat_deriv_order=1)
+    assert dzdy == pytest.approx(-100./(1.0*np.pi/180), abs=0.001)
+    # interpolate lat+lon gradient
+    dzdydx = interp.eval_ll(lat=1.0, lon=1.0, lat_deriv_order=1, lon_deriv_order=1)
+    assert dzdydx == pytest.approx(0, abs=0.001)
+
+def test_can_interpolate_gradient_xy():
+    class Reader():
+        def __init__(self, latlon_SW=None, latlon_NE=None):
+            _=None
+        def read(self, latlon_SW=None, latlon_NE=None):
+            lats = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+            lons = np.array([0.0, 2.0, 4.0, 6.0, 8.0])
+            depths = np.array([[-100, -100, -100, -100, -100],\
+                            [-200, -200, -200, -200, -200],\
+                            [-300, -300, -300, -300, -300],\
+                            [-400, -400, -400, -400, -400],\
+                            [-500, -500, -500, -500, -500]])   
+            return lats, lons, depths
+
+    reader = Reader()
+    interp = BathyInterpolator(bathy_reader=reader, origin=LatLon(0,0))
+    # convert lat-lon to x-y
+    x,y = LLtoXY(lat=1.0, lon=1.0, lat_ref=0, lon_ref=0)
+    _,y1 = LLtoXY(lat=2.0, lon=1.0, lat_ref=0, lon_ref=0)
+    dy = y1 - y
+    # interpolate as usual
+    depth = interp.eval_xy(x=x, y=y)
+    assert depth == pytest.approx(-200, abs=0.001)
+    # interpolate y-gradient
+    dzdy = interp.eval_xy(x=x, y=y, y_deriv_order=1)
+    assert dzdy == pytest.approx(-100./dy, abs=0.001)
+    # interpolate y+x gradient
+    dzdydx = interp.eval_xy(x=x, y=y, y_deriv_order=1, x_deriv_order=1)
+    assert dzdydx == pytest.approx(0, abs=0.001)

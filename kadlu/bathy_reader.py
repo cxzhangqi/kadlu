@@ -18,7 +18,38 @@ from netCDF4 import Dataset
 from osgeo import gdal
 import scipy.io as sio
 from enum import Enum
-from kadlu.util import get_files
+from kadlu.utils import get_files
+
+
+def write_bathy(lat, lon, bathy, destination, compression=False):
+    """ Write latitude, longitude, and bathymetry data to a file.
+
+        The current implementation only supports MATLAB format (*.mat)
+
+        Returns AssertionError if the destination path does not have *.mat extension.
+
+        Args:
+            lat: 1d numpy array
+                Latitude values
+            lon: 1d numpy array
+                Longitude values
+            bathy: 1d or 2d numpy array
+                Bathymetry values
+            destination: str
+                Name of output file. Must have extension *.mat
+            compression: bool
+                Compress matrices on write. Default is False
+    """
+    # parse file format
+    p = destination.rfind('.')
+    ext = destination[p:]
+    
+    assert ext == '.mat', 'Destination file must have extension *.mat (MATLAB file)'
+
+    output = {'lat': lat, 'lon': lon, 'bathy': bathy}
+    sio.savemat(file_name=destination, mdict=output, do_compression=compression)
+
+    print('Bathymetry data saved to ' + destination)
 
 
 LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
@@ -331,7 +362,6 @@ class BathyReader():
                 z: list(float)
                     Bathymetry values
         """
-
         band_no = 1
 
         # parse south-west corner from file name
@@ -340,10 +370,17 @@ class BathyReader():
         # generate lat-lon arrays
         lats, lons = self._generate_latlon_arrays(sw)
 
-        # get overlap with requested region
-        lat_overlap = self._get_latitude_overlap(lats=lats, south=latlon_SW, north=latlon_NE)
-        lon_overlap = self._get_longitude_overlap(lons=lons, west=latlon_SW, east=latlon_NE)
-        if len(lat_overlap) == 0 or len(lon_overlap) == 0:
+        # lat-lon range
+        lat_min = np.min(lats)
+        lat_max = np.max(lats)
+        lon_min = np.min(lons)
+        lon_max = np.max(lons)
+
+        # check if overlap
+        lat_overlap = (lat_min <= latlon_NE.latitude and lat_max >= latlon_SW.latitude)
+        lon_overlap = (lon_min <= latlon_NE.longitude and lon_max >= latlon_SW.longitude)
+
+        if not (lat_overlap and lon_overlap):
             return list(), list(), list()
 
         # open file
@@ -398,7 +435,7 @@ class BathyReader():
         f = path[path.rfind('/')+1:]
         north = int(f[4:8]) / 100
         west = int(f[9:14]) / 100
-        east = west - 180
+        east = -west
 
         assert east >= -180 and east <= 180, 'Invalid parsed longitude value'
         assert north >= -90 and north <= 180, 'Invalid parsed latitude value'
@@ -437,11 +474,11 @@ class BathyReader():
         dlat = 0.001
 
         # longitude step size in degrees
-        if sw_corner.longitude < 68:
+        if sw_corner.latitude < 68:
             dlon = 0.001
-        elif sw_corner.longitude >=68 and sw_corner.longitude < 80:
+        elif sw_corner.latitude >=68 and sw_corner.latitude < 80:
             dlon = 0.002
-        elif sw_corner.longitude >= 80:
+        elif sw_corner.latitude >= 80:
             dlon = 0.004
 
         lats = np.arange(N, dtype=np.float)
@@ -471,6 +508,10 @@ class BathyReader():
                     Indeces of the entries that are within the prescribed boundaries
         """
         indeces = np.where(np.logical_and(lats <= north.latitude, lats >= south.latitude))
+        indeces = np.squeeze(indeces)
+        if len(indeces.shape) == 0:
+            indeces = indeces[np.newaxis]
+
         return indeces
 
     def _get_longitude_overlap(self, lons, west, east):
@@ -490,6 +531,10 @@ class BathyReader():
                     Indeces of the entries that are within the prescribed boundaries
         """
         indeces = np.where(np.logical_and(lons <= east.longitude, lons >= west.longitude))
+        indeces = np.squeeze(indeces)
+        if len(indeces.shape) == 0:
+            indeces = indeces[np.newaxis]
+
         return indeces
 
     def _get_overlap(self, lats, lons, sw, ne):

@@ -17,3 +17,5 @@ dependencies:
   - GDAL
   - pygrib
   - basemap
+  - tqdm
+  - gsw

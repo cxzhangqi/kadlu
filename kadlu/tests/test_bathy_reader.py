@@ -14,7 +14,7 @@
 import pytest
 import os
 import numpy as np
-from kadlu.bathy_reader import BathyReader, LatLon
+from kadlu.bathy_reader import BathyReader, LatLon, write_bathy
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
 
@@ -90,3 +90,23 @@ def test_can_read_bathymetry_from_two_geotiff_files():
     assert np.max(lat12) == np.max(lat2)
     assert min(np.min(lon1),np.min(lon2)) == np.min(lon12)
     assert max(np.max(lon1),np.max(lon2)) == np.max(lon12)
+
+def test_can_write_bathymetry_to_matlab_file():
+    path = path_to_assets + '/tmp.mat'
+    # create dummy data and save to file
+    lats = [40, 50, 60]
+    lons = [-55, -54]
+    bathy = [[-440, -460],\
+             [-540, -560],\
+             [-640, -660]]
+    write_bathy(lat=lats, lon=lons, bathy=bathy, destination=path)
+    # read back in 
+    reader = BathyReader(input=path, lat_name='lat', lon_name='lon', bathy_name='bathy')
+    lats1, lons1, bathy1 = reader.read()
+    assert lats1.shape[0] == 3
+    assert lons1.shape[0] == 2
+    assert bathy1.shape[0] == 3
+    assert bathy1.shape[1] == 2
+    assert np.all(bathy1 == np.array(bathy))
+    # clean
+    os.remove(path)

@@ -14,13 +14,13 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../kadlu'))
+sys.path.insert(0, os.path.abspath('../../'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'Kadlu'
-copyright = '2019, Casey Hillard, Oliver Kirsebom'
+project = 'kadlu'
+copyright = '2019 MERIDIAN'
 author = 'Casey Hillard, Oliver Kirsebom'
 
 # The short X.Y version
@@ -39,6 +39,8 @@ release = '0.0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.autosummary',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
@@ -83,20 +85,30 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'sphinx_mer_rtd_theme'
+
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {'collapse_navigation': False, 'logo_only': False}
+using_rtd_theme = True
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-html_logo = '_static/logo.png'
+#html_logo = '_static/logo.png'
+#html_logo = '_static/MERIDIAN_Col_Logo.png'
+html_context = {
+    'css_files': ['_static/custom.css'],
+}
+def setup(app):
+    app.add_stylesheet('_static/custom.css')
+
+
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -177,3 +189,7 @@ intersphinx_mapping = {'https://docs.python.org/': None}
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+auto_doc_member_order = "groupwise"
+autoclass_content = "class"
+autosummary_generate = []

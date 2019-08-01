@@ -30,29 +30,36 @@ Kadlu uses a number of standard Python libraries such as
 numpy, scipy, and matplotlib, plus a few C libraries:
  
   * [HDF5 (Hierarchical Data Format)](https://www.hdfgroup.org/) 
-  * [NetCDF-4 (Network Common Data Form](https://www.unidata.ucar.edu/software/netcdf/)
+  * [NetCDF-4 (Network Common Data Form)](https://www.unidata.ucar.edu/software/netcdf/)
   * [GDAL (Geospatial Data Abstraction Library)](https://www.gdal.org/)
 
 Installation of these libraries is most easily accomplished using Anaconda.
 
 ## Installation with Anaconda
  
- 1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/)
+ 1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/).<br/>
+    Make sure you get the Python 3.x version.<br/>
+    Note that the Download button takes you to the macOS installer regardless of your OS, so make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
+ 
  2. Clone the Kadlu repository
     ```terminal
       git clone https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu.git
       cd kadlu
     ```
+    Note: Windows users may find it easier to download the source code using Gitlab's ''Download zip'' option.
+
  3. Create and activate Anaconda environment (this installs all dependencies)
     ```terminal
       conda env create -f environment.yml
-      source activate kadlu_env
+      conda activate kadlu_env
     ```
+ 
  4. Install Kadlu
     ```terminal
       python setup.py sdist
       pip install dist/kadlu-0.0.1.tar.gz
     ```
+ 
  5. Check that everything is working by running pytest
     ```terminal
       pytest
@@ -69,10 +76,17 @@ Kadlu can fetch environmental data from a variety of remote resources, including
 
 ## Notebook tutorials
 
- 1. [Extract bathymetry data from a matlab file](docs/demo_notebooks/read_bathy.ipynb)
+ 1. [Extract bathymetry data from a matlab file](docs/source/tutorials/read_bathy_tutorial/read_bathy_tutorial.ipynb)
 
- 2. [Polar and planar coordinates](docs/demo_notebooks/coordinates.ipynb)
+ 2. [Polar and planar coordinates](docs/source/tutorials/coordinates_tutorial/coordinates_tutorial.ipynb)
 
- 3. [Interpolate bathymetry data](docs/demo_notebooks/interp_bathy.ipynb)
+ 3. [Interpolate bathymetry data](docs/source/tutorials/interp_bathy_tutorial/interp_bathy_tutorial.ipynb)
 
- 4. [How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)](docs/demo_notebooks/CHS.ipynb)
+ 4. [How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)](docs/source/tutorials/CHS_tutorial/CHS_tutorial.ipynb)
+ 
+ 5. [Calculate transmission loss](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/blob/master/docs/source/tutorials/calc_tl_tutorial/calc_tl_tutorial.ipynb)
+
+
+## Useful resources
+
+ *  [gsw Python package](https://github.com/TEOS-10/GSW-Python) (Python implementation of the Thermodynamic Equation of Seawater 2010)

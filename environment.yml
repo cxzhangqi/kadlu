@@ -1,4 +1,7 @@
 name: kadlu_env
+channels:
+  - defaults
+  - conda-forge
 dependencies:
   - make
   - pip
@@ -12,3 +15,4 @@ dependencies:
   - netCDF4
   - h5py
   - GDAL
+  - pygrib

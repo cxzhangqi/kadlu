@@ -18,3 +18,5 @@ build/*
 Nx2DSSFPE/mat_Mariana_Nx2D_longrng*
 .ipynb_checkpoints
 *.prof
+.cache/*
+*.pyc

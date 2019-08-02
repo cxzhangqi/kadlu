@@ -31,6 +31,7 @@ ENV C_INCLUDE_PATH=/usr/include/gdal
 
 # Install packages specified in requirements.txt (including GDAL)
 RUN pip install -r requirements.txt
+RUN pip install git+https://github.com/matplotlib/basemap.git
 
 RUN python setup.py sdist
 RUN pip install dist/kadlu-0.0.1.tar.gz

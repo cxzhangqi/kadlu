@@ -1,4 +1,4 @@
-image: oliskir/kadlu:v0.0.2
+image: oliskir/kadlu:v0.0.3
 
 stages:
 - build
@@ -7,7 +7,7 @@ stages:
 - trig
 
 before_script:
-  - source activate kadlu_env_2
+  - source activate kadlu_env_3
 
 #after_script:
 #  - rm -rf kadlu/tests/assets/tmp/*
@@ -20,7 +20,7 @@ run-tests:
 create-docs:
  type: deploy
  before_script: # overwrites global before_script
-  - source activate kadlu_env_2
+  - source activate kadlu_env_3
   - pip install --upgrade pip
   - pip install sphinx
   - pip install sphinx_rtd_theme
@@ -33,7 +33,7 @@ create-docs:
 create-package:
  type: deploy
  script:
-  - source activate kadlu_env_2
+  - source activate kadlu_env_3
   - python setup.py sdist
   - pip install dist/kadlu-0.0.1.tar.gz
  only:

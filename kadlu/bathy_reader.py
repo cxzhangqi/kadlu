@@ -125,7 +125,7 @@ class BathyReader():
                 However, for GeoTIFF and XYZ formats this can also be the name of 
                 a folder containing multiple *.tif or *.xyz files.
             lat_name: str
-                Name of the variable that contains the latitue values. 
+                Name of the variable that contains the latitude values. 
                 Only relevant for NetCDF and MATLAB files.
             lon_name: str
                 Name of the variable that contains the longitude values.

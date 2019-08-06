@@ -1,4 +1,4 @@
-name: kadlu_env_3
+name: kadlu_env
 channels:
   - defaults
   - conda-forge

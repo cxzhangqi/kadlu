@@ -6,13 +6,13 @@ cp ../../../environment.yml .
 cp ../../../../meridian-rtd-theme/dist/sphinx_mer_rtd_theme-0.4.3.dev0.tar.gz .
 
 # build image
-docker build --tag=kadlu_v0.0.2 .
+docker build --tag=kadlu_v0.0.1 .
 
 # tag image
-docker tag kadlu_conda_test1 oliskir/kadlu:v0.0.2
+docker tag kadlu_v0.0.1 oliskir/kadlu:v0.0.1
 
 # push image to repository
-docker push oliskir/kadlu:v0.0.2
+docker push oliskir/kadlu:v0.0.1
 
 # clean
 rm -rf kadlu

@@ -13,7 +13,7 @@
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-
+from enum import Enum
 import numpy as np
 import pygrib
 
@@ -62,27 +62,27 @@ class WaveReader():
         self.lon_axis = lon_axis    
 
     def _read_grib(self, date, date_interval, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
-    """ Read longitude, latitude, and wave parameter matrices from file, given a specific timestamp and
-        region.
+        """ Read longitude, latitude, and wave parameter matrices from file, given a specific timestamp and
+            region.
 
-        Args: 
-            date: Timestamp
-                Timestamp of data to be extracted from GRIB2 input file(s).
-            date_interval: Timedelta
-                Interval of time over which GRIB file is stepped.
-            latlon_SW: LatLon
-                South-western (SW) boundary of the region of interest.
-            latlon_NE: LatLon
-                North-eastern (NE) boundary of the region of interest.
+            Args: 
+                date: Timestamp
+                    Timestamp of data to be extracted from GRIB2 input file(s).
+                date_interval: Timedelta
+                    Interval of time over which GRIB file is stepped.
+                latlon_SW: LatLon
+                    South-western (SW) boundary of the region of interest.
+                latlon_NE: LatLon
+                    North-eastern (NE) boundary of the region of interest.
 
-        Returns:
-            lat: 1d numpy array
-                Latitude values
-            lon: 1d numpy array
-                Longitude values
-            param: 2d numpy array
-                Parameter values
-    """
+            Returns:
+                lat: 1d numpy array
+                    Latitude values
+                lon: 1d numpy array
+                    Longitude values
+                param: 2d numpy array
+                    Parameter values
+        """
         # load data
         grib = Dataset(self.files[0])
 

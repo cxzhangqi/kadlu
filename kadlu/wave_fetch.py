@@ -110,26 +110,26 @@ class WaveFetch():
     def __init__(self, storage_location=None, fetch_datetimestamp=datetime.now(), wave_source=WaveSources.ECMWF_ERA5):
 
 ### ADD VALIDATION (file -- exists and source -- isa -> WaveSource) (CH 20190418)
-        def init_default_storage_dir(self):
+        def init_default_storage_dir(self, msg):
             self.storage_location = (os.path.abspath(dirname(dirname(__file__))) + "/storage/")
             if not os.path.isdir(self.storage_location):
                 os.mkdir(self.storage_location)
-            warnings.warn("null value or missing kadlu/config.ini, defaulting to " + self.storage_location)
+            warnings.warn("%s\nstorage location will be set to %s" % (msg, self.storage_location))
 
-        if storage_location is None:  # read from config.ini 
+        self.storage_location = storage_location
+
+        if self.storage_location is None:  # read from config.ini 
             cfg = configparser.ConfigParser()
-            cfg.read(os.path.join(dirname(dirname(__file__)),"config.ini"))
+            cfg.read(os.path.join(dirname(dirname(__file__)), "config.ini"))
             try:
                 self.storage_location = cfg["storage"]["StorageLocation"]
             except KeyError:  # missing config file
-                init_default_storage_dir(self)
+                init_default_storage_dir(self, "missing kadlu/config.ini")
         elif self.storage_location is '':  # null value in config.ini
-            init_default_storage_dir(self)
-        else:
-            self.storage_location = storage_location
+            init_default_storage_dir(self, "null value in kadlu/config.ini")
 
         if (not os.path.isdir(self.storage_location)):
-            raise Exception("storage location not found: %s" % self.storage_location )
+            init_default_storage_dir(self, "storage location doesn't exist")
   
         # Date and source.
         self.fetch_datetimestamp = fetch_datetimestamp

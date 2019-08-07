@@ -15,7 +15,6 @@ import numpy as np
 from datetime import datetime, timedelta
 from enum import Enum
 from kadlu.wave_fetch import WaveFetch, WaveSources
-import urllib.request
 
 # currently the default storage location is ~/kadlu/storage
 # maybe in the future this can be configured by the user

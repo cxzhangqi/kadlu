@@ -13,7 +13,7 @@
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-
+from enum import Enum
 import numpy as np
 import pygrib
 

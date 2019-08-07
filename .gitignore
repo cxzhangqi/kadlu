@@ -20,3 +20,4 @@ Nx2DSSFPE/mat_Mariana_Nx2D_longrng*
 *.prof
 .cache/*
 *.pyc
+storage

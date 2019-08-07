@@ -20,6 +20,9 @@ from datetime import datetime, timedelta
 from enum import Enum
 import urllib.request
 import os.path
+from os.path import dirname
+import configparser
+import warnings
 
 # API for fetching from ECMWF data, requires definition of .cdsapirc file with 
 # download URL / key pair.
@@ -104,11 +107,29 @@ class WaveFetch():
                 See ().
             
     """
-    def __init__(self, storage_location = '/tmp/', fetch_datetimestamp=datetime.now(), wave_source=WaveSources.ECMWF_ERA5):
+    def __init__(self, storage_location=None, fetch_datetimestamp=datetime.now(), wave_source=WaveSources.ECMWF_ERA5):
 
 ### ADD VALIDATION (file -- exists and source -- isa -> WaveSource) (CH 20190418)
-        # Copy over init parameters. Verify valid storage location.
-        self.storage_location = storage_location
+        def init_default_storage_dir(self):
+            self.storage_location = (os.path.abspath(dirname(dirname(__file__))) + "/storage/")
+            if not os.path.isdir(self.storage_location):
+                os.mkdir(self.storage_location)
+            warnings.warn("null value or missing kadlu/config.ini, defaulting to " + self.storage_location)
+
+        if storage_location is None:  # read from config.ini 
+            cfg = configparser.ConfigParser()
+            cfg.read(os.path.join(dirname(dirname(__file__)),"config.ini"))
+            try:
+                self.storage_location = cfg["storage"]["StorageLocation"]
+            except KeyError:  # missing config file
+                init_default_storage_dir(self)
+        elif self.storage_location is '':  # null value in config.ini
+            init_default_storage_dir(self)
+        else:
+            self.storage_location = storage_location
+
+        if (not os.path.isdir(self.storage_location)):
+            raise Exception("storage location not found: %s" % self.storage_location )
   
         # Date and source.
         self.fetch_datetimestamp = fetch_datetimestamp

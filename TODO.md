@@ -4,10 +4,10 @@
     - [ ] Identify list of exceptions to be caught / addressed within scope of software
 - [ ] Creating analogue to bathy_reader for wave data
     - [ ] wave_fetch -- retrieval of data to "read"
-        - [ ] Implement storage configuration
-            - [ ] Identify means of user specification of storage space
-            - [ ] Reference user specified storage space within fetch functions
-                - [ ] Fix function headers referencing storage
+        - [x] Implement storage configuration
+            - [x] Identify means of user specification of storage space
+            - [x] Reference user specified storage space within fetch functions
+                - [x] Fix function headers referencing storage
         - [ ] Add fetch handler for DalCoast data
         - [ ] Modify all fetch modules to simultaneously fetch 3 parameters (or N parameters as more are integrated into modeling)
         - [ ] Tidy comments / re-check for comments requesting fixes / modifications

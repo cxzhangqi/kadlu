@@ -8,6 +8,7 @@ stages:
 
 before_script:
   - source activate kadlu_env
+  - pip install urllib
 
 #after_script:
 #  - rm -rf kadlu/tests/assets/tmp/*

@@ -20,3 +20,4 @@ dependencies:
   - cdsapi
   - tqdm
   - gsw
+  - urllib

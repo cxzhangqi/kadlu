@@ -402,7 +402,7 @@ class BathyReader():
         num_lat = z.shape[0]
         num_lon = z.shape[1]
         if num_lat != len(lats) or num_lon != len(lons):
-            print('Warning: CHS matrix has unexpected shape {0} x {1}'.format(num_lat, num_lon))
+            print('Warning: Bathymetry data from {0} has shape {1} x {2} whereas {3} x {4} was expected'.format(path, num_lat, num_lon, len(lats), len(lons)))
             lats, lons = self._generate_latlon_arrays(sw, num_lat=num_lat, num_lon=num_lon)
 
         # grid

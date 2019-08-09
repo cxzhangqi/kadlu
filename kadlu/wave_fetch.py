@@ -129,7 +129,7 @@ class WaveFetch():
         elif self.storage_location is '':  # null value in config.ini
             init_default_storage_dir(self, "null value in kadlu/config.ini.")
 
-        if not path.isdir(self.storage_location):  # verify the location exists
+        if not os.path.isdir(self.storage_location):  # verify the location exists
             init_default_storage_dir(self, "storage location doesn't exist.")
 
         # TODO:

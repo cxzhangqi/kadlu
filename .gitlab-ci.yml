@@ -8,8 +8,7 @@ stages:
 
 before_script:
   - source activate kadlu_env
-  - touch /root/.cdsapirc
-  - echo -e "\nurl: https://cds.climate.copernicus.eu/api/v2\nkey: 20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3\n" > /root/.cdsapirc
+    echo -e "\nurl: https://cds.climate.copernicus.eu/api/v2\nkey: 20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3\n" > /root/.cdsapirc
 
 #after_script:
 #  - rm -rf kadlu/tests/assets/tmp/*

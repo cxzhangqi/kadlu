@@ -124,7 +124,7 @@ class WaveFetch():
             cfg.read(os.path.join(dirname(dirname(__file__)), "config.ini"))
             try:
                 self.storage_location = cfg["storage"]["StorageLocation"]
-            except KeyError:  # missing config file
+            except KeyError:  # missing config.ini file
                 init_default_storage_dir(self, "missing kadlu/config.ini.")
         elif self.storage_location is '':  # null value in config.ini
             init_default_storage_dir(self, "null value in kadlu/config.ini.")

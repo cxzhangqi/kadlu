@@ -395,7 +395,15 @@ class BathyReader():
 
         # flip bathy matrix
         z = np.flip(z, axis=0)
-#        z = np.swapaxes(z, 0, 1)
+
+        # check that shape fits with size of lat and lon arrays
+        # if not, issue a warning and re-compute the lat and lon arrays
+        # to ensure that they fit
+        num_lat = z.shape[0]
+        num_lon = z.shape[1]
+        if num_lat != len(lats) or num_lon != len(lons):
+            print('Warning: Bathymetry data from {0} has shape {1} x {2} whereas {3} x {4} was expected'.format(path, num_lat, num_lon, len(lats), len(lons)))
+            lats, lons = self._generate_latlon_arrays(sw, num_lat=num_lat, num_lon=num_lon)
 
         # grid
         x = lons
@@ -443,11 +451,11 @@ class BathyReader():
         sw_corner = LatLon(north, east)
         return sw_corner
 
-    def _generate_latlon_arrays(self, sw_corner):
+    def _generate_latlon_arrays(self, sw_corner, num_lat=1001, num_lon=1001):
         """ Compute latitude and longitude values for a single 
             bathymetry file from the Canadian Hydrographic Service.
 
-            The number of lat/lon values is 1001.
+            The number of lat/lon values is 1001 by default.
 
             The latitude binning is 0.001 degrees.
 
@@ -460,6 +468,10 @@ class BathyReader():
             Args: 
                 sw_corner: LatLon
                     Latitude and longitude of the SW corner of the data set
+                num_lat: int
+                    Number of latitude grid points
+                num_lon: int
+                    Number of longitude grid points
 
             Returns:
                 lats: numpy array
@@ -467,9 +479,6 @@ class BathyReader():
                 lons: numpy array
                     Uniformly spaced longitude values 
         """
-        # number of data points        
-        N = 1001
-
         # latitude step size in degrees
         dlat = 0.001
 
@@ -481,11 +490,11 @@ class BathyReader():
         elif sw_corner.latitude >= 80:
             dlon = 0.004
 
-        lats = np.arange(N, dtype=np.float)
+        lats = np.arange(num_lat, dtype=np.float)
         lats *= dlat
         lats += sw_corner.latitude
 
-        lons = np.arange(N, dtype=np.float)
+        lons = np.arange(num_lon, dtype=np.float)
         lons *= dlon
         lons += sw_corner.longitude
 

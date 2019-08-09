@@ -8,11 +8,6 @@ stages:
 
 before_script:
   - source activate kadlu_env
-  - touch /root/.cdsapirc
-  - echo >> /root/.cdsapirc
-  - echo "url: https://cds.climate.copernicus.eu/api/v2" >> /root/.cdsapirc
-  - echo "key: 20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3" >> /root/.cdsapirc
-  - echo >> /root/.cdsapirc
 
 #after_script:
 #  - rm -rf kadlu/tests/assets/tmp/*
@@ -30,6 +25,11 @@ create-docs:
   - pip install sphinx
   - pip install sphinx_rtd_theme
   - cd docs/ && pip install sphinx_mer_rtd_theme-0.4.3.dev0.tar.gz && cd ..
+  - touch /root/.cdsapirc
+  - echo >> /root/.cdsapirc
+  - echo "url: https://cds.climate.copernicus.eu/api/v2" >> /root/.cdsapirc
+  - echo "key: 20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3" >> /root/.cdsapirc
+  - echo >> /root/.cdsapirc
  script:
   - cd docs/ && make html && cd ..
  only:

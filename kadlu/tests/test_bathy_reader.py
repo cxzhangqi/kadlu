@@ -27,11 +27,10 @@ cfg.read("config.ini")
 try:
     cfg.read(os.path.join(dirname(dirname(dirname(__file__))),"config.ini"))
     path_to_assets = cfg["storage"]["TestingData"]
-    assert(path_to_assets is not '')
+    assert(path_to_assets.replace(" ", "") is not '')
 except:
     path_to_assets = os.path.abspath(os.path.join(dirname(__file__), "assets"))
-    warnings.warn("null value or missing kadlu/config.ini, defaulting to " 
-            + path_to_assets)
+    warnings.warn("null TestingData value or missing kadlu/config.ini, testing data will be saved to %s" % path_to_assets)
 
 def test_can_read_bathymetry_from_netcdf_file():
     path = path_to_assets + '/bornholm.nc'

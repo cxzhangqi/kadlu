@@ -59,6 +59,8 @@ class RDWPSWavevar(Enum):
     WVDIR = "mwd" 
     PKPER = "mwp"
 
+class DalCoastWavevar(Enum):
+    var = "var"
 
 class RDWPSRegion(Enum):
     """ Enum class forecast region names in EC RDWPS source
@@ -83,6 +85,9 @@ class WWIIIRegion(Enum):
     at_4m = "Gulf of Mexico and NW Atlantic 4 min"
     wc_4m = "US West Coast 4 min"
     ak_4m = "Alaskan 4 min"
+
+class DalCoastRegion(Enum):
+    var = "var"
 
 
 class WaveFetch():
@@ -142,7 +147,7 @@ class WaveFetch():
     
     # Linux/UNIX config: https://cds.climate.copernicus.eu/api-how-to
     # Windows config: https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows
-    def fetchERA5(self, wavevar=ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell,fetch_timestamp=None):
+    def fetchERA5(self, wavevar=ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell, fetch_timestamp=None):
         """ Locate and download grib file of ERA5 modeled wave parameter data to 
             storage location, given the variable of interest and timestamp for 
             the model run. 
@@ -157,7 +162,7 @@ class WaveFetch():
                 None.
         """
 
-        # Use module default timestamp if not overridden.
+         # Use module default timestamp if not overridden.
         if(fetch_timestamp is None):
             fetch_timestamp = self.fetch_datetimestamp
 
@@ -177,10 +182,7 @@ class WaveFetch():
         # Check if a file under the target name already exists, abort fetch if so.
         if os.path.isfile(self.fetch_filename):
             print("File exists, skipping retrieval.")
-
-        # Attempt to retrieve the referenced target, if necessary.
-        else:
-
+        else:  # Attempt to retrieve the referenced target, if necessary.
             c.retrieve(
             'reanalysis-era5-single-levels',
             {
@@ -194,7 +196,7 @@ class WaveFetch():
             },
             self.fetch_filename)
         
-    def loadERA5(self, target_date = None, wavevar=ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell, grib=None):
+    def loadERA5(self, target_date=None, wavevar=ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell, grib=None):
         """ Loads a single time interval slice from a specified grib file of 
             ERA5 modeled wave parameter data. Returns the grib structure and 
             descriptive text indicating the extraction extent. 
@@ -286,7 +288,7 @@ class WaveFetch():
             
             urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
 
-    def loadWWIII(self, target_date = None, wavevar=WWIIIWavevar.hs, grib=None):
+    def loadWWIII(self, target_date=None, wavevar=WWIIIWavevar.hs, grib=None):
         """ Loads a single time interval slice from a specified grib file of 
             WWIII modeled wave parameter data. Returns the grib structure and 
             descriptive text indicating the extraction extent. 
@@ -361,7 +363,7 @@ class WaveFetch():
         if(fetch_timestamp is None):
             fetch_timestamp = self.fetch_datetimestamp
 
-        # Peel off strings from fetch date for component parts of the fetchc url
+        # Peel off strings from fetch date for component parts of the fetch url
         fetch_year = fetch_timestamp.strftime("%Y") 
         fetch_month = fetch_timestamp.strftime("%m")
         fetch_day = fetch_timestamp.strftime("%d")
@@ -387,18 +389,17 @@ class WaveFetch():
         # Source (daily only): URL: http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/HH/CMC_rdwps_gulf-st-lawrence_PARAM_SFC_0_latlon0.05x0.05_YYYYMMDD00_PTTT.grib2
         # HH Forecast product hour 00/03/06/09; PARAM - forecast parameter; YYYYMMDD (Current date); TTT - Target forecast out in 3hr intervals from 000 (?nowcast) to 48 hrs out
         fetchURLString = 'http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/' + fetch_forecast_hour + '/CMC_rdwps_' + hyph_region_name + '_' + wavevar.name + '_' + level_ref + '_latlon0.05x0.05_' + fetch_year + fetch_month + fetch_day + fetch_forecast_hour + '_P' + fetch_prediction_hour + '.grib2'
+
         self.fetch_filename = self.storage_location + 'CMC_rdwps_' + hyph_region_name + '_' + wavevar.name + '_' + level_ref + '_latlon0.05x0.05_' + fetch_year + fetch_month + fetch_day + fetch_forecast_hour + '_P' + fetch_prediction_hour + '.grib2'
 
         # Check if a file under the target name already exists, abort fetch if so.
         if os.path.isfile(self.fetch_filename):
             print("File exists, skipping retrieval.")
-
         # Attempt to retrieve the referenced target, if necessary.
         else:
-
             urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
 
-    def loadRDWPS(self, target_date = None, wavevar=RDWPSWavevar.HTSGW, grib=None):
+    def loadRDWPS(self, target_date=None, wavevar=RDWPSWavevar.HTSGW, grib=None):
         """ Loads a single time interval slice from a specified grib file of 
             modeleted RDWPS wave parameter data. Returns the grib structure and 
             descriptive text indicating the extraction extent. 
@@ -429,7 +430,6 @@ class WaveFetch():
 
         # If no date argument is provided, default to the module timestamp, truncated to nearest earlier 6-hour interval.
         if target_date is None:
-
             rep_hour = ((self.fetch_datetimestamp.hour % 24) // 6) * 6
             target_date = self.fetch_datetimestamp.replace(minute=0, hour=rep_hour, second=0, microsecond=0)
         else:
@@ -456,7 +456,44 @@ class WaveFetch():
 
         return (grb, title_text)
 
-    def plotSampleGrib(self,grb,title_text):
+    def fetchDalCoast(self, region=DalCoastRegion.var, wavevar=DalCoastWavevar.var, fetch_timestamp=None):
+
+        if fetch_timestamp is None:  # Use module default timestamp if none
+            fetch_timestamp = self.fetch_datetimestamp
+
+        # TODO:
+        # create DalCoast API handler to request data
+        pass
+
+    def loadDalCoast(self, target_date=None, wavevar=DalCoastWavevar.var, grib=None):
+        """
+            Args: 
+                target_date: datetime
+                    Date of internal data product to be fetched.
+                wavevar: RDWPSWavevar
+                    Variable to be loaded.
+                grib: string
+                    Path and filename of grib file from which extraction is to be 
+                    loaded.
+
+            Returns:
+                grb: grib structure object
+                    A single variable slice of grib data to plot (data, lat, lon).                    
+                title_text:
+                    Title text snippet to be used in plotting, indicating the 
+                    variable and time slice.
+        """
+        # TODO:
+        # load grib
+        # Fetch slice of data corresponding to selected target date and wave variable.
+            #swh	- significant height of combined wind waves and swell, metres (HTSGW)
+            #mwp	- primary wave mean period, seconds (PKPER)
+            #mwd	- primary wind wave direction, degrees true (i.e. 0 deg = North; proceeding clockwise) (WVDIR)
+        # return grib and some title text
+        pass
+        return (None, None)
+
+    def plotSampleGrib(self, grb, title_text):
         """ Plots a single time interval slice from a specified grib file to
         test functionality. Takes the gribfile slice and title text as arguments,
         generates a matplotlib plot as output. 
@@ -502,28 +539,9 @@ class WaveFetch():
         plt.show()
 
 def main():
+    # matt_s 2019-08: tests have been migrated to tests/test_wave_fetch.py
+    pass
 
-    # Test ERA5 Fetch
-    wfTestERA5 = WaveFetch('/home/hilliard/storage/kadlu_storage/', datetime(2018, 1, 1, 0, 0, 0, 0), WaveSources.ECMWF_ERA5)
-    wfTestERA5.fetchERA5()
-    # Test ERA5 Load
-    (grbsample, samp_title_text) = wfTestERA5.loadERA5()
-    wfTestERA5.plotSampleGrib(grbsample, samp_title_text)
-    '''    
-    # Test WWIII end to end
-#    wfTestWWIII = WaveFetch('/tmp/', datetime(2017, 2, 3, 0, 0, 0, 0), WaveSources.ECMWF_ERA5)
-    wfTestWWIII = WaveFetch('/home/hilliard/storage/kadlu_storage/', datetime(2017, 2, 3, 0, 0, 0, 0), WaveSources.NOAA_WWIII)
-    wfTestWWIII.fetchWWIII()
-    (grbsampleWWIII, samp_title_text_WWIII) = wfTestWWIII.loadWWIII()
-    wfTestWWIII.plotSampleGrib(grbsampleWWIII, samp_title_text_WWIII)
-    
-    # Test RDWPS end to end
-#    wfTestRDWPS = WaveFetch('/tmp/', datetime.now()  - timedelta(hours=3), WaveSources.EC_RDWPS)
-    wfTestRDWPS = WaveFetch('/home/hilliard/storage/kadlu_storage/', datetime.now()  - timedelta(hours=3), WaveSources.EC_RDWPS)
-    wfTestRDWPS.fetchRDWPS()
-    (grbsampleRDWPS, samp_title_textRDWPS) = wfTestRDWPS.loadRDWPS()
-    wfTestRDWPS.plotSampleGrib(grbsampleRDWPS, samp_title_textRDWPS)
-    '''
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
 

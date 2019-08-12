@@ -25,18 +25,25 @@ def test_ERA5_fetch():
     wfTestERA5 = WaveFetch(fetch_datetimestamp=datetime(2018, 1, 1, 0, 0, 0, 0), wave_source=WaveSources.ECMWF_ERA5)
     wfTestERA5.fetchERA5()
     (grbsample, samp_title_text) = wfTestERA5.loadERA5()
-    wfTestERA5.plotSampleGrib(grbsample, samp_title_text)
+    #wfTestERA5.plotSampleGrib(grbsample, samp_title_text)
 
 def test_WWIII_fetch():
     wfTestWWIII = WaveFetch(fetch_datetimestamp=datetime(2017, 2, 3, 0, 0, 0, 0), wave_source=WaveSources.NOAA_WWIII)
     wfTestWWIII.fetchWWIII()
     (grbsampleWWIII, samp_title_text_WWIII) = wfTestWWIII.loadWWIII()
-    wfTestWWIII.plotSampleGrib(grbsampleWWIII, samp_title_text_WWIII)
+    #wfTestWWIII.plotSampleGrib(grbsampleWWIII, samp_title_text_WWIII)
 
 def test_RDWPS_fetch():
     wfTestRDWPS = WaveFetch(fetch_datetimestamp=datetime.now()-timedelta(hours=3), wave_source=WaveSources.EC_RDWPS)
     wfTestRDWPS.fetchRDWPS()
     (grbsampleRDWPS, samp_title_textRDWPS) = wfTestRDWPS.loadRDWPS()
-    wfTestRDWPS.plotSampleGrib(grbsampleRDWPS, samp_title_textRDWPS)
+    #wfTestRDWPS.plotSampleGrib(grbsampleRDWPS, samp_title_textRDWPS)
+
+def test_DalCoast_fetch():
+    wfTestDalCoast = WaveFetch(fetch_datetimestamp=datetime.now(), wave_source=None)
+    wfTestDalCoast.fetchDalCoast()
+    (grbsampleDalCoast, samp_title_text_DalCoast) = wfTestDalCoast.loadDalCoast()
+    #wfTest.plotSampleGrib(grbsampleDalCoast, samp_title_text_DalCoast)
+
 
 

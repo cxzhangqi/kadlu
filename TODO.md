@@ -9,9 +9,11 @@
             - [x] Identify means of user specification of storage space 
                - this is now defined in config.ini
             - [x] Reference user specified storage space within fetch functions 
-                - see functionality added inside wave_fetch.__init__
+                - see functionality added inside wave_fetch.init
                 - [x] Fix function headers referencing storage 
                     - this functionality has changed - see parent bulletpoint
+            - [ ] Verify source is a wave source
+                - following the comments that existed wave_fetch.init -- how to verify?
         - [ ] Add fetch handler for DalCoast data
             - function stubs added, requires data source
         - [ ] Modify all fetch modules to simultaneously fetch 3 parameters (or N parameters as more are integrated into modeling)

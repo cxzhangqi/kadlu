@@ -1,21 +1,32 @@
 ### TODO:
+##### - with some comments to discuss during code review as subpoints
 
 - [ ] Exception module
     - [ ] Identify list of exceptions to be caught / addressed within scope of software
 - [ ] Creating analogue to bathy_reader for wave data
     - [ ] wave_fetch -- retrieval of data to "read"
-        - [ ] Implement storage configuration
-            - [ ] Identify means of user specification of storage space
-            - [ ] Reference user specified storage space within fetch functions
-                - [ ] Fix function headers referencing storage
+        - [x] Implement storage configuration
+            - [x] Identify means of user specification of storage space 
+               - this is now defined in config.ini
+            - [x] Reference user specified storage space within fetch functions 
+                - see functionality added inside wave_fetch.__init__
+                - [x] Fix function headers referencing storage 
+                    - this functionality has changed - see parent bulletpoint
         - [ ] Add fetch handler for DalCoast data
+            - function stubs added, requires data source
         - [ ] Modify all fetch modules to simultaneously fetch 3 parameters (or N parameters as more are integrated into modeling)
+            - This follows the idea of whether or not to "generalize" the fetching
+            - it might include a target_date handler to abstract either the nearest date or nearest date interval
         - [ ] Tidy comments / re-check for comments requesting fixes / modifications
-        - [ ] Migrate test cases in main () out to either:
+        - [x] Migrate test cases in main () out to either:
             - [x] CI elements
             - [ ] Guides within python notebooks
+                - migrated to CI elements instead, but could do this also if it would help someone
     - [ ] wave_reader module
         - [ ] Generalize extraction from GRIB to match with needs of model component (to be provided)
+            - generalization of reader follows generalization of fetch (?)
 - [ ] Generalize fetch method within wave_fetch 
     - [ ] to handle bathymetry
+        - requires data source
     - [ ] to handle temperature and salinity
+        - requires data source 

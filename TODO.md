@@ -22,7 +22,7 @@
         - [ ] Tidy comments / re-check for comments requesting fixes / modifications
         - [x] Migrate test cases in main () out to either:
             - [x] CI elements
-            - [ ] Guides within python notebooks
+            - [ ] ~~Guides within python notebooks~~
                 - migrated to CI elements instead, but could do this also if it would help someone
     - [ ] wave_reader module
         - [ ] Generalize extraction from GRIB to match with needs of model component (to be provided)

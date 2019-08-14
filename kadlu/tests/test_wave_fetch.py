@@ -17,8 +17,6 @@ import numpy as np
 from datetime import datetime, timedelta
 from enum import Enum
 from kadlu.wave_fetch import WaveFetch, WaveSources
-import warnings
-import configparser
 
 
 def test_ERA5_fetch():

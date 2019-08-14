@@ -21,3 +21,5 @@ Nx2DSSFPE/mat_Mariana_Nx2D_longrng*
 .cache/*
 *.pyc
 storage
+kadlu/analysis
+

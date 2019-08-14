@@ -12,6 +12,13 @@
 
 """
 
+############################ TODO: ############################
+# - finish validation: verify that data source is a wave source
+# - error handling:
+#   - urllib.error.HTTPError
+#     Occurs when no data exists for given datetime
+############################################################### 
+
 import numpy as np
 import pygrib
 import matplotlib.pyplot as plt
@@ -23,9 +30,7 @@ import os.path
 from os.path import dirname
 import configparser
 import warnings
-
-# API for fetching from ECMWF data, requires definition of .cdsapirc file with 
-# download URL / key pair.
+# requires definition of .cdsapirc file with download URL / key pair.
 import cdsapi
 
 class WaveSources(Enum):
@@ -35,36 +40,30 @@ class WaveSources(Enum):
     EC_RDWPS = 2
 
 class ERA5Wavevar(Enum):
-    """ Enum class for wave parameter names in ERA5 source
-    """
-
+    """ Enum class for wave parameter names in ERA5 source """
     significant_height_of_combined_wind_waves_and_swell = "swh"
     mean_wave_direction = "mwd"
     mean_wave_period = "mwp"
 
 class WWIIIWavevar(Enum):
-    """ Enum class for wave parameter names in NOAA WAVEWATCH III source
-    """
-
+    """ Enum class for wave parameter names in NOAA WAVEWATCH III source """
     hs = "swh"
     dp = "mwd"
     tp = "mwp"
 
 class RDWPSWavevar(Enum):
-    """ Enum class for wave parameter names in EC RDWPS source
-    """
-
+    """ Enum class for wave parameter names in EC RDWPS source """
     HTSGW = "swh"
-## Check WVDIR, other sources do not refer to only wind driven for direction (CH 20190307).
+    ## Check WVDIR, other sources do not refer to only wind driven for direction (CH 20190307).
     WVDIR = "mwd" 
     PKPER = "mwp"
 
 class DalCoastWavevar(Enum):
+    """ Enum class stub for wave parameter names in DalCoast source """
     var = "var"
 
 class RDWPSRegion(Enum):
-    """ Enum class forecast region names in EC RDWPS source
-    """
+    """ Enum class forecast region names in EC RDWPS source """
 
     gulf_st_lawrence = "Gulf of St. Lawrence"
     superior = "Lake Superior"
@@ -73,8 +72,7 @@ class RDWPSRegion(Enum):
     ontario = "Lake Ontario"
 
 class WWIIIRegion(Enum):
-    """ Enum class forecast region names in NOAA WAVEWATCH III source
-    """
+    """ Enum class forecast region names in NOAA WAVEWATCH III source """
 
     glo_30m = "Global 30 min"
     ao_30m = "Arctic Ocean 30 min"
@@ -89,6 +87,15 @@ class WWIIIRegion(Enum):
 class DalCoastRegion(Enum):
     var = "var"
 
+def validate_wavesource(filepath, wavevar):
+    print("some text here")
+    gribdata = pygrib.fromstring(open(filepath, "rb").read())
+    try:
+        #assert(gribdata['shortName'] in [var.value for var in wavevar])
+        assert(gribdata['shortName'] == wavevar)
+    except AssertionError as err:
+        print("Specified source file is not a wave source")
+        raise
 
 class WaveFetch():
     """ Class for fetching / locating wave data.
@@ -110,12 +117,10 @@ class WaveFetch():
             wave_source: str
                 Enum () value corresponding to the source to be utilized. 
                 See ().
-            
     """
+
     def __init__(self, storage_location=None, fetch_datetimestamp=datetime.now(), wave_source=WaveSources.ECMWF_ERA5):
-
 ### ADD VALIDATION (file -- exists and source -- isa -> WaveSource) (CH 20190418)
-
         def init_default_storage_dir(self, msg):
             self.storage_location = (os.path.abspath(dirname(dirname(__file__))) + "/storage/")
             if not os.path.isdir(self.storage_location):
@@ -137,9 +142,6 @@ class WaveFetch():
         if not os.path.isdir(self.storage_location):  # verify the location exists
             init_default_storage_dir(self, "storage location doesn't exist.")
 
-        # TODO:
-        # ensure the source is a WaveSource
-  
         # Date and source.
         self.fetch_datetimestamp = fetch_datetimestamp
         self.wave_source = wave_source
@@ -182,6 +184,7 @@ class WaveFetch():
         # Check if a file under the target name already exists, abort fetch if so.
         if os.path.isfile(self.fetch_filename):
             print("File exists, skipping retrieval.")
+            #validate_wavesource(self.fetch_filename, WaveSources(wavevar))
         else:  # Attempt to retrieve the referenced target, if necessary.
             c.retrieve(
             'reanalysis-era5-single-levels',
@@ -193,6 +196,12 @@ class WaveFetch():
                 'month':fetch_month,
                 'day':fetch_day,
                 'time':fetch_hour
+                #'time':fetch_hour,
+                #'domain':'F',
+                #'latitude':44.385061,
+                #'max_lat':44.598999,
+                #'longitude':-64.390600
+                #'max_lon':-64.092456
             },
             self.fetch_filename)
         

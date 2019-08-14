@@ -64,7 +64,6 @@ class DalCoastWavevar(Enum):
 
 class RDWPSRegion(Enum):
     """ Enum class forecast region names in EC RDWPS source """
-
     gulf_st_lawrence = "Gulf of St. Lawrence"
     superior = "Lake Superior"
     huron_michigan = "Lake Huron and Michigan"
@@ -73,7 +72,6 @@ class RDWPSRegion(Enum):
 
 class WWIIIRegion(Enum):
     """ Enum class forecast region names in NOAA WAVEWATCH III source """
-
     glo_30m = "Global 30 min"
     ao_30m = "Arctic Ocean 30 min"
     at_10m = "NW Atlantic 10 min"
@@ -88,11 +86,10 @@ class DalCoastRegion(Enum):
     var = "var"
 
 def validate_wavesource(filepath, wavevar):
-    print("some text here")
+    print("Wavevar: %s" %wavevar)
     gribdata = pygrib.fromstring(open(filepath, "rb").read())
     try:
-        #assert(gribdata['shortName'] in [var.value for var in wavevar])
-        assert(gribdata['shortName'] == wavevar)
+        assert(gribdata['shortName'] == wavevar.value)
     except AssertionError as err:
         print("Specified source file is not a wave source")
         raise
@@ -184,7 +181,7 @@ class WaveFetch():
         # Check if a file under the target name already exists, abort fetch if so.
         if os.path.isfile(self.fetch_filename):
             print("File exists, skipping retrieval.")
-            #validate_wavesource(self.fetch_filename, WaveSources(wavevar))
+            validate_wavesource(self.fetch_filename, wavevar)
         else:  # Attempt to retrieve the referenced target, if necessary.
             c.retrieve(
             'reanalysis-era5-single-levels',
@@ -291,10 +288,8 @@ class WaveFetch():
         # Check if a file under the target name already exists, abort fetch if so.
         if os.path.isfile(self.fetch_filename):
             print("File exists, skipping retrieval.")
-
-        # Attempt to retrieve the referenced target, if necessary.
-        else:
-            
+            validate_wavesource(self.fetch_filename, wavevar)
+        else:  # Attempt to retrieve the referenced target, if necessary.
             urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
 
     def loadWWIII(self, target_date=None, wavevar=WWIIIWavevar.hs, grib=None):
@@ -404,8 +399,8 @@ class WaveFetch():
         # Check if a file under the target name already exists, abort fetch if so.
         if os.path.isfile(self.fetch_filename):
             print("File exists, skipping retrieval.")
-        # Attempt to retrieve the referenced target, if necessary.
-        else:
+            validate_wavesource(self.fetch_filename, wavevar)
+        else:  # Attempt to retrieve the referenced target, if necessary.
             urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
 
     def loadRDWPS(self, target_date=None, wavevar=RDWPSWavevar.HTSGW, grib=None):

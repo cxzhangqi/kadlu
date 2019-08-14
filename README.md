@@ -5,8 +5,8 @@ contain a bunch of tools useful for modeling the underwater ocean
 soundscapes, for example:
 
  * Automated retrieval of relevant environmental data, including static 
-   data such as bathymetry and seabed properties, and dynamic data like 
-   water temperature, salinity, and wave height.
+   data such as bathymetry and seabed properties, and dynamic data such 
+   as water temperature, salinity, and wave height.
 
  * Derivation of underwater acoustic properties (such as sound speed) from 
    the environmental data and conversion into format suitable for transmission 
@@ -59,8 +59,12 @@ Installation of these libraries is most easily accomplished using Anaconda.
       python setup.py sdist
       pip install dist/kadlu-0.0.1.tar.gz
     ```
+
+ 5. Generate an API token
+
+    Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key, using the instructions here for [Windows](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows), [Mac](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+macOS) or [Linux](https://cds.climate.copernicus.eu/api-how-to).
  
- 5. Check that everything is working by running pytest
+ 6. Check that everything is working by running pytest
     ```terminal
       pytest
     ```
@@ -68,9 +72,9 @@ Installation of these libraries is most easily accomplished using Anaconda.
 ## Installation without Anaconda
 
 If you prefer to avoid using Anaconda, try to run this [bash script](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/blob/master/install_dep.sh). It will install all the required 
-libraries using pip and apt-get. It should work out of the box on newer Ubuntu systems.
+libraries using pip and apt-get. It should work out of the box on newer Ubuntu systems. Don't forget to [generate an API token](https://cds.climate.copernicus.eu/api-how-to) to gain access to ECMWF data after installing.
 
-## ECMWF
+## API token for ECMWF data source
 
 Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key, using the instructions here for [Windows](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows), [Mac](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+macOS) or [Linux](https://cds.climate.copernicus.eu/api-how-to). 
 Note that the url for the ECMWF api is [https://cds.climate.copernicus.eu/api/v2](https://cds.climate.copernicus.eu/api/v2).

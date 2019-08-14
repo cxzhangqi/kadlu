@@ -72,7 +72,8 @@ libraries using pip and apt-get. It should work out of the box on newer Ubuntu s
 
 ## ECMWF
 
-Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key, using the instructions here for [Windows](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows), [Mac](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+macOS) or [Linux](https://cds.climate.copernicus.eu/api-how-to).
+Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key, using the instructions here for [Windows](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows), [Mac](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+macOS) or [Linux](https://cds.climate.copernicus.eu/api-how-to). 
+Note that the url for the ECMWF api is [https://cds.climate.copernicus.eu/api/v2](https://cds.climate.copernicus.eu/api/v2).
 
 ## Notebook tutorials
 

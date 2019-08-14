@@ -22,4 +22,5 @@ Nx2DSSFPE/mat_Mariana_Nx2D_longrng*
 *.pyc
 storage
 kadlu/analysis
-
+config.ini*
+.gitignore

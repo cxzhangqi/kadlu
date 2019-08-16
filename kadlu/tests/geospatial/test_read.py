@@ -14,13 +14,21 @@
 import pytest
 import os
 import numpy as np
-from kadlu.geospatial.read import read_netcdf_2d
+from kadlu.geospatial.read import read_netcdf_2d, read_matlab_2d
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"../assets")
 
 def test_can_read_bathymetry_from_netcdf_file():
     path = path_to_assets + '/bornholm.nc'
     lat, lon, bathy = read_netcdf_2d(path=path, lat_name='lat', lon_name='lon', val_name='bathy')
+    assert np.min(bathy) == -100
+    assert np.max(bathy) == 159
+    assert bathy.shape[0] == lat.shape[0]
+    assert bathy.shape[1] == lon.shape[0]
+
+def test_can_read_bathymetry_from_matlab_file():
+    path = path_to_assets + '/bornholm.mat'
+    lat, lon, bathy = read_matlab_2d(path=path, lat_name='lat', lon_name='lon', val_name='bathy')
     assert np.min(bathy) == -100
     assert np.max(bathy) == 159
     assert bathy.shape[0] == lat.shape[0]

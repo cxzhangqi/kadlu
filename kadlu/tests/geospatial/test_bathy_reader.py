@@ -14,9 +14,9 @@
 import pytest
 import os
 import numpy as np
-from kadlu.bathy_reader import BathyReader, LatLon, write_bathy
+from kadlu.geospatial.bathy_reader import BathyReader, LatLon, write_bathy
 
-path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
+path_to_assets = os.path.join(os.path.dirname(__file__),"../assets")
 
 def test_can_read_bathymetry_from_netcdf_file():
     path = path_to_assets + '/bornholm.nc'

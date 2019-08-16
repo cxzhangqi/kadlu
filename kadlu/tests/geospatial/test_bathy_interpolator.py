@@ -14,13 +14,13 @@
 import pytest
 import os
 import numpy as np
-from kadlu.bathy_reader import BathyReader, LatLon
-from kadlu.bathy_interpolator import BathyInterpolator
+from kadlu.geospatial.bathy_reader import BathyReader, LatLon
+from kadlu.geospatial.bathy_interpolator import BathyInterpolator
 from kadlu.utils import R1_IUGG, deg2rad, XYtoLL, LLtoXY
 
 # Degree to radian conversion factor
 deg2rad = np.pi / 180.
-path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
+path_to_assets = os.path.join(os.path.dirname(__file__),"../assets")
 
 def test_can_interpolate_latlon():
     path = path_to_assets + '/bornholm.mat'

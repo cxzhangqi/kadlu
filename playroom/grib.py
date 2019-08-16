@@ -1,6 +1,6 @@
 import pygrib
 
-grbs = pygrib.open("../storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2018-01-01_00h.grb2")
+grbs = pygrib.open("storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2018-01-01_00h.grb2")
 
 for g in grbs:
     print(g)

@@ -86,13 +86,21 @@ class DalCoastRegion(Enum):
     var = "var"
 
 def validate_wavesource(filepath, wavevar):
-    print("Wavevar: %s" %wavevar)
     gribdata = pygrib.fromstring(open(filepath, "rb").read())
     try:
         assert(gribdata['shortName'] == wavevar.value)
     except AssertionError as err:
         print("Specified source file is not a wave source")
         raise
+
+def grib_to_numpy(filepath):
+    # returns a list of multidimensional numpy arrays of grib data
+    gribfile = pygrib.open(filepath)
+    gribdata = list(np.empty(gribfile.messages))
+    for x in range(0, gribfile.messages):
+        gribdata[x] = np.array(gribfile[x+1].data(), dtype=tuple)
+    return gribdata
+
 
 class WaveFetch():
     """ Class for fetching / locating wave data.
@@ -201,6 +209,15 @@ class WaveFetch():
                 #'max_lon':-64.092456
             },
             self.fetch_filename)
+
+        """
+        gribfile = pygrib.open(self.fetch_filename)
+        gribdata = list(np.empty(gribfile.messages))
+        for x in range(0, gribfile.messages):
+            gribdata[x] = np.array(gribfile[x+1].data(), dtype=tuple)
+        return gribdata
+        """
+        return grib_to_numpy(self.fetch_filename)
         
     def loadERA5(self, target_date=None, wavevar=ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell, grib=None):
         """ Loads a single time interval slice from a specified grib file of 
@@ -291,6 +308,8 @@ class WaveFetch():
             validate_wavesource(self.fetch_filename, wavevar)
         else:  # Attempt to retrieve the referenced target, if necessary.
             urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
+        
+        return grib_to_numpy(self.fetch_filename)
 
     def loadWWIII(self, target_date=None, wavevar=WWIIIWavevar.hs, grib=None):
         """ Loads a single time interval slice from a specified grib file of 
@@ -344,43 +363,7 @@ class WaveFetch():
         else:
             title_text = "WW III\nUnknown variable from GRIB\n({}) ".format(target_date)
 
-        return (grb, title_text)
-
-    def fetchRDWPS(self, region=RDWPSRegion.gulf_st_lawrence, wavevar=RDWPSWavevar.HTSGW, fetch_timestamp=None):
-        """ Locate and download grib file of EC/CMC modelled wave parameter data 
-            to storage location, given the RDWPS model region, variable
-            of interest and timestamp for the model run. 
-
-            Args: 
-                region: RDWPSRegion
-                    Region among those modeled by EC / CMC as RDWPS.
-                wavevar: RDWPSWavevar
-                    Variable to be fetched, EC nomenclature.
-                fetch_timestamp: datetime
-                    Date of file to be fetched.
-
-            Returns:
-                None.
-        """
-
-        # Use module default timestamp if not overridden.
-        if(fetch_timestamp is None):
-            fetch_timestamp = self.fetch_datetimestamp
-
-        # Peel off strings from fetch date for component parts of the fetch url
-        fetch_year = fetch_timestamp.strftime("%Y") 
-        fetch_month = fetch_timestamp.strftime("%m")
-        fetch_day = fetch_timestamp.strftime("%d")
-        
-        ## Truncate the fetch hour to nearest earlier 6-hour interval (00, 06, 12, 18)
-        # -- is there a better option? 
-        fetch_forecast_hour = "{:02d}".format(((fetch_timestamp.hour % 24) // 6) * 6)
-        
-        ## If we can constrain to: 000 -> 048, in intervals of 3, we can allow specification
-        # -- are any better than 0-hour for our use?
-        fetch_prediction_hour = '000'
-
-        # Un-sanitize Enum name, re-add hyphen for url building.
+        return (grb, title_texting.
         hyph_region_name = region.name.replace('_','-')
 
         # Build appropriate level reference based on parameter.
@@ -402,6 +385,8 @@ class WaveFetch():
             validate_wavesource(self.fetch_filename, wavevar)
         else:  # Attempt to retrieve the referenced target, if necessary.
             urllib.request.urlretrieve(fetchURLString, self.fetch_filename)
+
+        return grib_to_numpy(self.fetch_filename)
 
     def loadRDWPS(self, target_date=None, wavevar=RDWPSWavevar.HTSGW, grib=None):
         """ Loads a single time interval slice from a specified grib file of 

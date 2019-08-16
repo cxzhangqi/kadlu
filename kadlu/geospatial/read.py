@@ -21,7 +21,7 @@ from enum import Enum
 from kadlu.utils import get_files
 
 
-def read_netcdf(path, lat_name, lon_name, val_name, depth_name=None):
+def read_netcdf(path, val_name, lat_name=None, lon_name=None, depth_name=None):
     """ Read geospatial data from a NetCDF file.
 
         The data may be on two-dimensional (lat,lon) grid or a three-dimensional 
@@ -30,22 +30,22 @@ def read_netcdf(path, lat_name, lon_name, val_name, depth_name=None):
         Args: 
             path: str
                 File path
-            lat_name: str
-                Name of NetCDF variable containing the latitude values
-            lon_name: str
-                Name of NetCDF variable containing the longitude values
             val_name: str
                 Name of NetCDF variable containing the data values   
+            lat_name: str
+                Name of NetCDF variable containing the latitude values 
+            lon_name: str
+                Name of NetCDF variable containing the longitude values
             depth_name: str
-                Name of NetCDF variable containing the depth values (optional)       
+                Name of NetCDF variable containing the depth values     
 
         Returns:
+            val: numpy array
+                Data values
             lat: 1d numpy array
                 Latitude values
             lon: 1d numpy array
                 Longitude values
-            val: numpy array
-                Data values
             depth: 1d numpy array
                 Depth values. None, if data is on a 2d (lat,lon) grid
     """
@@ -53,43 +53,48 @@ def read_netcdf(path, lat_name, lon_name, val_name, depth_name=None):
     d = Dataset(path)
 
     # access arrays
-    lat = np.array(d.variables[lat_name])
-    lon = np.array(d.variables[lon_name])
+    lat, lon, depth = None, None, None
+
     val = np.array(d.variables[val_name])
+
+    if lat_name is not None:
+        lat = np.array(d.variables[lat_name])
+
+    if lon_name is not None:
+        lon = np.array(d.variables[lon_name])
+
     if depth_name is not None:
         depth = np.array(d.variables[depth_name])
-    else:
-        depth = None
 
-    return lat, lon, val, depth
+    return val, lat, lon, depth
 
 
-def read_netcdf_2d(path, lat_name, lon_name, val_name):
+def read_netcdf_2d(path, val_name, lat_name=None, lon_name=None):
     """ Read geospatial data on a two-dimensional (lat,lon) grid from a NetCDF file.
 
         Args: 
             path: str
                 File path
+            val_name: str
+                Name of NetCDF variable containing the data values   
             lat_name: str
                 Name of NetCDF variable containing the latitude values
             lon_name: str
                 Name of NetCDF variable containing the longitude values
-            val_name: str
-                Name of NetCDF variable containing the data values   
 
         Returns:
+            val: numpy array
+                Data values
             lat: 1d numpy array
                 Latitude values
             lon: 1d numpy array
                 Longitude values
-            val: numpy array
-                Data values
     """
-    lat, lon, val, _ = read_netcdf(path, lat_name, lon_name, val_name)
-    return lat, lon, val
+    val, lat, lon, _ = read_netcdf(path, val_name, lat_name, lon_name)
+    return val, lat, lon
 
 
-def read_matlab(path, lat_name, lon_name, val_name, depth_name=None):
+def read_matlab(path, val_name, lat_name=None, lon_name=None, depth_name=None):
     """ Read geospatial data from a NetCDF file.
 
         The data may be on two-dimensional (lat,lon) grid or a three-dimensional 
@@ -98,22 +103,22 @@ def read_matlab(path, lat_name, lon_name, val_name, depth_name=None):
         Args: 
             path: str
                 File path
+            val_name: str
+                Name of NetCDF variable containing the data values   
             lat_name: str
                 Name of NetCDF variable containing the latitude values
             lon_name: str
                 Name of NetCDF variable containing the longitude values
-            val_name: str
-                Name of NetCDF variable containing the data values   
             depth_name: str
-                Name of NetCDF variable containing the depth values (optional)       
+                Name of NetCDF variable containing the depth values
 
         Returns:
+            val: numpy array
+                Data values
             lat: 1d numpy array
                 Latitude values
             lon: 1d numpy array
                 Longitude values
-            val: numpy array
-                Data values
             depth: 1d numpy array
                 Depth values. None, if data is on a 2d (lat,lon) grid
     """
@@ -121,37 +126,42 @@ def read_matlab(path, lat_name, lon_name, val_name, depth_name=None):
     m = sio.loadmat(path)
 
     # access arrays
-    lat = np.squeeze(np.array(m[lat_name]))
-    lon = np.squeeze(np.array(m[lon_name]))
+    lat, lon, depth = None, None, None
+
     val = np.array(m[val_name])
+
+    if lat_name is not None:
+        lat = np.squeeze(np.array(m[lat_name]))
+
+    if lon_name is not None:
+        lon = np.squeeze(np.array(m[lon_name]))
+
     if depth_name is not None:
-        depth = np.array(m[depth_name])
-    else:
-        depth = None
+        depth = np.squeeze(np.array(m[depth_name]))
 
-    return lat, lon, val, depth
+    return val, lat, lon, depth
 
 
-def read_matlab_2d(path, lat_name, lon_name, val_name):
+def read_matlab_2d(path, val_name, lat_name=None, lon_name=None):
     """ Read geospatial data on a two-dimensional (lat,lon) grid from a MATLAB file.
 
         Args: 
             path: str
                 File path
+            val_name: str
+                Name of NetCDF variable containing the data values   
             lat_name: str
                 Name of NetCDF variable containing the latitude values
             lon_name: str
                 Name of NetCDF variable containing the longitude values
-            val_name: str
-                Name of NetCDF variable containing the data values   
 
         Returns:
+            val: numpy array
+                Data values
             lat: 1d numpy array
                 Latitude values
             lon: 1d numpy array
                 Longitude values
-            val: numpy array
-                Data values
     """
-    lat, lon, val, _ = read_matlab(path, lat_name, lon_name, val_name)
-    return lat, lon, val
+    val, lat, lon, _ = read_matlab(path, val_name, lat_name, lon_name)
+    return val, lat, lon

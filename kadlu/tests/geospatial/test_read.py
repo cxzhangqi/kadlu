@@ -14,7 +14,7 @@
 import pytest
 import os
 import numpy as np
-from kadlu.geospatial.read import read_netcdf_2d, read_matlab_2d
+from kadlu.geospatial.read import read_netcdf_2d, read_matlab_2d, read_geotiff_2d
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"../assets")
 
@@ -33,3 +33,11 @@ def test_can_read_bathymetry_from_matlab_file():
     assert np.max(bathy) == 159
     assert bathy.shape[0] == lat.shape[0]
     assert bathy.shape[1] == lon.shape[0]
+
+def test_can_read_bathymetry_from_geotiff_file():
+    path = path_to_assets + '/tif/CA2_4300N06000W.tif'
+    bathy, lat, lon = read_geotiff_2d(path=path)
+    assert np.min(bathy) == pytest.approx(-3257.100, abs=0.001)
+    assert np.max(bathy) == pytest.approx(1.645, abs=0.001)
+    assert lat == None
+    assert lon == None

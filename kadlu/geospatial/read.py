@@ -10,15 +10,10 @@
     License:
 
 """
-
-import os
 import numpy as np
-from collections import namedtuple
 from netCDF4 import Dataset
 from osgeo import gdal
 import scipy.io as sio
-from enum import Enum
-from kadlu.utils import get_files
 
 
 def read_netcdf(path, val_name, lat_name=None, lon_name=None, depth_name=None):
@@ -42,19 +37,19 @@ def read_netcdf(path, val_name, lat_name=None, lon_name=None, depth_name=None):
         Returns:
             val: numpy array
                 Data values
-            lat: 1d numpy array
+            lat: numpy array
                 Latitude values
-            lon: 1d numpy array
+            lon: numpy array
                 Longitude values
-            depth: 1d numpy array
+            depth: numpy array
                 Depth values. None, if data is on a 2d (lat,lon) grid
     """
     # load data
     d = Dataset(path)
 
-    # access arrays
     lat, lon, depth = None, None, None
 
+    # access arrays
     val = np.array(d.variables[val_name])
 
     if lat_name is not None:
@@ -85,9 +80,9 @@ def read_netcdf_2d(path, val_name, lat_name=None, lon_name=None):
         Returns:
             val: numpy array
                 Data values
-            lat: 1d numpy array
+            lat: numpy array
                 Latitude values
-            lon: 1d numpy array
+            lon: numpy array
                 Longitude values
     """
     val, lat, lon, _ = read_netcdf(path, val_name, lat_name, lon_name)
@@ -115,19 +110,19 @@ def read_matlab(path, val_name, lat_name=None, lon_name=None, depth_name=None):
         Returns:
             val: numpy array
                 Data values
-            lat: 1d numpy array
+            lat: numpy array
                 Latitude values
-            lon: 1d numpy array
+            lon: numpy array
                 Longitude values
-            depth: 1d numpy array
+            depth: numpy array
                 Depth values. None, if data is on a 2d (lat,lon) grid
     """
     # load data
     m = sio.loadmat(path)
 
-    # access arrays
     lat, lon, depth = None, None, None
 
+    # access arrays
     val = np.array(m[val_name])
 
     if lat_name is not None:
@@ -158,10 +153,92 @@ def read_matlab_2d(path, val_name, lat_name=None, lon_name=None):
         Returns:
             val: numpy array
                 Data values
-            lat: 1d numpy array
+            lat: numpy array
                 Latitude values
-            lon: 1d numpy array
+            lon: numpy array
                 Longitude values
     """
     val, lat, lon, _ = read_matlab(path, val_name, lat_name, lon_name)
+    return val, lat, lon
+
+
+def read_geotiff(path, val_id=1, lat_id=None, lon_id=None, depth_id=None):
+    """ Read geospatial data from a GeoTIFF file.
+
+        The data may be on two-dimensional (lat,lon) grid or a three-dimensional 
+        (lat,lon,depth) grid.
+
+        Args: 
+            path: str
+                File path
+            val_id: int
+                Number of the GeoTIFF raster band containing the data values   
+            lat_id: int
+                Number of the GeoTIFF raster band containing the latitude values
+            lon_id: int
+                Number of the GeoTIFF raster band containing the longitude values
+            depth_id: int
+                Number of the GeoTIFF raster band containing the depth values
+
+        Returns:
+            val: masked numpy array
+                Data values. The array has been masked where invalid values occur (NaNs or infs).
+            lat: numpy array
+                Latitude values
+            lon: numpy array
+                Longitude values
+            depth: numpy array
+                Depth values. None, if data is on a 2d (lat,lon) grid
+    """
+    # load data
+    data_set = gdal.Open(path)
+
+    lat, lon, depth = None, None, None
+
+    # access arrays
+    band = data_set.GetRasterBand(val_id)
+    val = data_set.ReadAsArray()
+
+    # replace no-data value with nan
+    nodata = band.GetNoDataValue()
+    val[val == nodata] = np.nan
+    val = np.ma.masked_invalid(val)
+
+    if lat_id is not None:
+        band = data_set.GetRasterBand(lat_id)
+        lat = data_set.ReadAsArray()
+
+    if lon_id is not None:
+        band = data_set.GetRasterBand(lon_id)
+        lon = data_set.ReadAsArray()
+
+    if depth_id is not None:
+        band = data_set.GetRasterBand(depth_id)
+        depth = data_set.ReadAsArray()
+
+    return val, lat, lon, depth
+
+
+def read_geotiff_2d(path, val_id=1, lat_id=None, lon_id=None):
+    """ Read geospatial data on a two-dimensional (lat,lon) grid from a GeoTIFF file.
+
+        Args: 
+            path: str
+                File path
+            val_id: int
+                Number of the GeoTIFF raster band containing the data values   
+            lat_id: int
+                Number of the GeoTIFF raster band containing the latitude values
+            lon_id: int
+                Number of the GeoTIFF raster band containing the longitude values
+
+        Returns:
+            val: numpy array
+                Data values
+            lat: numpy array
+                Latitude values
+            lon: numpy array
+                Longitude values
+    """
+    val, lat, lon, _ = read_geotiff(path, val_id, lat_id, lon_id)
     return val, lat, lon

@@ -15,14 +15,16 @@ from kadlu.geospatial.fetch import fetch_bathy_chs
 from kadlu.geospatial.bathy_reader import LatLon
 
 
-def load(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
-    """ Load available bathymetry data within specified geographical region.
+def load_bathy(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), source="CHS"):
+    """ Load bathymetry data within specified geographical region.
 
         Args: 
             latlon_SW: LatLon
                 South-western (SW) boundary of the region of interest.
             latlon_NE: LatLon
                 North-eastern (SE) boundary of the region of interest.
+            source: str
+                Bathymetry data source(s).               
 
         Returns:
             lat: 1d numpy array
@@ -32,7 +34,9 @@ def load(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
             bathy: 1d numpy array
                 Bathymetry values
     """
-    # fetch data
+    assert source == "CHS", "The only available bathymetry data source is CHS"
+
+    # fetch relevant data files
     files = fetch_bathy_chs(latlon_SW, latlon_NE)
 
     bathy, lat, lon = list(), list(), list()        
@@ -50,7 +54,6 @@ def load(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
         lat.append(x)
         lon.append(y)
         bathy.append(v)
-
 
     # concatenate
     bathy = np.concatenate(bathy)

@@ -17,11 +17,16 @@ from kadlu.geospatial.read import read_geotiff_2d
 from kadlu.geospatial.bathy_reader import LatLon
 
 
-def fetch(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
+def fetch(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
     """ Fetch Non-Navigational NONNA-100 bathymetric data from the The 
         Canadian Hydrographic Service (CHS).
 
+        TODO: Get rid of the storage_location argument and instead use the config.ini file
+        TODO: Implement fetching
+
         Args: 
+            storage_location: str
+                Path to where data files are stored in the local file system.
             latlon_SW: LatLon
                 South-western (SW) boundary of the region of interest.
             latlon_NE: LatLon
@@ -33,44 +38,27 @@ def fetch(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
     """
     # select relevant files
     fnames = select_files(latlon_SW, latlon_NE)
-
-
-    fnames = ["CA2_4300N06000W.tif",  "CA2_4400N06000W.tif"]
-    paths = "/home/oliskir/src/meridian/kadlu/kadlu/tests/assets/tif" + fnames
-
-    # check which of the files we already have
-    exist = files_exist(paths)
+    paths = list()
+    for fname in fnames:
+        paths.append(os.path.join(storage_location, fname))
 
     # attempt to fetch those files we do not already have
-    for i,e in enumerate(exist):
-        if not e:
-            print('Fetching ',fnames[i])
+    for i,path in enumerate(paths):
+        exists = os.path.exists(path)
+        # if not exists:
+            # ... implement fetch part here ...
 
     # check again
-    exist = files_exist(paths)
+    fetched = list()
+    for i,path in enumerate(paths):
+        exists = os.path.exists(path)
+        if exists:
+            fetched.append(path)
 
-    print("Was able to fetch {0} of {1} maps necessary to fully cover the specified region".format(np.sum(exist==True), len(exist)))
+    if len(fetched) < len(paths):
+        print("Only fetched {0} of {1} maps necessary to fully cover the specified region".format(len(fetched), len(paths)))
 
-    return paths
-
-
-def files_exist(paths):
-    """ Check which of the data files have already been downloaded.
-
-        Args: 
-            paths: list
-                Expected paths to data files         
-
-        Returns:
-            exist: list
-                True if file exists; otherwise False.
-    """
-    exist = list()
-    for path in paths:        
-        exist.append(os.path.exists(path))
-
-    exist = np.array(exist)
-    return exist
+    return fetched
 
 
 def select_files(latlon_SW, latlon_NE):
@@ -89,11 +77,11 @@ def select_files(latlon_SW, latlon_NE):
     """
     # lat range
     lat_min = int(np.floor(latlon_SW.latitude))
-    lat_max = int(np.ceil(latlon_NE.latitude))
+    lat_max = int(np.floor(latlon_NE.latitude))
 
     # lon range
     lon_min = int(np.floor(latlon_SW.longitude))
-    lon_max = int(np.ceil(latlon_NE.longitude))
+    lon_max = int(np.floor(latlon_NE.longitude))
 
     # create lat,lon arrays
     lats = np.arange(start=lat_min, stop=lat_max+1, step=1)

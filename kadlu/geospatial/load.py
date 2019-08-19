@@ -15,8 +15,10 @@ import kadlu.geospatial.bathy_chs as chs
 from kadlu.geospatial.bathy_reader import LatLon
 
 
-def load_bathy(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), source="CHS"):
+def load_bathy(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), source="CHS"):
     """ Load bathymetry data within specified geographical region.
+
+        TODO: Get rid of the storage_location argument and instead use the config.ini file
 
         Args: 
             latlon_SW: LatLon

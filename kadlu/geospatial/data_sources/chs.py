@@ -13,7 +13,7 @@
 """
 import os
 import numpy as np
-from kadlu.geospatial.read import read_geotiff_2d
+from kadlu.geospatial.geospatial import crop, read_geotiff
 from kadlu.geospatial.bathy_reader import LatLon
 
 
@@ -43,14 +43,14 @@ def fetch(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)
         paths.append(os.path.join(storage_location, fname))
 
     # attempt to fetch those files we do not already have
-    for i,path in enumerate(paths):
+    for path in paths:
         exists = os.path.exists(path)
         # if not exists:
             # ... implement fetch part here ...
 
     # check again
     fetched = list()
-    for i,path in enumerate(paths):
+    for path in paths:
         exists = os.path.exists(path)
         if exists:
             fetched.append(path)
@@ -59,6 +59,65 @@ def fetch(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)
         print("Only fetched {0} of {1} maps necessary to fully cover the specified region".format(len(fetched), len(paths)))
 
     return fetched
+
+
+def load(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
+    """ Load Non-Navigational NONNA-100 bathymetric data from the Canadian Hydrographic 
+        Service (CHS) within specified geographical region.
+
+        TODO: Get rid of the storage_location argument and instead use the config.ini file
+
+        Args: 
+            latlon_SW: LatLon
+                South-western (SW) boundary of the region of interest.
+            latlon_NE: LatLon
+                North-eastern (SE) boundary of the region of interest.
+
+        Returns:
+            bathy: 1d numpy array
+                Bathymetry values
+            lats: 1d numpy array
+                Latitude values
+            lons: 1d numpy array
+                Longitude values
+    """
+    # fetch relevant data files
+    files = fetch(storage_location, latlon_SW, latlon_NE)
+
+    bathy, lats, lons = list(), list(), list()        
+
+    # loop over geotiff files
+    for f in files:
+
+        # read data from geotiff file
+        z = read(path=f)
+
+        # create lat-lon arrays
+        lat, lon = latlon(path=f)
+
+        # make a grid
+        x, y = np.meshgrid(lon, lat)
+
+        # select non-masked entries
+        x = x[~z.mask]
+        y = y[~z.mask]
+        z = z[~z.mask]
+
+        # crop the region of interest
+        indices, y, x = crop(y, x, latlon_SW, latlon_NE)
+        z = z[indices]
+
+        # collect data arrays
+        lats.append(y)
+        lons.append(x)
+        bathy.append(z)
+
+    # concatenate
+    bathy = np.ma.concatenate(bathy)
+    lats = np.concatenate(lats)
+    lons = np.concatenate(lons)
+
+    return bathy, lats, lons
 
 
 def select_files(latlon_SW, latlon_NE):
@@ -113,7 +172,7 @@ def read(path):
             val: 1d numpy array
                 Data values
     """
-    z, _, _ = read_geotiff_2d(path=path)
+    z = read_geotiff(path=path)
     z = np.flip(z, axis=0)
     return z
 

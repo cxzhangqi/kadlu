@@ -11,6 +11,58 @@
 
 """
 import numpy as np
+from osgeo import gdal
+import scipy.io as sio
+
+
+def read_matlab(path, name):
+    """ Read data from a MatLab file.
+
+        Args: 
+            path: str
+                File path
+            name: str
+                Name of MatLab field containing the data values   
+
+        Returns:
+            values: numpy array
+                Data values
+    """
+    # load data
+    m = sio.loadmat(path)
+
+    # access array
+    values = np.array(m[name])
+
+    return values
+
+
+def read_geotiff(path, band_id=1):
+    """ Read data from a GeoTIFF file.
+
+        Args: 
+            path: str
+                File path
+            band_id: int
+                Number of the GeoTIFF raster band containing the data values   
+
+        Returns:
+            values: masked numpy array
+                Data values. The array has been masked where invalid values occur (NaNs or infs).
+    """
+    # load data
+    data_set = gdal.Open(path)
+
+    # access values
+    band = data_set.GetRasterBand(band_id)
+    values = data_set.ReadAsArray()
+
+    # replace no-data value with nan
+    nodata = band.GetNoDataValue()
+    values[values == nodata] = np.nan
+    values = np.ma.masked_invalid(values)
+
+    return values
 
 
 def crop(lat, lon, latlon_SW, latlon_NE, grid=False):

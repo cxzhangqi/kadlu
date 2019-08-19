@@ -12,10 +12,10 @@
 """
 import pytest
 import os
-import kadlu.geospatial.bathy_chs as chs
+import kadlu.geospatial.data_sources.chs as chs
 from kadlu.geospatial.bathy_reader import LatLon
 
-path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
 
 def test_fetch_returns_two_files():
     folder = os.path.join(path_to_assets, "tif")

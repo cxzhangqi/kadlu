@@ -11,7 +11,7 @@
 
 """
 from kadlu.geospatial.read import read_geotiff_2d
-from kadlu.geospatial.fetch import fetch_bathy_chs
+import kadlu.geospatial.bathy_chs as chs
 from kadlu.geospatial.bathy_reader import LatLon
 
 
@@ -27,37 +27,36 @@ def load_bathy(latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), source="CHS
                 Bathymetry data source(s).               
 
         Returns:
-            lat: 1d numpy array
-                Latitude values
-            lon: 1d numpy array
-                Longitude values
             bathy: 1d numpy array
                 Bathymetry values
+            lats: 1d numpy array
+                Latitude values
+            lons: 1d numpy array
+                Longitude values
     """
     assert source == "CHS", "The only available bathymetry data source is CHS"
 
     # fetch relevant data files
-    files = fetch_bathy_chs(latlon_SW, latlon_NE)
+    files = chs.fetch(latlon_SW, latlon_NE)
 
-    bathy, lat, lon = list(), list(), list()        
+    bathy, lats, lons = list(), list(), list()        
 
     # loop over geotiff files
     for f in files:
 
         # read data from geotiff file
-        v, _, _ = read_geotiff_2d(path=f)
+        v = chs.read(path=f)
 
-        # create lat,lon arrays
-        x = np.ones(1)
-        y = np.ones(1)
+        # create lat-lon arrays
+        lat, lon = chs.latlon(path=f)
 
-        lat.append(x)
-        lon.append(y)
+        lats.append(lat)
+        lons.append(lon)
         bathy.append(v)
 
     # concatenate
     bathy = np.concatenate(bathy)
-    lat = np.concatenate(lat)
-    lon = np.concatenate(lon)
+    lats = np.concatenate(lats)
+    lons = np.concatenate(lons)
 
-    return bathy, lat, lon
+    return bathy, lats, lons

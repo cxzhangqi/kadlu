@@ -78,10 +78,14 @@ def select_files(latlon_SW, latlon_NE):
     # lat range
     lat_min = int(np.floor(latlon_SW.latitude))
     lat_max = int(np.floor(latlon_NE.latitude))
+    if lat_max == latlon_NE.latitude:
+        lat_max -= 1
 
     # lon range
     lon_min = int(np.floor(latlon_SW.longitude))
     lon_max = int(np.floor(latlon_NE.longitude))
+    if lon_max == latlon_NE.longitude:
+        lon_max -= 1
 
     # create lat,lon arrays
     lats = np.arange(start=lat_min, stop=lat_max+1, step=1)
@@ -109,8 +113,9 @@ def read(path):
             val: 1d numpy array
                 Data values
     """
-    v, _, _ = read_geotiff_2d(path=path)
-    return v
+    z, _, _ = read_geotiff_2d(path=path)
+    z = np.flip(z, axis=0)
+    return z
 
 
 def latlon(path, num_lat=1001, num_lon=1001):

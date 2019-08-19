@@ -1,4 +1,4 @@
-""" Unit tests for the the 'bathy_reader' module in the 'kadlu' package
+""" Unit tests for the the 'geospatial.read' module in the 'kadlu' package
 
     Authors: Oliver Kirsebom
     contact: oliver.kirsebom@dal.ca
@@ -16,7 +16,7 @@ import os
 import numpy as np
 from kadlu.geospatial.read import read_netcdf_2d, read_matlab_2d, read_geotiff_2d
 
-path_to_assets = os.path.join(os.path.dirname(__file__),"../assets")
+path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
 
 def test_can_read_bathymetry_from_netcdf_file():
     path = path_to_assets + '/bornholm.nc'

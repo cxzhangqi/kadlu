@@ -1,9 +1,14 @@
 import pytest
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import wwiii
+from kadlu.geospatial.data_sources import fetch_util
 
 def test_fetch_wwiii():
-    from kadlu.geospatial.data_sources import fetch_util
     storage_location = fetch_util.instantiate_storage_config()
     wwiii.fetch(storage_location=storage_location, wavevar=wwiii.waveSources['swh'], time=datetime(2017, 2, 3, 0, 0, 0, 0), region=wwiii.regions['global'])
 
+def test_plot_wwiii():
+    storage_location = fetch_util.instantiate_storage_config()
+    filename = "multi_1.glo_30m.hs.201702.grb2"
+    filepath = f"{storage_location}{filename}"
+    data = wwiii.load(filepath=filepath, plot=True)

@@ -2,9 +2,9 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import urllib.request
+import pygrib
 
-#from kadlu.geospatial.data_sources import fetch_util
-from kadlu.geospatial.data_sources.fetch_util import validate_wavesource
+from kadlu.geospatial.data_sources import fetch_util
 
 waveSources = {
     'swh' : 'HTSGW',
@@ -33,12 +33,57 @@ def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now(), reg
 
     if os.path.isfile(fetchfile):
         print("File exists, skipping retrieval...")
-        validate_wavesource(fetchfile, waveSources)
+        # obsolete ???
+        #validate_wavesource(fetchfile, waveSources)
     else:
         print("Downloading file from the Regional Deterministic Wave Prediction System...")
         fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/{hour}/{fetchname}"
         urllib.request.urlretrieve(fetchurl, fetchfile)
 
-def load():
-    pass
+def load(filepath, plot=False):
+    grib = pygrib.open(filepath)
 
+    if plot: fetch_util.plotSampleGrib(grib[1], "testing")
+
+    #data = [None for msg in range(grib.messages)]
+    #for x in range(0, grib.messages):
+    #    data[x] = grib[x+1].data()  # grib indexing starts at 1 for some reason
+
+    #return np.array(data)
+    return grib[1]
+
+"""
+    # If no gribfile argument is provided, default to the fetched file.
+    if grib is None:
+        grib = self.fetch_filename
+
+    # If no date argument is provided, default to the module timestamp, truncated to nearest earlier 6-hour interval.
+    if target_date is None:
+
+        rep_hour = ((self.fetch_datetimestamp.hour % 24) // 6) * 6
+        target_date = self.fetch_datetimestamp.replace(minute=0, hour=rep_hour, second=0, microsecond=0)
+    else:
+### Should similar filtering on time be added here to enforce 6 hour intervals?
+        target_date = target_date
+
+    # load grib structure from target.
+    grbs=pygrib.open(grib)
+
+    # Fetch slice of data corresponding to selected target date and wave variable.
+        #swh	- significant height of combined wind waves and swell, metres (HTSGW)
+        #mwp	- primary wave mean period, seconds (PKPER)
+        #mwd	- primary wind wave direction, degrees true (i.e. 0 deg = North; proceeding clockwise) (WVDIR)
+    grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
+    
+    if(wavevar == RDWPSWavevar.HTSGW):
+        title_text = "CMC-RDWPS Sig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
+    elif(wavevar == RDWPSWavevar.PKPER):
+        title_text = "CMC-RDWPS Mean Wave Period from GRIB\n({}) ".format(target_date)
+    elif(wavevar == RDWPSWavevar.WVDIR):
+        title_text = "CMC-RDWPS Mean Wave Direction from GRIB\n({}) ".format(target_date)
+    else:
+        title_text = "CMC-RDWPS\nUnknown variable from GRIB\n({}) ".format(target_date)
+
+    return (grb, title_text)
+"""
+    

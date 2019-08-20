@@ -2,9 +2,9 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import cdsapi
+import pygrib
 
-#from kadlu.geospatial.data_sources import fetch_util
-from kadlu.geospatial.data_sources.fetch_util import validate_wavesource
+from kadlu.geospatial.data_sources import fetch_util
 
 waveSources = {
     'swh' : 'significant_height_of_combined_wind_waves_and_swell',
@@ -18,7 +18,8 @@ def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now()):
 
     if os.path.isfile(fetchfile):
         print("File exists, skipping retrieval...")
-        validate_wavesource(fetchfile, waveSources)
+        # obsolete ???
+        #validate_wavesource(fetchfile, waveSources)
     else:
         print("Downloading file from Copernicus Climate Data Store...")
         c = cdsapi.Client()
@@ -33,6 +34,50 @@ def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now()):
         }, fetchfile)
 
 
-def load():
-    pass
+def load(filepath, plot=False):
+    """
+    filepath = r"ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2016-03-16_00h.grb2"
+    """
+    grib = pygrib.open(filepath)
+
+    if plot: fetch_util.plotSampleGrib(grib[1], "testing")
+
+    #data = [None for msg in range(grib.messages)]
+    #for x in range(0, grib.messages):
+    #    data[x] = grib[x+1].data()  # grib indexing starts at 1 for some reason
+
+    #return np.array(data)
+    return grib[1]
+
+"""
+    # If no gribfile argument is provided, default to the fetched file.
+    if grib is None:
+        grib = self.fetch_filename
+
+    # load grib structure from target.
+    grbs=pygrib.open(grib)
+
+    # Identify parameter and date for extraction.
+    # Date field: validDate
+    # Target date (not incl. time yet)
+    if (target_date is None):
+        target_date = self.fetch_datetimestamp.replace(minute=0, hour=0, second=0, microsecond=0)
+    else:
+### Should any filtering on time be added here to enforce valid time intervals?
+        target_date = target_date
+
+    # Fetch the indicated slice from the overall Grib file.
+    grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
+
+    if(wavevar == ERA5Wavevar.significant_height_of_combined_wind_waves_and_swell):
+        title_text = "ERA5 Sig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
+    elif(wavevar == ERA5Wavevar.mean_wave_period):
+        title_text = "ERA5 Mean Wave Period from GRIB\n({}) ".format(target_date)
+    elif(wavevar == ERA5Wavevar.mean_wave_direction):
+        title_text = "ERA5 Mean Wave Direction from GRIB\n({}) ".format(target_date)
+    else:
+        title_text = "ERA5\nUnknown variable from GRIB\n({}) ".format(target_date)
+
+    return (grb, title_text)
+"""
 

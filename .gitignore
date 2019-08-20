@@ -18,4 +18,11 @@ build/*
 Nx2DSSFPE/mat_Mariana_Nx2D_longrng*
 .ipynb_checkpoints
 *.prof
+.cache/*
+*.pyc
+storage
+kadlu/analysis
+config.ini
+config.ini*
+.gitignore
 storage/*

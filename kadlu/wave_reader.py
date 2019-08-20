@@ -19,13 +19,13 @@ import pygrib
 
 from kadlu.geospatial.bathy_reader import LatLon
 
-class Source(Enum):
-    """ Enum class for wave data sources
-    """
-    RDWPS_St_Lawrence = 1
-    GDWPS = 2
-    NOAA_Wavewatch_Global = 3
-    ECMWF_ERA5 = 4
+#class Source(Enum):
+#    """ Enum class for wave data sources
+#    """
+#    RDWPS_St_Lawrence = 1
+#    GDWPS = 2
+#    NOAA_Wavewatch_Global = 3
+#    ECMWF_ERA5 = 4
 
 class WaveReader():
 

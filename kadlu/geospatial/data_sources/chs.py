@@ -124,7 +124,7 @@ def load(storage_location, south=-90, north=90, west=-180, east=180):
     lats = np.concatenate(lats)
     lons = np.concatenate(lons)
 
-    return bathy, lats, lons
+    return (bathy,lats,lons)
 
 
 def select_files(south, north, west, east):

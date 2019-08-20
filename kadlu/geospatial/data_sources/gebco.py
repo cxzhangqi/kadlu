@@ -81,4 +81,4 @@ def load(storage_location, south=-90, north=90, west=-180, east=180):
     # access bathymetry values
     bathy = np.array(d.variables["bathy"])[indices]
 
-    return bathy, lats, lons
+    return (bathy,lats,lons)

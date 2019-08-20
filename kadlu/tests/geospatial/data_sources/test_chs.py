@@ -11,6 +11,7 @@
 
 """
 import pytest
+import numpy as np
 import os
 import kadlu.geospatial.data_sources.chs as chs
 from kadlu.geospatial.bathy_reader import LatLon
@@ -46,5 +47,29 @@ def test_latlon():
     assert lats[0] == 50
     assert lats[1] == 50.001
 
+def test_load_single_chs_file():
+    folder = os.path.join(path_to_assets, "tif")
+    bathy, lats, lons = chs.load(storage_location=folder, south=43, west=-60, north=44, east=-59)
+    assert np.ma.min(bathy) == pytest.approx(-3257.100, abs=0.001)
+    assert np.ma.max(bathy) == pytest.approx(1.645, abs=0.001)
+    assert bathy.shape[0] == lats.shape[0]
+    assert bathy.shape[0] == lons.shape[0]
 
-    
+def test_load_multiple_chs_files():
+    folder = os.path.join(path_to_assets, "tif")
+    bathy1, lats1, lons1 = chs.load(storage_location=folder, south=43, west=-60, north=44, east=-59)
+    bathy2, lats2, lons2 = chs.load(storage_location=folder, south=44, west=-60, north=45, east=-59)
+    bathy12, lats12, lons12 = chs.load(storage_location=folder, south=43, west=-60, north=45, east=-59)
+    assert bathy12.shape[0] == bathy1.shape[0] + bathy2.shape[0]
+    assert np.min(lats12) == np.min(lats1)
+    assert np.max(lats12) == np.max(lats2)
+    assert min(np.min(lons1),np.min(lons2)) == np.min(lons12)
+    assert max(np.max(lons1),np.max(lons2)) == np.max(lons12)
+
+def test_load_partial_chs_file():
+    folder = os.path.join(path_to_assets, "tif")
+    bathy, lats, lons = chs.load(storage_location=folder, south=43, west=-60, north=43.5, east=-59.5)
+    assert np.ma.min(bathy) == pytest.approx(-2695.4, abs=0.1)
+    assert np.ma.max(bathy) == pytest.approx(-493.8, abs=0.1)
+    assert bathy.shape[0] == lats.shape[0]
+    assert bathy.shape[0] == lons.shape[0]

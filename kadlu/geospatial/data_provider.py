@@ -28,7 +28,7 @@ class DataProvider():
     def __init__(self, storage_location, bathy_source=None, temp_source=None,\
                 salinity_source=None, wave_source=None, wave_var=None,\
                 south=-90, north=90, west=-180, east=180, time=None,\
-                origin=None, interpolation_method='cubic'):
+                lat_ref=None, lon_ref=None, interpolation_method='cubic'):
 
         self.bathy_data = None
         self.temp_data = None
@@ -53,10 +53,14 @@ class DataProvider():
 
         # initialize bathymetry interpolation table
         if self.bathy_data is not None:
+            if lat_ref is not None and lon_ref is not None:
+                origin = LatLon(lat_ref, lon_ref)
+            else:
+                origin = None
+    
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
                     lats=self.bathy_data[1], lons=self.bathy_data[2], origin=origin, method=interpolation_method)       
         
-
     def bathy(self, x=None, y=None, grid=False, geometry='planar'):
         """ Evaluate interpolated bathymetry in spherical (lat-lon) or  
             planar (x-y) geometry.

@@ -15,28 +15,6 @@ from osgeo import gdal
 import scipy.io as sio
 
 
-def read_matlab(path, name):
-    """ Read data from a MatLab file.
-
-        Args: 
-            path: str
-                File path
-            name: str
-                Name of MatLab field containing the data values   
-
-        Returns:
-            values: numpy array
-                Data values
-    """
-    # load data
-    m = sio.loadmat(path)
-
-    # access array
-    values = np.array(m[name])
-
-    return values
-
-
 def read_geotiff(path, band_id=1):
     """ Read data from a GeoTIFF file.
 
@@ -76,10 +54,14 @@ def crop(lat, lon, south, north, west, east, grid=False):
                 Latitude values
             lon: 1d or 2d numpy array
                 Longitude values
-            latlon_SW: LatLon
-                South-western (SW) boundary of the region of interest.
-            latlon_NE: LatLon
-                North-eastern (NE) boundary of the region of interest.
+            south: float
+                Southern boundary of the region of interest.
+            north: float
+                Northern boundary of the region of interest.
+            west: float
+                Western boundary of the region of interest.
+            east: float
+                Eastern boundary of the region of interest.
             grid: bool
                 Specify how to combine elements of lat and lon.
 
@@ -122,3 +104,81 @@ def crop(lat, lon, south, north, west, east, grid=False):
     lon = lon[ind_lon]
 
     return ind, lat, lon
+
+
+def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', lon_axis=1,\
+    south=-90, north=90, west=-180, east=180):
+    """ Load geospatial data from a single file. 
+
+        Currently supported formats are NetCDF (*.nc) and MatLab (*.mat).
+
+        The data can be cropped by speciyfing south/north/west/east 
+        boundaries.
+
+        Args: 
+            path: str
+                File path
+            val_name: str
+                Name of variable/field containing the data values
+            lat_name: str
+                Name of variable/field containing the latitude values
+            lon_name: str
+                Name of variable/field containing the longitude values
+            lon_axis: int
+                Specify if the longitude dimension is the second (1, default) 
+                or first (0) axis.
+            south: float
+                Southern boundary of the region of interest.
+            north: float
+                Northern boundary of the region of interest.
+            west: float
+                Western boundary of the region of interest.
+            east: float
+                Eastern boundary of the region of interest.
+
+        Returns:
+            val: 1d or 2d numpy array
+                Data values
+            lat: numpy array
+                Latitude values
+            lon: numpy array
+                Longitude values
+    """
+    # detect format
+    ext = path[path.rfind('.'):]
+
+    # load data
+    if ext == '.nc': # NetCDF
+        d = Dataset(path)
+        val = np.array(val_name)
+        lat = np.array(lat_name)
+        lon = np.array(lon_name)
+
+    elif ext == '.mat': # MatLab
+        d = sio.loadmat(path)
+        val = np.array(d[val_name])
+        lat = np.squeeze(np.array(d[lat_name]))
+        lon = np.squeeze(np.array(d[lon_name]))
+
+    else:
+        print('Unknown file format *{0}'.format(ext))
+        exit(1)
+
+    # flip axes, if necessary
+    if lon_axis == 0:
+        val = np.swapaxes(val, 0, 1)
+
+    # ensure that lat and lon are strictly increasing
+    if np.all(np.diff(lat) < 0):
+        lat = np.flip(lat, axis=0)
+        val = np.flip(val, axis=0)
+    if np.all(np.diff(lon) < 0):
+        lon = np.flip(lon, axis=0)
+        val = np.flip(val, axis=1)
+
+    # crop the region of interest
+    grid = (np.ndim(val) == 2)
+    indices, lat, lon = crop(lat, lon, south, north, west, east, grid=grid)
+    val = val[indices]
+
+    return val, lat, lon

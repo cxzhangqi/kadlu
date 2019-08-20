@@ -13,6 +13,12 @@
 import numpy as np
 from osgeo import gdal
 import scipy.io as sio
+from sys import platform as sys_pf
+if sys_pf == 'darwin':
+    import matplotlib
+    matplotlib.use("TkAgg")
+
+from matplotlib import pyplot as plt
 
 
 def read_geotiff(path, band_id=1):
@@ -182,3 +188,50 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
     val = val[indices]
 
     return val, lat, lon
+
+
+def plot(x, y, z, geometry='planar'):
+    """ Draw a color map using either polar or planar coordinates.
+
+        Args:
+            x: 1d numpy array
+                x-coordinates or longitudes
+            y: 1d numpy array
+                y-coordinates or latitudes
+            z: 2d numpy array
+                data values
+            geometry: str
+                Can be either 'planar' (default) or 'spherical'
+
+        Returns:
+            fig: matplotlib.figure.Figure
+                A figure object.
+    """
+    # axes ranges
+    x_min = np.min(x)
+    x_max = np.max(x)
+    y_min = np.min(y)
+    y_max = np.max(y)
+
+    # meshgrid
+    x,y = np.meshgrid(x,y)
+
+    if geometry is 'spherical':
+        z = np.swapaxes(z, 0, 1)
+
+    # plot
+    fig, ax = plt.subplots(figsize=(8,6))
+    img = ax.imshow(z.T, aspect='auto', origin='lower', extent=(x_min, x_max, y_min, y_max))
+
+    # axes titles
+    if geometry is 'planar':
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+    else:
+        ax.set_xlabel('Longitude (degrees east)')
+        ax.set_ylabel('Latitude (degrees north)')
+
+    # Add a color bar which maps values to colors
+    fig.colorbar(img, format='%.02f', label='Elevation (m)')
+
+    return fig

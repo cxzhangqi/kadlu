@@ -14,7 +14,10 @@ import os
 import numpy as np
 from datetime import datetime, timedelta
 from enum import Enum
-from kadlu.wave_fetch import WaveFetch, WaveSources, RDWPSRegion
+# TODO:
+# this has changed with refactoring to wave_fetch
+# test should now use waveSources and region dictionaries
+#from kadlu.wave_fetch import WaveFetch, WaveSources, RDWPSRegion
 from kadlu.wave_reader import WaveReader
 from mpl_toolkits.basemap import Basemap
 import urllib.request

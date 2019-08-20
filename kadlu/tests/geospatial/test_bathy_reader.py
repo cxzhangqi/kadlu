@@ -13,6 +13,7 @@
 
 import pytest
 import os
+from os.path import dirname
 import numpy as np
 from kadlu.geospatial.bathy_reader import BathyReader, LatLon, write_bathy
 

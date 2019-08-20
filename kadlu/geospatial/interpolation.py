@@ -35,8 +35,7 @@
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
-# this will become obsolete! 
-#from kadlu.geospatial.bathy_reader import LatLon
+from kadlu.geospatial.bathy_reader import LatLon
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY
 from scipy.interpolate import griddata
 

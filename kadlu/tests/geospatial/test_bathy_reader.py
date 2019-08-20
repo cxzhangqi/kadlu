@@ -15,22 +15,9 @@ import pytest
 import os
 from os.path import dirname
 import numpy as np
-from kadlu.bathy_reader import BathyReader, LatLon, write_bathy
-import warnings
-import configparser
+from kadlu.geospatial.bathy_reader import BathyReader, LatLon, write_bathy
 
-
-cfg = configparser.ConfigParser()
-""" The following line can be executed when developing in interactive mode:
-cfg.read("config.ini")
-"""
-try:
-    cfg.read(os.path.join(dirname(dirname(dirname(__file__))),"config.ini"))
-    path_to_assets = cfg["storage"]["TestingData"]
-    assert(path_to_assets.replace(" ", "") is not '')
-except:
-    path_to_assets = os.path.abspath(os.path.join(dirname(__file__), "assets"))
-    warnings.warn("null TestingData value or missing kadlu/config.ini, testing data will be saved to %s" % path_to_assets)
+path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
 
 def test_can_read_bathymetry_from_netcdf_file():
     path = path_to_assets + '/bornholm.nc'

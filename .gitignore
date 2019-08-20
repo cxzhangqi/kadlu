@@ -25,3 +25,4 @@ kadlu/analysis
 config.ini
 config.ini*
 .gitignore
+storage/*

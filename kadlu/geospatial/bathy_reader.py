@@ -239,7 +239,7 @@ class BathyReader():
             lat = np.flip(lat, axis=0)
             bathy = np.flip(bathy, axis=0)
         if np.all(np.diff(lon) < 0):
-            lon = np.flip(lat, axis=0)
+            lon = np.flip(lon, axis=0)
             bathy = np.flip(bathy, axis=1)
         
         assert np.all(np.diff(lat) > 0), 'Latitudes must be strictly ascending'

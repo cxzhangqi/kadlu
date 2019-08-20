@@ -23,19 +23,19 @@
 #       along with this program.  If not, see <https://www.gnu.org/licenses/>.     #
 # ================================================================================ #
 
-""" Bathymetry interpolation module within the kadlu library
+""" Interpolation module within the kadlu library
 
-    This module handles two-dimensional interpolation of bathymetry data in 
-    spherical and planar geometry, on regular and iregular grids.
+    This module handles two- and three-dimensional interpolation of geospatial data in 
+    spherical and planar geometry, on regular and irregular grids.
 
     Contents:
         GridData class:
-        BathyInterpolator class
+        Interpolator2D class
 """
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
-from kadlu.bathy_reader import BathyReader, LatLon
+from kadlu.geospatial.bathy_reader import LatLon
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY
 from scipy.interpolate import griddata
 
@@ -112,53 +112,47 @@ class GridData():
         return zi
 
 
-class BathyInterpolator():
-    """ Class for interpolating bathymetry data.
+class Interpolator2D():
+    """ Class for interpolating geospatial data.
 
         Attributes: 
-            bathy_reader: BathyReader
-                Bathymetry data file reader
-            latlon_SW: LatLon
-                South-western (SW) boundary of the interpolation region.
-            latlon_NE: LatLon
-                North-eastern (SE) boundary of the interpolation region.
+            values: numpy array
+                Values to be interpolated
+            lats: numpy array
+                Latitude values
+            lons: numpy array
+                Longitude values
             latlon_ref: LatLon
                 Reference location (origo of XY coordinate system).
             method : {‘linear’, ‘nearest’, ‘cubic’}, optional
                 Interpolation method used for unstructured data (GeoTIFF and XYZ)
     """
-    def __init__(self, bathy_reader, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), origin=None, method='cubic'):
+    def __init__(self, values, lats, lons, origin=None, method='cubic'):
         
-        # read bathymetry data from file
-        lat, lon, bathy = bathy_reader.read(latlon_SW, latlon_NE)
-
-        # check that data was 
-        assert len(lat) > 0, "Reader unable to retrieve any bathymetry data for selected region"
-
         # compute coordinates of origin, if not provided
         if origin is None:
-            lat_ref = (np.min(lat) + np.max(lat)) / 2
-            lon_ref = (np.min(lon) + np.max(lon)) / 2
+            lat_ref = (np.min(lats) + np.max(lats)) / 2
+            lon_ref = (np.min(lons) + np.max(lons)) / 2
             origin = LatLon(lat_ref, lon_ref)
 
         self.origin = origin
 
         # check if bathymetry data are on a regular or unstructured grid
-        reggrid = (np.ndim(bathy) == 2)
+        reggrid = (np.ndim(values) == 2)
 
         # convert to radians
-        lat_rad, lon_rad = torad(lat, lon)
+        lats_rad, lons_rad = torad(lats, lons)
 
         # initialize lat-lon interpolator
         if reggrid:
-            self.interp_ll = RectSphereBivariateSpline(u=lat_rad, v=lon_rad, r=bathy)
+            self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
         else:
-            self.interp_ll = GridData(x=lat_rad, y=lon_rad, z=bathy, method=method)
+            self.interp_ll = GridData(x=lats_rad, y=lons_rad, z=values, method=method)
 
         # store grids
-        self.lat_nodes = lat
-        self.lon_nodes = lon
-        self.bathy = bathy
+        self.lat_nodes = lats
+        self.lon_nodes = lons
+        self.values = values
 
     def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
         """ Evaluate interpolated bathymetry in position coordinates (XY).
@@ -254,7 +248,7 @@ class BathyInterpolator():
 
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
-        if np.ndim(self.bathy) == 1 and np.ndim(zi) == 2:
+        if np.ndim(self.values) == 1 and np.ndim(zi) == 2:
             zi = np.swapaxes(zi, 0, 1)
 
         if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
@@ -277,7 +271,7 @@ class BathyInterpolator():
         r *= dr
         r += 0.5 * dr
 
-        bathy = list()
+        val = list()
 
         # loop over angles
         a = angle
@@ -288,13 +282,13 @@ class BathyInterpolator():
             x += xo
             y += yo
             b = self.eval_xy(x=x, y=y)
-            bathy.append(b)
+            val.append(b)
             a += da
 
         if num_slices == 1:
-            bathy = bathy[0]
+            val = val[0]
         
-        return bathy
+        return val
 
     def _ll_to_xy(self, lat, lon, lat_ref=None, lon_ref=None, grid=False):
 
@@ -354,7 +348,7 @@ class BathyInterpolator():
             x0 = self.lon_nodes
             y0 = self.lat_nodes
         else:
-            grid = (np.ndim(self.bathy) == 2)
+            grid = (np.ndim(self.values) == 2)
             x0, y0 = self._ll_to_xy(lat=self.lat_nodes, lon=self.lon_nodes, grid=grid)
 
         # axes ranges

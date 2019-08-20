@@ -10,6 +10,7 @@
     License:
 
 """
+import numpy as np
 import kadlu.geospatial.data_sources.chs as chs
 import kadlu.geospatial.data_sources.gebco as gebco 
 from kadlu.geospatial.interpolation import Interpolator2D
@@ -18,7 +19,9 @@ from kadlu.geospatial.interpolation import Interpolator2D
 class DataProvider():
     """ Class for handling geospatial data requests. 
 
-        TODO: Get rid of the storage_location argument and instead use the config.ini file
+        TODO: Get rid of the storage_location argument and instead use the config.ini file.
+
+        TODO: Implement loading of temp, salinity and wave data.
 
         Args:
 
@@ -51,16 +54,34 @@ class DataProvider():
             print('Warning: Unknown bathymetry data source {0}.'.format(bathy_source))
             print('Proceeding without bathymetry data')
 
+        # load temperature and salinity
+        print('\n*** generating dummy temperature data ***')
+        self.temp_data = _generate_fake_data_3d(4, south, north, west, east, -np.min(self.bathy_data[0]))
+        print('*** generating dummy salinity data *** ')
+        self.salinity_data = _generate_fake_data_3d(35, south, north, west, east, -np.min(self.bathy_data[0]))
+
+        # reference coordinates for x-y coordinate system
+        if lat_ref is not None and lon_ref is not None:
+            origin = LatLon(lat_ref, lon_ref)
+        else:
+            origin = None
+
         # initialize bathymetry interpolation table
-        if self.bathy_data is not None:
-            if lat_ref is not None and lon_ref is not None:
-                origin = LatLon(lat_ref, lon_ref)
-            else:
-                origin = None
-    
+        if self.bathy_data is not None:    
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
                     lats=self.bathy_data[1], lons=self.bathy_data[2], origin=origin, method=interpolation_method)       
-        
+
+        # initialize temperature interpolation table
+#        if self.temp_data is not None:    
+#            self.temp_interpolator = Interpolator3D(values=self.temp_data[0],\
+#                    lats=self.temp_data[1], lons=self.temp_data[2], depths=self.temp_data[3], origin=origin, method=interpolation_method)       
+
+        # initialize salinity interpolation table
+#        if self.salinity_data is not None:    
+#            self.salinity_interpolator = Interpolator3D(values=self.salinity_data[0],\
+#                    lats=self.salinity_data[1], lons=self.salinity_data[2], depths=self.salinity_data[3], origin=origin, method=interpolation_method)       
+
+
     def bathy(self, x=None, y=None, grid=False, geometry='planar'):
         """ Evaluate interpolated bathymetry in spherical (lat-lon) or  
             planar (x-y) geometry.
@@ -97,6 +118,7 @@ class DataProvider():
             z = self.bathy_interpolator.eval_ll(lat=y, lon=x, grid=grid)
 
         return z
+
 
     def bathy_gradient(self, axis='x', x=None, y=None, grid=False, geometry='planar'): 
         """ Evaluate interpolated bathymetry gradient in spherical (lat-lon) or  
@@ -139,3 +161,17 @@ class DataProvider():
             grad = self.bathy_interpolator.eval_ll(lat=y, lon=x, grid=grid, lat_deriv_order=deriv_order[1], lon_deriv_order=deriv_order[0])
 
         return grad
+
+
+def _generate_fake_data_3d(value, south, north, west, east, max_depth):
+
+    N = 30
+
+    lats = np.arange(N) / (N - 1) * (north - south) + south 
+    lons = np.arange(N) / (N - 1) * (east - east) + east 
+    depths = np.arange(N) / (N - 1) * max_depth
+
+    shape = (len(lats), len(lons), len(depths))
+    values = value * np.ones(shape)
+
+    return (values, lats, lons, depths)

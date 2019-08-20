@@ -191,7 +191,8 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
 
 
 def plot(x, y, z, geometry='planar'):
-    """ Draw a color map using either polar or planar coordinates.
+    """ Plot 2d geospatial data using either polar or planar coordinates
+        by drawing a color heat map.
 
         Args:
             x: 1d numpy array

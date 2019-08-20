@@ -19,20 +19,19 @@ path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__
 
 def test_fetch_returns_two_files():
     folder = os.path.join(path_to_assets, "tif")
-    paths = chs.fetch(storage_location=folder, latlon_SW=LatLon(42,-61), latlon_NE=LatLon(44.6,-59.1))
+    paths = chs.fetch(storage_location=folder, south=42, west=-61, north=44.6, east=-59.1)
     assert len(paths) == 2
     assert os.path.basename(paths[0]) == "CA2_4300N06000W.tif"
     assert os.path.basename(paths[1]) == "CA2_4400N06000W.tif"
 
 def test_filename():
-    ll = LatLon(50,-62)
-    fname = chs.filename(ll)
+    fname = chs.filename(south=50, west=-62)
     assert fname == "CA2_5000N06200W.tif"
 
 def test_parse_sw_corner():
-    ll = chs.parse_sw_corner("CA2_5000N06200W.tif")
-    assert ll.latitude == 50
-    assert ll.longitude == -62
+    s,w = chs.parse_sw_corner("CA2_5000N06200W.tif")
+    assert s == 50
+    assert w == -62
 
 def test_latlon():
     lats, lons = chs.latlon(path="CA2_5000N06200W.tif")

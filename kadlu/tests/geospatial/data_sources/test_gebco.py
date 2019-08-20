@@ -28,8 +28,8 @@ def test_load_bathymetry_for_bornholm():
 
 def test_load_bathymetry_for_parts_of_bornholm():
     path = os.path.join(path_to_assets, "bornholm.nc")
-    bathy1, lats1, lons1 = geo.load_bathy(storage_location=path, latlon_SW=LatLon(-90,14.5), latlon_NE=LatLon(90,14.9), source="GEBCO")
-    bathy2, lats2, lons2 = geo.load_bathy(storage_location=path, latlon_SW=LatLon(-90,14.9), latlon_NE=LatLon(90,15.5), source="GEBCO")
+    bathy1, lats1, lons1 = geo.load_bathy(storage_location=path, west=14.5, east=14.9, source="GEBCO")
+    bathy2, lats2, lons2 = geo.load_bathy(storage_location=path, west=14.9, east=15.5, source="GEBCO")
     assert min(np.min(bathy1), np.min(bathy2)) == -100
     assert max(np.min(bathy1), np.min(bathy2)) > -100
     assert max(np.max(bathy1), np.max(bathy2)) == 159

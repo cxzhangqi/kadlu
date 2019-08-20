@@ -14,10 +14,9 @@ import os
 import numpy as np
 from netCDF4 import Dataset
 from kadlu.geospatial.geospatial import crop
-from kadlu.geospatial.bathy_reader import LatLon
 
 
-def fetch(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
+def fetch(storage_location, south=-90, north=90, west=-180, east=180):
     """ Fetch GEBCO bathymetry data.
 
         TODO: Implement fetching
@@ -25,10 +24,14 @@ def fetch(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)
         Args: 
             storage_location: str
                 Path to where data files are stored in the local file system.
-            latlon_SW: LatLon
-                South-western (SW) boundary of the region of interest.
-            latlon_NE: LatLon
-                North-eastern (SE) boundary of the region of interest.
+            south: float
+                Southern boundary of the region of interest.
+            north: float
+                Northern boundary of the region of interest.
+            west: float
+                Western boundary of the region of interest.
+            east: float
+                Eastern boundary of the region of interest.
 
         Returns:
             path: list
@@ -39,16 +42,20 @@ def fetch(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)
 
 
 
-def load(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180)):
+def load(storage_location, south=-90, north=90, west=-180, east=180):
     """ Load GEBCO bathymetry data within specified geographical region.
 
         TODO: Get rid of the path argument and instead use the config.ini file
 
         Args: 
-            latlon_SW: LatLon
-                South-western (SW) boundary of the region of interest.
-            latlon_NE: LatLon
-                North-eastern (SE) boundary of the region of interest.
+            south: float
+                Southern boundary of the region of interest.
+            north: float
+                Northern boundary of the region of interest.
+            west: float
+                Western boundary of the region of interest.
+            east: float
+                Eastern boundary of the region of interest.
 
         Returns:
             bathy: 2d numpy array
@@ -59,7 +66,7 @@ def load(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180))
                 Longitude values
     """
     # fetch relevant data files
-    path = fetch(storage_location, latlon_SW, latlon_NE)
+    path = fetch(storage_location, south=-90, north=90, west=-180, east=180)
 
     # load data
     d = Dataset(path)
@@ -69,7 +76,7 @@ def load(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180))
     lons = np.array(d.variables["lon"])     
 
     # crop
-    indices, lats, lons = crop(lats, lons, latlon_SW, latlon_NE, grid=True)
+    indices, lats, lons = crop(lats, lons, south, north, west, east, grid=True)
 
     # access bathymetry values
     bathy = np.array(d.variables["bathy"])[indices]

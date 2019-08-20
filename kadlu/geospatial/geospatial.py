@@ -65,7 +65,7 @@ def read_geotiff(path, band_id=1):
     return values
 
 
-def crop(lat, lon, latlon_SW, latlon_NE, grid=False):
+def crop(lat, lon, south, north, west, east, grid=False):
     """ Select rectangular region bounded by the geographical coordinates 
         latlon_SW to the south-west and latlon_NE to the north-east.
 
@@ -91,10 +91,10 @@ def crop(lat, lon, latlon_SW, latlon_NE, grid=False):
             lon: numpy array
                 Longitude values
     """
-    ind_lat = np.argwhere((lat >= latlon_SW.latitude) & (lat <= latlon_NE.latitude))
+    ind_lat = np.argwhere((lat >= south) & (lat <= north))
     ind_lat = np.squeeze(ind_lat)
 
-    ind_lon = np.argwhere((lon >= latlon_SW.longitude) & (lon <= latlon_NE.longitude))
+    ind_lon = np.argwhere((lon >= west) & (lon <= east))
     ind_lon = np.squeeze(ind_lon)
 
     if np.ndim(ind_lat) == 2:

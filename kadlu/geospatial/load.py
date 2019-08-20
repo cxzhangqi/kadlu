@@ -16,7 +16,7 @@ import kadlu.geospatial.data_sources.gebco as gebco
 from kadlu.geospatial.bathy_reader import LatLon
 
 
-def load_bathy(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180), source="CHS"):
+def load_bathy(storage_location, south=-90, north=90, west=-180, east=180, source="CHS"):
     """ Load bathymetry data within specified geographical region.
 
         Possible data sources are: CHS, GEBCO
@@ -24,10 +24,14 @@ def load_bathy(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90
         TODO: Get rid of the storage_location argument and instead use the config.ini file
 
         Args: 
-            latlon_SW: LatLon
-                South-western (SW) boundary of the region of interest.
-            latlon_NE: LatLon
-                North-eastern (SE) boundary of the region of interest.
+            south: float
+                Southern boundary of the region of interest.
+            north: float
+                Northern boundary of the region of interest.
+            west: float
+                Western boundary of the region of interest.
+            east: float
+                Eastern boundary of the region of interest.
             source: str
                 Bathymetry data source(s).               
 
@@ -40,10 +44,10 @@ def load_bathy(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90
                 Longitude values
     """
     if source == "CHS":
-        bathy, lats, lons = chs.load(storage_location, latlon_SW, latlon_NE)
+        bathy, lats, lons = chs.load(storage_location, south, north, west, east)
 
     elif source == "GEBCO":
-        bathy, lats, lons = gebco.load(storage_location, latlon_SW, latlon_NE)
+        bathy, lats, lons = gebco.load(storage_location, south, north, west, east)
 
     else:
         print('Unknown bathymetry data source')

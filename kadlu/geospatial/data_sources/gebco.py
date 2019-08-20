@@ -72,6 +72,6 @@ def load(storage_location, latlon_SW=LatLon(-90,-180), latlon_NE=LatLon(90,180))
     indices, lats, lons = crop(lats, lons, latlon_SW, latlon_NE, grid=True)
 
     # access bathymetry values
-    bathy = np.array(d.variables["bathy"][indices])
+    bathy = np.array(d.variables["bathy"])[indices]
 
     return bathy, lats, lons

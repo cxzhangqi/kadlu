@@ -327,7 +327,8 @@ class Interpolator2D():
             origin = self.origin
             xo, yo = 0, 0
         else:
-            xo, yo = self._ll_to_xy(origin.latitude, origin.longitude)
+            xo, yo = LLtoXY(lat=origin.latitude, lon=origin.longitude,\
+                lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
 
         # distance array
         dr = distance / float(bins)

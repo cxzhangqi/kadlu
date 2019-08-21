@@ -190,9 +190,8 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
     return val, lat, lon
 
 
-def plot(x, y, z, geometry='planar'):
-    """ Plot 2d geospatial data using either polar or planar coordinates
-        by drawing a color heat map.
+def plot(x, y, z, x_label='x (m)', y_label='y (m)', z_label='Elevation (m)'):
+    """ Plot 2d geospatial data by drawing a color heat map.
 
         Args:
             x: 1d numpy array
@@ -201,8 +200,12 @@ def plot(x, y, z, geometry='planar'):
                 y-coordinates or latitudes
             z: 2d numpy array
                 data values
-            geometry: str
-                Can be either 'planar' (default) or 'spherical'
+            x_label: str
+                x-axis label
+            y_label: str
+                y-axis label
+            z_label: str
+                z-axis label
 
         Returns:
             fig: matplotlib.figure.Figure
@@ -217,20 +220,13 @@ def plot(x, y, z, geometry='planar'):
     # meshgrid
     x,y = np.meshgrid(x,y)
 
-    if geometry is 'spherical':
-        z = np.swapaxes(z, 0, 1)
-
     # plot
     fig, ax = plt.subplots(figsize=(8,6))
     img = ax.imshow(z.T, aspect='auto', origin='lower', extent=(x_min, x_max, y_min, y_max))
 
     # axes titles
-    if geometry is 'planar':
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("y (m)")
-    else:
-        ax.set_xlabel('Longitude (degrees east)')
-        ax.set_ylabel('Latitude (degrees north)')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
 
     # Add a color bar which maps values to colors
     fig.colorbar(img, format='%.02f', label='Elevation (m)')

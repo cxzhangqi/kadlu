@@ -110,7 +110,14 @@ class GridData2D():
             Returns:
                 ri: Interpolated values
         """        
-        assert dtheta + dphi > 0, "Interpolation of higher-order derivatives not implemented for irregular grids"
+        assert dtheta + dphi <= 1, "Interpolation of higher-order derivatives not implemented for irregular grids"
+
+        if grid:
+            M = N = 1
+            if np.ndim(theta) == 1: 
+                M = len(theta)
+            if np.ndim(phi) == 1: 
+                N = len(phi)
 
         if dtheta == dphi == 0:
             pts = self._prep_input(theta, phi, grid)
@@ -248,7 +255,7 @@ class Interpolator2D():
             Returns:
                 zi: Interpolated interpolation values
         """
-        lat, lon = self._xy_to_ll(x, y, grid=grid)
+        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
 
         if grid:
             M = lat.shape[0]
@@ -297,7 +304,8 @@ class Interpolator2D():
                 lon: float or array
                     longitude of the positions(s) where the interpolation is to be evaluated
                 grid: bool
-                    Specify how to combine elements of lat and lon.
+                    Specify how to combine elements of lat and lon. If lat and lon have different
+                    lengths, specifying grid has no effect as it is automatically set to True.
                 lat_deriv_order: int
                     Order of latitude-derivative
                 lon_deriv_order: int
@@ -319,99 +327,6 @@ class Interpolator2D():
             zi = float(zi)
 
         return zi
-
-    def slice(self, angle=0, distance=1000, bins=100, num_slices=1, origin=None):
-
-        # x,y coordinates of origin
-        if origin is None:
-            origin = self.origin
-            xo, yo = 0, 0
-        else:
-            xo, yo = LLtoXY(lat=origin.latitude, lon=origin.longitude,\
-                lat_ref=self.origin.latitude, lon_ref=self.origin.longitude)
-
-        # distance array
-        dr = distance / float(bins)
-        r = np.arange(bins, dtype=np.float)
-        r *= dr
-        r += 0.5 * dr
-
-        val = list()
-
-        # loop over angles
-        a = angle
-        da = 360. / float(num_slices)
-        for _ in range(num_slices):
-            x = r * np.cos(a * np.pi / 180.)
-            y = r * np.sin(a * np.pi / 180.)
-            x += xo
-            y += yo
-            b = self.eval_xy(x=x, y=y)
-            val.append(b)
-            a += da
-
-        if num_slices == 1:
-            val = val[0]
-        
-        return val
-
-    def _ll_to_xy(self, lat, lon, lat_ref=None, lon_ref=None, grid=False):
-        """ Convert from spherical (lat-lon) to planar (x-y) coordinate system.
-
-            Args: 
-                lat: float or array
-                    latitude(s)
-                lon: float or array
-                    longitude(s)
-                lat_ref: float
-                    reference latitude
-                lon_ref: float
-                    reference longitude
-                grid: bool
-                    Specify how to combine elements of lat and lon.
-
-            Returns:
-                x: float or array
-                   x value(s)
-                y: float or array
-                   y value(s)
-        """
-        if lat_ref is None:
-            lat_ref = self.origin.latitude
-        if lon_ref is None:
-            lon_ref = self.origin.longitude
-
-        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=lat_ref, lon_ref=lon_ref, grid=grid)
-        return x, y
-
-    def _xy_to_ll(self, x, y, lat_ref=None, lon_ref=None, grid=False):
-        """ Convert from planar (x-y) to spherical (lat-lon) coordinate system.
-
-            Args: 
-                x: float or array
-                   x value(s)
-                y: float or array
-                   y value(s)
-                lat_ref: float
-                    reference latitude
-                lon_ref: float
-                    reference longitude
-                grid: bool
-                    Specify how to combine elements of lat and lon.
-
-            Returns:
-                lat: float or array
-                    latitude(s)
-                lon: float or array
-                    longitude(s)
-        """
-        if lat_ref is None:
-            lat_ref = self.origin.latitude
-        if lon_ref is None:
-            lon_ref = self.origin.longitude
-
-        lat, lon = XYtoLL(x=x, y=y, lat_ref=lat_ref, lon_ref=lon_ref, grid=grid)
-        return lat, lon
 
 
 class Interpolator3D():
@@ -451,7 +366,7 @@ class Interpolator3D():
         self.origin = origin
 
         # check if bathymetry data are on a regular or irregular grid
-        assert np.ndim(values) == 3, 'values must be 3-dimensional'
+        assert np.ndim(values) == 3, 'values must be a 3d array'
 
         # convert to radians
         lats_rad, lons_rad = torad(lats, lons)
@@ -465,7 +380,7 @@ class Interpolator3D():
         self.depth_nodes = depths
         self.values = values
 
-    def eval_xyz(self, x, y, z, v, grid=False):
+    def eval_xy(self, x, y, z, v, grid=False):
         """ Interpolate using planar coordinate system (xy).
 
             x,y,z can be floats or arrays.
@@ -486,69 +401,55 @@ class Interpolator3D():
                 y: float or array
                    y-coordinate of the positions(s) where the interpolation is to be evaluated
                 z: float or array
-                   z-coordinate of the positions(s) where the interpolation is to be evaluated
+                   Depth of the positions(s) where the interpolation is to be evaluated
                 grid: bool
                    Specify how to combine elements of x,y,z.
 
             Returns:
                 vi: Interpolated values
         """
-        lat, lon = self._xy_to_ll(x, y, grid=grid)
+        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
 
         if grid:
-            M = lat.shape[0]
-            N = lat.shape[1]
-            K = z.shape[0]
-            lat = np.reshape(lat, newshape=(M*N*K))
-            lon = np.reshape(lon, newshape=(M*N*K))
-            z = np.reshape(z, newshape=(M*N*K))
+            lat, lon, z = self._reshape(lat, lon, z)
 
-        zi = self.eval_ll(lat=lat, lon=lon, depths=z)
-
-        if x_deriv_order + y_deriv_order > 0:
-            r = DLDL_over_DXDY(lat=lat, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
-            zi *= r
+        vi = self.eval_ll(lat=lat, lon=lon, z=z)
 
         if grid:
-            zi = np.reshape(zi, newshape=(M,N))
+            vi = np.reshape(vi, newshape=(M,N,K))
 
-        if np.ndim(zi) == 2:
-            zi = np.swapaxes(zi, 0, 1)
+        if np.ndim(vi) == 3:
+            vi = np.swapaxes(vi, 0, 1)
 
-        if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
-            zi = float(zi)
+        if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
+            vi = float(vi)
 
-        return zi
+        return vi
 
-    def eval_ll(self, lat, lon, grid=False, lat_deriv_order=0, lon_deriv_order=0):
-        """ Interpolate bathymetry grid in latitude and longitude coordinates (LL).
+    def eval_ll(self, lat, lon, z, grid=False):
+        """ Interpolate using spherical coordinate system (lat-lon).
 
-            lat and lot can be floats or arrays.
+            lat,lot,z can be floats or arrays.
 
-            If grid is set to False, the bathymetry will be evaluated at 
-            the coordinates (lat_i, lon_i), where lat=(lat_1,...,lat_N) 
-            and lon=(lon_1,...,lon_N). Note that in this case, lat and 
+            If grid is set to False, the interpolation will be evaluated at 
+            the coordinates (lat_i, lon_i, z_i), where lat=(lat_1,...,lat_N), 
+            lon=(lon_1,...,lon_N) and z=(z_,...,z_K). Note that in this case, lat and 
             lon must have the same length.
 
-            If grid is set to True, the bathymetry will be evaluated at 
-            all combinations (lat_i, lon_j), where lat=(lat_1,...,lat_N) 
-            and lon=(lon_1,...,lon_M). Note that in this case, the lengths 
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (lat_i, lon_j, z_k), where lat=(lat_1,...,lat_N), 
+            lon=(lon_1,...,lon_M) and z=(z_1,...,z_K). Note that in this case, the lengths 
             of lat and lon do not have to be the same.
-
-            Bathymetry values are given in meters and derivates are given in meters 
-            per radians^n, where n is the overall derivative order.
 
             Args: 
                 lat: float or array
-                    latitude of the positions(s) where the bathymetry is to be evaluated
+                    Latitude of the positions(s) where the bathymetry is to be evaluated
                 lon: float or array
-                    longitude of the positions(s) where the bathymetry is to be evaluated
+                    Longitude of the positions(s) where the bathymetry is to be evaluated
+                z: float or array
+                    Depth of the positions(s) where the interpolation is to be evaluated
                 grid: bool
                     Specify how to combine elements of lat and lon.
-                lat_deriv_order: int
-                    Order of latitude-derivative
-                lon_deriv_order: int
-                    Order of longitude-derivative
 
             Returns:
                 zi: Interpolated bathymetry values (or derivates)
@@ -557,12 +458,58 @@ class Interpolator3D():
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = torad(lat, lon)
 
-        zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
+        M = len(lat)
+        N = len(lon)
+        K = len(z)
 
-        if np.ndim(self.values) == 1 and np.ndim(zi) == 2:
-            zi = np.swapaxes(zi, 0, 1)
+        if grid:
+            lat, lon, z = self._reshape(lat, lon, z)
 
-        if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
-            zi = float(zi)
+        pts = np.column_stack((lat,lon,z))        
+        vi = self.interp_ll(pts)
 
-        return zi
+        if grid:
+            vi = np.reshape(vi, newshape=(M,N,K))
+
+        if np.ndim(self.values) == 1 and np.ndim(vi) == 3:
+            vi = np.swapaxes(vi, 0, 1)
+
+        if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
+            vi = float(vi)
+
+        return vi
+
+    def _reshape(self, a, b, c):
+        """ Create 3d grid from all possible combinations of the 
+            elements of a,b,c and return the flatten coordinate 
+            arrays.
+
+            Args: 
+                a: 1d or 2d numpy array
+                    Coordinates along 1st axis
+                b: 1d or 2d numpy array
+                    Coordinates along 2nd axis
+                c: 1d numpy array
+                    Coordinates along 3rd axis
+
+            Returns:
+                a,b,c: 1d numpy arrays
+                    Flattened arrays
+        """
+        if np.ndim(a) == np.ndim(b) == 1:
+            a,b = np.meshgrid(a,b)
+            
+        M = a.shape[0]
+        N = a.shape[1]
+        a = np.reshape(a, newshape=(M*N))
+        b = np.reshape(b, newshape=(M*N))
+
+        K = c.shape[0]
+        a, c = np.meshgrid(a, c)
+        b, _ = np.meshgrid(b, c)
+
+        a = np.reshape(a, newshape=(M*N*K))
+        b = np.reshape(b, newshape=(M*N*K))
+        c = np.reshape(c, newshape=(M*N*K))
+
+        return a,b,c

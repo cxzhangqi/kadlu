@@ -170,9 +170,10 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
         print('Unknown file format *{0}'.format(ext))
         exit(1)
 
-    # flip axes, if necessary
-    if lon_axis == 0:
-        val = np.swapaxes(val, 0, 1)
+    # crop the region of interest
+    grid = (np.ndim(val) == 2)
+    indices, lat, lon = crop(lat, lon, south, north, west, east, grid=grid)
+    val = val[indices]
 
     # ensure that lat and lon are strictly increasing
     if np.all(np.diff(lat) < 0):
@@ -182,10 +183,13 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
         lon = np.flip(lon, axis=0)
         val = np.flip(val, axis=1)
 
-    # crop the region of interest
-    grid = (np.ndim(val) == 2)
-    indices, lat, lon = crop(lat, lon, south, north, west, east, grid=grid)
-    val = val[indices]
+    # flip axes, if necessary
+    if lon_axis == 0:
+        val = np.swapaxes(val, 0, 1)
+
+    # if axis size are inconsistent, try swapping
+    if val.shape[0] != lat.shape[0]:
+        val = np.swapaxes(val, 0, 1)
 
     return val, lat, lon
 

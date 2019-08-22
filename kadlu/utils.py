@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from collections import namedtuple
 
 # Equatorial radius (6,378.1370 km)
 # Polar radius (6,356.7523 km)
@@ -10,6 +11,18 @@ R1_IUGG = 6371009
 
 # Degree to radian conversion factor
 deg2rad = np.pi / 180.
+
+
+LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
+""" Latitude and longitude coordinates for a given location.
+
+    Args: 
+        latitude: float
+            Latitude in degrees from -90 (South Pole) to +90 (North Pole).
+        longitude: float
+            Longitude in degrees from -180 to +180 (West to East) with 0 
+            corresponding to the Greenwich Meridian.
+"""
 
 
 def DLDL_over_DXDY(lat, lat_deriv_order, lon_deriv_order):
@@ -203,6 +216,47 @@ def torad(lat, lon):
     lat_rad = (lat + 90) * deg2rad
     lon_rad = lon * deg2rad
     return lat_rad, lon_rad
+
+
+def get_slices(distance, num_slices=1, bins=100, angle=0):
+    """ Generate x,y coordinates for equally spaced radial slices 
+        originating from (0,0).
+
+        Args:
+            distance: float
+                Length of the radial slice.
+            num_slices: int
+                Number of slices
+            bins: int
+                Number of points per slice
+            angle: float
+                Angle of the first slice relative to the x-axis.
+
+        Returns:
+            x,y: list of numpy arrays
+                x,y coordinate arrays for each slice
+    """
+    x,y = list(), list()
+
+    # distance array
+    dr = distance / float(bins)
+    r = np.arange(bins, dtype=np.float)
+    r *= dr
+    r += 0.5 * dr
+
+    # loop over angles
+    a = angle
+    da = 360. / float(num_slices)
+    for _ in range(num_slices):
+        x.append(r * np.cos(a * np.pi / 180.))
+        y.append(r * np.sin(a * np.pi / 180.))
+
+    if num_slices == 1:
+        x = x[0]
+        y = y[0]
+    
+    return x, y
+
 
 
 def get_files(path, substr, fullpath=True, subdirs=False):

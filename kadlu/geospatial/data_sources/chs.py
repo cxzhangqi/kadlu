@@ -96,28 +96,17 @@ def load(storage_location, south=-90, north=90, west=-180, east=180):
     # loop over geotiff files
     for f in files:
 
-        # read data from geotiff file
-        z = read(path=f)
-
-        # create lat-lon arrays
-        lat, lon = latlon(path=f)
-
-        # make a grid
-        x, y = np.meshgrid(lon, lat)
-
-        # select non-masked entries
-        x = x[~z.mask]
-        y = y[~z.mask]
-        z = z[~z.mask]
+        # load data from a single file
+        z,y,x = load_from_file(f) 
 
         # crop the region of interest
         indices, y, x = crop(y, x, south, north, west, east)
         z = z[indices]
 
-        # collect data arrays
+        # collect data
+        bathy.append(z)
         lats.append(y)
         lons.append(x)
-        bathy.append(z)
 
     # concatenate
     bathy = np.ma.concatenate(bathy)
@@ -125,6 +114,40 @@ def load(storage_location, south=-90, north=90, west=-180, east=180):
     lons = np.concatenate(lons)
 
     return (bathy,lats,lons)
+
+
+def load_from_file(path):
+    """ Load bathymetric data from a GeoTIFF file provided by the Canadian Hydrographic 
+        Service (CHS) as part of the Non-Navigational NONNA-100 bathymetric data series.
+
+        Args: 
+            path: str
+                Path to the GeoTIFF file.
+
+        Returns:
+            z: 1d numpy array
+                Bathymetry values
+            y: 1d numpy array
+                Latitude values
+            x: 1d numpy array
+                Longitude values
+    """
+
+    # read data from geotiff file
+    z = read(path)
+
+    # create lat-lon arrays
+    lat, lon = latlon(path)
+
+    # make a grid
+    x, y = np.meshgrid(lon, lat)
+
+    # select non-masked entries
+    x = x[~z.mask]
+    y = y[~z.mask]
+    z = z[~z.mask]
+
+    return z,y,x
 
 
 def select_files(south, north, west, east):

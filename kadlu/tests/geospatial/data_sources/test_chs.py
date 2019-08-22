@@ -14,7 +14,7 @@ import pytest
 import numpy as np
 import os
 import kadlu.geospatial.data_sources.chs as chs
-from kadlu.geospatial.bathy_reader import LatLon
+from kadlu.utils import LatLon
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
 

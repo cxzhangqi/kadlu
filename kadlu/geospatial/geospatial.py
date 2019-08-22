@@ -12,6 +12,7 @@
 """
 import numpy as np
 from osgeo import gdal
+from netCDF4 import Dataset
 import scipy.io as sio
 from sys import platform as sys_pf
 if sys_pf == 'darwin':
@@ -156,9 +157,9 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
     # load data
     if ext == '.nc': # NetCDF
         d = Dataset(path)
-        val = np.array(val_name)
-        lat = np.array(lat_name)
-        lon = np.array(lon_name)
+        val = np.array(d[val_name])
+        lat = np.array(d[lat_name])
+        lon = np.array(d[lon_name])
 
     elif ext == '.mat': # MatLab
         d = sio.loadmat(path)
@@ -192,6 +193,37 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
         val = np.swapaxes(val, 0, 1)
 
     return val, lat, lon
+
+
+def write_data_to_file(lat, lon, val, destination, compression=False):
+    """ Write latitude, longitude, and geospatial data to a file.
+
+        The current implementation only supports MatLab format (*.mat)
+
+        Returns AssertionError if the destination path does not have *.mat extension.
+
+        Args:
+            lat: 1d numpy array
+                Latitude values
+            lon: 1d numpy array
+                Longitude values
+            val: 1d or 2d numpy array
+                Geospatial data values
+            destination: str
+                Name of output file. Must have extension *.mat
+            compression: bool
+                Compress matrices on write. Default is False
+    """
+    # parse file format
+    p = destination.rfind('.')
+    ext = destination[p:]
+    
+    assert ext == '.mat', 'Destination file must have extension *.mat (MATLAB file)'
+
+    output = {'lat': lat, 'lon': lon, 'data': val}
+    sio.savemat(file_name=destination, mdict=output, do_compression=compression)
+
+    print('Data saved to ' + destination)
 
 
 def plot(x, y, z, x_label='x (m)', y_label='y (m)', z_label='Elevation (m)'):
@@ -236,3 +268,5 @@ def plot(x, y, z, x_label='x (m)', y_label='y (m)', z_label='Elevation (m)'):
     fig.colorbar(img, format='%.02f', label='Elevation (m)')
 
     return fig
+
+

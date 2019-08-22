@@ -17,7 +17,7 @@ from enum import Enum
 import numpy as np
 import pygrib
 
-from kadlu.geospatial.utils import LatLon
+from kadlu.utils import LatLon
 
 class Source(Enum):
     """ Enum class for wave data sources

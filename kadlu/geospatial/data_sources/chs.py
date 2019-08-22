@@ -14,96 +14,70 @@
 import os
 import numpy as np
 from kadlu.geospatial.geospatial import crop, read_geotiff
+import json
+import requests
+from kadlu.geospatial.data_sources import fetch_util 
 
 
-def fetch(storage_location, south=-90, north=90, west=-180, east=180):
-    """ Fetch Non-Navigational NONNA-100 bathymetric data from the The 
-        Canadian Hydrographic Service (CHS).
+def fetch(south=-90, north=90, west=-180, east=180):
+    """ Returns a list of filepaths for downloaded content """
 
-        TODO: Get rid of the storage_location argument and instead use the config.ini file
-        TODO: Implement fetching
+    # api call: get raster IDs within bounding box
+    source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
+    spatialReference = "4326"
+    geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})
+    url1 = f"{source}ImageServer/query?geometry={geometry}&returnIdsOnly=true&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelWithin&f=json&outFields=*&inSR={spatialReference}"
+    req = requests.get(url1)
+    rasterIdsCSV = ','.join([f"{x}" for x in json.loads(req.text)['objectIds']])
 
-        Args: 
-            storage_location: str
-                Path to where data files are stored in the local file system.
-            south: float
-                Southern boundary of the region of interest.
-            north: float
-                Northern boundary of the region of interest.
-            west: float
-                Western boundary of the region of interest.
-            east: float
-                Eastern boundary of the region of interest.
+    # api call: get resource location of rasters for each raster ID 
+    url2 = f"{source}ImageServer/download?rasterIds={rasterIdsCSV}&geometry={geometry}&geometryType=esriGeometryPolygon&format=TIFF&f=json"
+    req = requests.get(url2)
+    assert(req.status_code == 200)
+    print(req.text)
+    jsondata = json.loads(req.text)
+    assert("error" not in jsondata.keys())
 
-        Returns:
-            paths: list
-                Paths to the data files that were retrieved.
-    """
-    # select relevant files
-    fnames = select_files(south, north, west, east)
-    paths = list()
-    for fname in fnames:
-        paths.append(os.path.join(storage_location, fname))
+    filepaths = []
+    storage_location = fetch_util.instantiate_storage_config()
 
-    # attempt to fetch those files we do not already have
-    for path in paths:
-        exists = os.path.exists(path)
-        # if not exists:
-            # ... implement fetch part here ...
+    # api call: for each resource location, download the rasters for each tiff file
+    for img in jsondata['rasterFiles']:
+        fname = img['id'].split('\\')[-1]
+        fpath = f"{storage_location}{fname}"
+        filepaths.append(fpath)
+        if os.path.isfile(fpath):
+            print(f"File {fname} exists, skipping retrieval...")
+            continue
 
-    # check again
-    fetched = list()
-    for path in paths:
-        exists = os.path.exists(path)
-        if exists:
-            fetched.append(path)
-
-    if len(fetched) < len(paths):
-        print("Only fetched {0} of {1} maps necessary to fully cover the specified region".format(len(fetched), len(paths)))
-
-    return fetched
+        print(f"Downloading {fname} from Canadian Hydrographic Service NONNA-100...")
+        assert(len(img['rasterIds']) == 1)  # we make an assumption that each file has only one associated raster
+        rasterId = img['rasterIds'][0]
+        url3 = f"https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/ImageServer/file?id={img['id'][0:]}&rasterId={rasterId}"
+        tiff = requests.get(url3)
+        assert(tiff.status_code == 200)
+        with open(fpath, "wb") as f: f.write(tiff.content)
+        
+    return filepaths
 
 
-def load(storage_location, south=-90, north=90, west=-180, east=180):
-    """ Load Non-Navigational NONNA-100 bathymetric data from the Canadian Hydrographic 
+def load(south=-90, north=90, west=-180, east=180):
+    """ 
+        Load Non-Navigational NONNA-100 bathymetric data from the Canadian Hydrographic 
         Service (CHS) within specified geographical region.
 
-        TODO: Get rid of the storage_location argument and instead use the config.ini file
-
-        Args: 
-            south: float
-                Southern boundary of the region of interest.
-            north: float
-                Northern boundary of the region of interest.
-            west: float
-                Western boundary of the region of interest.
-            east: float
-                Eastern boundary of the region of interest.
-
-        Returns:
-            bathy: 1d numpy array
-                Bathymetry values
-            lats: 1d numpy array
-                Latitude values
-            lons: 1d numpy array
-                Longitude values
+        Returns 1-dimensional numpy arrays for:
+            bathymetry values
+            lats
+            lons
     """
-    # fetch relevant data files
-    files = fetch(storage_location, south, north, west, east)
-
+    files = fetch(south, north, west, east)
     bathy, lats, lons = list(), list(), list()        
 
-    # loop over geotiff files
     for f in files:
-
-        # read data from geotiff file
-        z = read(path=f)
-
-        # create lat-lon arrays
-        lat, lon = latlon(path=f)
-
-        # make a grid
-        x, y = np.meshgrid(lon, lat)
+        z = read(path=f)                # read data from geotiff file
+        lat, lon = latlon(path=f)       # create lat-lon arrays
+        x, y = np.meshgrid(lon, lat)    # make a grid
 
         # select non-masked entries
         x = x[~z.mask]
@@ -125,7 +99,6 @@ def load(storage_location, south=-90, north=90, west=-180, east=180):
     lons = np.concatenate(lons)
 
     return (bathy,lats,lons)
-
 
 def select_files(south, north, west, east):
     """ Select the bathymetry data files that overlap with a specific 
@@ -278,3 +251,4 @@ def filename(south, west):
     """
     fname = "CA2_{0:04d}N{1:05d}W.tif".format(int(south * 100), -int(west * 100))
     return fname
+

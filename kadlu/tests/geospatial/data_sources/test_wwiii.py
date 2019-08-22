@@ -4,8 +4,7 @@ from kadlu.geospatial.data_sources import wwiii
 from kadlu.geospatial.data_sources import fetch_util
 
 def test_fetch_wwiii():
-    storage_location = fetch_util.instantiate_storage_config()
-    wwiii.fetch(storage_location=storage_location, wavevar=wwiii.waveSources['swh'], time=datetime(2017, 2, 3, 0, 0, 0, 0), region=wwiii.regions['global'])
+    wwiii.fetch(wavevar=wwiii.waveSources['swh'], time=datetime(2017, 2, 3, 0, 0, 0, 0), region=wwiii.regions['global'])
 
 def test_plot_wwiii():
     storage_location = fetch_util.instantiate_storage_config()

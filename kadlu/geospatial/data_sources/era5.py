@@ -13,7 +13,8 @@ waveSources = {
 }
 
 
-def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now()):
+def fetch(wavevar=waveSources['swh'], time=datetime.now()):
+    storage_location = fetch_util.instantiate_storage_config() 
     fetchfile = f"{storage_location}ERA5_reanalysis_{wavevar}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
 
     if os.path.isfile(fetchfile):
@@ -34,20 +35,8 @@ def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now()):
         }, fetchfile)
 
 
-def load(filepath, plot=False):
-    """
-    filepath = r"ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2016-03-16_00h.grb2"
-    """
-    grib = pygrib.open(filepath)
+def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)
 
-    if plot: fetch_util.plotSampleGrib(grib[1], "testing")
-
-    #data = [None for msg in range(grib.messages)]
-    #for x in range(0, grib.messages):
-    #    data[x] = grib[x+1].data()  # grib indexing starts at 1 for some reason
-
-    #return np.array(data)
-    return grib[1]
 
 """
     # If no gribfile argument is provided, default to the fetched file.

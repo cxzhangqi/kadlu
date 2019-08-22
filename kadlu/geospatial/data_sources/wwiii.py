@@ -23,8 +23,18 @@ regions = {
     'alaska'    : {'10m' : 'ak_10m', '4m' : 'ak_4m'}
 }
 
-def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now(), region=regions['global']):
-    fetchname = f"multi_1.{region}.{wavevar}.{time.strftime('%Y%m')}.grb2"
+def fetchname(wavevar, time, region): return f"multi_1.{region}.{wavevar}.{time.strftime('%Y%m')}.grb2"
+
+def fetch(wavevar=waveSources['swh'], time=datetime.now(), region=regions['global']):
+    """
+        matt_s 2019-08
+        Note that WWIII returns data from an entire month, regardless of
+        the time given. In the future the load function should be updated
+        to find the desired message within the grib file containing data for
+        the desired date
+    """
+    storage_location = fetch_util.instantiate_storage_config() 
+    fetchname = fetchname(wavevar, time, region)
     fetchfile = f"{storage_location}{fetchname}"
 
     if os.path.isfile(fetchfile):
@@ -37,17 +47,13 @@ def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now(), reg
         urllib.request.urlretrieve(fetchurl, fetchfile)
 
 
-def load(filepath, plot=False):
-    grib = pygrib.open(filepath)
+    # matt_s 2019-08
+    # the loadgrib function returns data for the whole month for the
+    # WWIII source only. This should be updated here to parse grib
+    # messages from the entire month, and return the 3-hour slice
+    # with the desired data. 
+def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)
 
-    if plot: fetch_util.plotSampleGrib(grib[1], "testing")
-
-    #data = [None for msg in range(grib.messages)]
-    #for x in range(0, grib.messages):
-    #    data[x] = grib[x+1].data()  # grib indexing starts at 1 for some reason
-
-    #return np.array(data)
-    return grib[1]
 
 """
     # If no gribfile argument is provided, default to the fetched file.

@@ -45,11 +45,46 @@ def validate_wavesource(filepath, sourceDict):
         raise
 
 
-def plotSampleGrib(grb, title_text):
-    plt.figure()
+def loadgrib(filepath, plot=False):
+    """
+    This needs to be updated to return the entire list of grib
+    messages. This is because WWIII data source returns data for
+    the entire month in 3-hour chunks. This will allow the 
+    load() function within the wwiii module to parse out the
+    desired 3-hour chunk from the list of messages. 
+
+    see the wwiii testing scripts in the playroom folder
+
+    matt_s 2019-08
+    """
+    grib = pygrib.open(filepath)
+
+    if plot: plot_sample_grib(grib[1], "testing")
+
+    #data = [None for msg in range(grib.messages)]
+    #for x in range(0, grib.messages):
+    #    data[x] = grib[x+1].data()  # grib indexing starts at 1
+
+    #return np.array(data)
+
+    """
+    for msg in grib:
+        lat, lon = np.array(msg.latlons())
+        vals, lat, lon = msg.data()
+        mask = vals.mask
+        data = vals.data
+        print(lat.shape)
+        break
+    """
+
+    return grib[1].data()
+
+
+def plot_sample_grib(grb, title_text="A sample plot"):
     data = grb.values
     lat, lon = grb.latlons()
 
+    plt.figure()
     m=Basemap(projection='mill',lat_ts=10,llcrnrlon=lon.min(), urcrnrlon=lon.max(),llcrnrlat=lat.min(),urcrnrlat=lat.max(), resolution='l')
     x, y = m(lon,lat)
 

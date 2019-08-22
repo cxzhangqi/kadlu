@@ -23,7 +23,9 @@ regions = [
 ]
 
 
-def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now(), region=regions[0]):
+def fetch(wavevar=waveSources['swh'], time=datetime.now(), region=regions[0]):
+    storage_location = fetch_util.instantiate_storage_config() 
+
     level_ref = 'SFC_0'
     if wavevar is 'WVDIR': level_ref = 'TGL_0'
     hour = f"{((time.hour % 24) // 6 * 6):02d}"  # better option?
@@ -40,17 +42,8 @@ def fetch(storage_location, wavevar=waveSources['swh'], time=datetime.now(), reg
         fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/{hour}/{fetchname}"
         urllib.request.urlretrieve(fetchurl, fetchfile)
 
-def load(filepath, plot=False):
-    grib = pygrib.open(filepath)
 
-    if plot: fetch_util.plotSampleGrib(grib[1], "testing")
-
-    #data = [None for msg in range(grib.messages)]
-    #for x in range(0, grib.messages):
-    #    data[x] = grib[x+1].data()  # grib indexing starts at 1 for some reason
-
-    #return np.array(data)
-    return grib[1]
+def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)
 
 """
     # If no gribfile argument is provided, default to the fetched file.

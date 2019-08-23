@@ -29,6 +29,14 @@ def test_load_bathymetry_from_a_single_chs_file():
     assert bathy.shape[0] == lats.shape[0]
     assert bathy.shape[0] == lons.shape[0]
 
+def test_interpolate_bathymetry():
+    folder = os.path.join(path_to_assets, "tif")
+    provider = DataProvider(storage_location=folder, bathy_source="CHS", south=43, west=-60, north=44, east=-59)
+    N = 10
+    x = y = np.arange(N)
+    provider.bathy(x,y)
+    provider.bathy_gradient(x,y)
+    
 def test_load_dummy_temperature():
     provider = DataProvider(storage_location='')
     temp_data = provider.temp_data
@@ -58,9 +66,16 @@ def test_interpolate_dummy_temperature_on_grid():
     assert temp.shape[1] == 21
     assert temp.shape[2] == 30
 
-def test_interpolate_dummy_salinity_on_grid():
+def test_interpolate_dummy_salinity():
     provider = DataProvider(storage_location='')
     N = 10
     x = y = z = np.arange(N)
     salinity = provider.salinity(x, y, z)
     assert salinity.shape[0] == N
+
+def test_interpolate_dummy_wave():
+    provider = DataProvider(storage_location='')
+    N = 10
+    x = y = np.arange(N)
+    wave = provider.wave(x, y)
+    assert wave.shape[0] == N

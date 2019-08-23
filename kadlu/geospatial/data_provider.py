@@ -64,6 +64,8 @@ class DataProvider():
         self.temp_data = _generate_fake_data_3d(4, south, north, west, east, max_depth)
         print('*** generating dummy salinity data *** ')
         self.salinity_data = _generate_fake_data_3d(35, south, north, west, east, max_depth)
+        print('*** generating dummy wave data *** ')
+        self.wave_data = _generate_fake_data_2d(1, south, north, west, east)
 
         # reference coordinates for x-y coordinate system
         if lat_ref is not None and lon_ref is not None:
@@ -85,6 +87,11 @@ class DataProvider():
         if self.salinity_data is not None:    
             self.salinity_interpolator = Interpolator3D(values=self.salinity_data[0],\
                     lats=self.salinity_data[1], lons=self.salinity_data[2], depths=self.salinity_data[3], origin=origin)       
+
+        # initialize wave interpolation table
+        if self.wave_data is not None:    
+            self.wave_interpolator = Interpolator2D(values=self.wave_data[0],\
+                    lats=self.wave_data[1], lons=self.wave_data[2], origin=origin, method=interpolation_method)       
 
 
     def bathy(self, x, y, grid=False, geometry='planar'):
@@ -124,6 +131,48 @@ class DataProvider():
             z = self.bathy_interpolator.eval_ll(lat=y, lon=x, grid=grid)
 
         return z
+
+
+    def bathy_gradient(self, axis='x', x=None, y=None, grid=False, geometry='planar'): 
+        """ Evaluate interpolated bathymetry gradient in spherical (lat-lon) or  
+            planar (x-y) geometry, along the specified axis.
+
+            x and y can be floats or arrays.
+
+            If grid is set to False, the bathymetry will be evaluated at 
+            the positions (x_i, y_i), where x=(x_1,...,x_N) and 
+            y=(y_1,...,y_N). Note that in this case, x and y must have 
+            the same length.
+
+            If grid is set to True, the bathymetry will be evaluated at 
+            all combinations (x_i, y_j), where x=(x_1,...,x_N) and 
+            y=(y_1,...,y_M). Note that in this case, the lengths of x 
+            and y do not have to be the same.
+
+            Args: 
+                x: float or array
+                   x-coordinate(s) or longitude(s)
+                y: float or array
+                   y-coordinate(s) or latitude(s)
+                grid: bool
+                   Specify how to combine elements of x and y.
+                geometry: str
+                    Can be either 'planar' (default) or 'spherical'
+                axis: str
+                    Axis along which gradient is computed. Can be either 'x' (default) or 'y'
+
+            Returns:
+                grad: Interpolated bathymetry gradient values
+        """
+        deriv_order = [(axis=='x'), (axis!='x')]
+
+        if geometry == 'planar':                
+            grad = self.bathy_interpolator.eval_xy(x=x, y=y, grid=grid, x_deriv_order=deriv_order[0], y_deriv_order=deriv_order[1])
+
+        elif geometry == 'spherical':
+            grad = self.bathy_interpolator.eval_ll(lat=y, lon=x, grid=grid, lat_deriv_order=deriv_order[1], lon_deriv_order=deriv_order[0])
+
+        return grad
 
 
     def temp(self, x, y, z, grid=False, geometry='planar'):
@@ -195,69 +244,69 @@ class DataProvider():
                     Can be either 'planar' (default) or 'spherical'
 
             Returns:
-                t: Interpolated salinity values
+                s: Interpolated salinity values
         """
         if geometry == 'planar':
-            t = self.salinity_interpolator.eval_xy(x=x, y=y, z=z, grid=grid)
+            s = self.salinity_interpolator.eval_xy(x=x, y=y, z=z, grid=grid)
 
         elif geometry == 'spherical':
-            t = self.salinity_interpolator.eval_ll(lat=y, lon=x, z=z, grid=grid)
+            s = self.salinity_interpolator.eval_ll(lat=y, lon=x, z=z, grid=grid)
 
-        return t
+        return s
 
 
-    def bathy_gradient(self, axis='x', x=None, y=None, grid=False, geometry='planar'): 
-        """ Evaluate interpolated bathymetry gradient in spherical (lat-lon) or  
-            planar (x-y) geometry, along the specified axis.
+    def wave(self, x, y, grid=False, geometry='planar'):
+        """ Evaluate interpolated wave data in spherical (lat-lon) or  
+            planar (x-y) geometry.
 
             x and y can be floats or arrays.
 
-            If grid is set to False, the bathymetry will be evaluated at 
+            If grid is set to False, the interpolation will be evaluated at 
             the positions (x_i, y_i), where x=(x_1,...,x_N) and 
             y=(y_1,...,y_N). Note that in this case, x and y must have 
             the same length.
 
-            If grid is set to True, the bathymetry will be evaluated at 
+            If grid is set to True, the interpolation will be evaluated at 
             all combinations (x_i, y_j), where x=(x_1,...,x_N) and 
             y=(y_1,...,y_M). Note that in this case, the lengths of x 
             and y do not have to be the same.
 
             Args: 
                 x: float or array
-                   x-coordinate(s) or longitude(s)
+                    x-coordinate(s) or longitude(s)
                 y: float or array
-                   y-coordinate(s) or latitude(s)
+                    y-coordinate(s) or latitude(s)
                 grid: bool
-                   Specify how to combine elements of x and y.
+                    Specify how to combine elements of x and y. If x and y have different
+                    lengths, specifying grid has no effect as it is automatically set to True.
                 geometry: str
                     Can be either 'planar' (default) or 'spherical'
-                axis: str
-                    Axis along which gradient is computed. Can be either 'x' (default) or 'y'
 
             Returns:
-                grad: Interpolated bathymetry gradient values
+                w: Interpolated wave data
         """
-        deriv_order = [(axis=='x'), (axis!='x')]
-
         if geometry == 'planar':
-                
-            grad = self.bathy_interpolator.eval_xy(x=x, y=y, grid=grid, x_deriv_order=deriv_order[0], y_deriv_order=deriv_order[1])
+            w = self.wave_interpolator.eval_xy(x=x, y=y, grid=grid)
 
         elif geometry == 'spherical':
-            grad = self.bathy_interpolator.eval_ll(lat=y, lon=x, grid=grid, lat_deriv_order=deriv_order[1], lon_deriv_order=deriv_order[0])
+            w = self.wave_interpolator.eval_ll(lat=y, lon=x, grid=grid)
 
-        return grad
+        return w
 
 
-def _generate_fake_data_3d(value, south, north, west, east, max_depth):
-
+def _generate_fake_data_2d(value, south, north, west, east):
     N = 30
-
-    lats = np.arange(N) / (N - 1) * (north - south) + south 
-    lons = np.arange(N) / (N - 1) * (east - west) + west 
-    depths = np.arange(N) / (N - 1) * max_depth
-
+    lats = (np.arange(N) + 0.5) / N * (north - south) + south 
+    lons = (np.arange(N) + 0.5) / N * (east - west) + west 
+    shape = (len(lats), len(lons))
+    values = value * np.ones(shape)
+    return (values, lats, lons)
+    
+def _generate_fake_data_3d(value, south, north, west, east, max_depth):
+    N = 30
+    lats = (np.arange(N) + 0.5) / N * (north - south) + south 
+    lons = (np.arange(N) + 0.5) / N * (east - west) + west 
+    depths = (np.arange(N) + 0.5) / N * max_depth
     shape = (len(lats), len(lons), len(depths))
     values = value * np.ones(shape)
-
     return (values, lats, lons, depths)

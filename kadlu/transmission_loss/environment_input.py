@@ -67,12 +67,12 @@ class EnvironmentInput():
             steps_btw_bathy_updates, steps_btw_sound_speed_updates,\
             c0, cb, bottom_loss, bottom_density, water_density,\
             smoothing_length_sound_speed, smoothing_length_density,\
-            absorption_layer, bathymetry=None, ignore_bathy_gradient=False,\
+            absorption_layer, env_data=None, ignore_bathy_gradient=False,\
             flat_seafloor_depth=None, sound_speed=None, verbose=False):
 
-        assert bathymetry or flat_seafloor_depth, 'bathymetry or flat_seafloor_depth must be provided'
+        assert env_data or flat_seafloor_depth, 'env_data or flat_seafloor_depth must be specified'
 
-        self.bathymetry = bathymetry
+        self.env_data = env_data
         self.ignore_bathy_gradient = ignore_bathy_gradient
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
@@ -382,14 +382,14 @@ class EnvironmentInput():
             gradient = np.zeros(n)
 
         else:
-            depth = self.bathymetry.eval_xy(x=x, y=y)
+            depth = self.env_data.bathy(x=x, y=y)
             depth *= (-1.)
 
             if self.ignore_bathy_gradient:
                 gradient = np.zeros(n)
             else:            
-                dfdx = self.bathymetry.eval_xy(x=x, y=y, x_deriv_order=1)
-                dfdy = self.bathymetry.eval_xy(x=x, y=y, y_deriv_order=1)
+                dfdx = self.env_data.bathy_gradient(x=x, y=y, axis='x')
+                dfdy = self.env_data.bathy_gradient(x=x, y=y, axis='y')
                 gradient = self.costheta * dfdx + self.sintheta * dfdy
                 gradient *= (-1.)
             
@@ -448,7 +448,7 @@ class EnvironmentInput():
             depth = self.flat_seafloor_depth * np.ones(n)
 
         else:
-            depth = self.bathymetry.eval_xy(x=x, y=y)
+            depth = self.env_data.bathy(x=x, y=y)
             depth *= (-1.)
             
         return depth

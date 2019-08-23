@@ -34,11 +34,11 @@ from kadlu.transmission_loss.transmission_loss_calculator import TransmissionLos
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
 
 def test_can_initialize_TL_calculator():
-    TransmissionLossCalculator(bathymetry=None, sound_speed=None, flat_seafloor_depth=10000,\
+    TransmissionLossCalculator(env_data=None, sound_speed=None, flat_seafloor_depth=10000,\
         progress_bar=False)
 
 def test_run_TL_calculator():
-    calc = TransmissionLossCalculator(bathymetry=None, sound_speed=None, flat_seafloor_depth=10000,\
+    calc = TransmissionLossCalculator(env_data=None, sound_speed=None, flat_seafloor_depth=10000,\
         step_size=1000, range=10e3, angular_bin_size=45, vertical_bin_size=1000, verbose=True, progress_bar=False)
     calc.run(frequency=10, source_depth=9900)
     field = calc.TL

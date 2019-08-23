@@ -63,12 +63,11 @@ class TransmissionLossCalculator():
             z: vertical depth in meters
 
         Args:
-            bathymetry: BathyInterpolator
-                Interpolated bathymetry data
+            env_data: DataProvider
+                Environment data provider
             flat_seafloor_depth: float
                 Depth of flat seafloor in meters. Useful for testing purposes. 
-                If flat_seafloor_depth is specified, the bathymetry input 
-                argument will be ignored. 
+                Overwrites the bathymetry from `env_data`. 
             sound_speed: SoundSpeedInterpolator
                 Interpolated sound-speed profile. If None is specified, a uniform 
                 sound-speed profile equal to the reference sound speed will be assumed.
@@ -145,14 +144,14 @@ class TransmissionLossCalculator():
 
         Example:
     """
-    def __init__(self, bathymetry=None, flat_seafloor_depth=None, sound_speed=None, ref_sound_speed=1500,\
+    def __init__(self, env_data=None, flat_seafloor_depth=None, sound_speed=None, ref_sound_speed=1500,\
             water_density=1.0, bottom_sound_speed=1700, bottom_loss=0.5, bottom_density=1.5,\
             step_size=None, range=50e3, angular_bin_size=1, vertical_bin_size=10, max_depth=12e3,\
             absorption_layer=1./6., starter_method='THOMSON', starter_aperture=88,\
             steps_btw_bathy_updates=1, steps_btw_sound_speed_updates=math.inf,\
             verbose=False, progress_bar=True):
 
-        self.bathymetry = bathymetry
+        self.env_data = env_data
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
 
@@ -294,7 +293,7 @@ class TransmissionLossCalculator():
             c0=self.c0, cb=self.cb, bottom_loss=self.bottom_loss,\
             bottom_density=self.bottom_density, water_density=self.water_density,\
             smoothing_length_sound_speed=smoothing_length_sound_speed, smoothing_length_density=smoothing_length_density,
-            absorption_layer=self.absorption_layer, bathymetry=self.bathymetry,\
+            absorption_layer=self.absorption_layer, env_data=self.env_data,\
             flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient,\
             verbose=self.verbose)
 

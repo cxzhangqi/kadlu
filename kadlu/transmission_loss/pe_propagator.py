@@ -139,9 +139,6 @@ class PEPropagator():
             # collect output
             output.collect(dist=dist, psi=psi)
 
-#        psi_final = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * np.sqrt(env.denin)
-#        psi_final = np.fft.fftshift(psi_final[:int(self.grid.Nz/2),:], axes=(1,))
-
         return output
 
 

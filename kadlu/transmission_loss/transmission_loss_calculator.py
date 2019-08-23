@@ -194,7 +194,7 @@ class TransmissionLossCalculator():
         self.env_input = None
 
 
-    def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=True,\
+    def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=False,\
             ignore_bathy_gradient=False):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
@@ -222,9 +222,10 @@ class TransmissionLossCalculator():
                     data if the depth only changes gradually, implying that the gradient 
                     can be ignored.
         """
+        import time
+        start = time.time()
+
         if self.verbose:
-            import time
-            start = time.time()
             print('Begin transmission-loss calculation')
             print('Source depth is: {0} m'.format(source_depth))
             print('Computing the transmission loss at depths:', receiver_depths)
@@ -307,9 +308,12 @@ class TransmissionLossCalculator():
         TL = 20 * np.log10(np.abs(TL))
         TL = np.squeeze(TL)
 
-        # transmission loss in dB (vertical plane)
-        TL_vertical = 20 * np.ma.log10(np.abs(output.field_vert[:,:,:]))
-        TL_vertical = np.squeeze(TL_vertical)
+        # transmission loss in dB (vertical plane)  
+        if vertical_slice:
+            TL_vertical = 20 * np.ma.log10(np.abs(output.field_vert))  # OBS: this computation is rather slow
+            TL_vertical = np.squeeze(TL_vertical)
+        else:
+            TL_vertical = None
 
         if self.verbose:
             end = time.time()

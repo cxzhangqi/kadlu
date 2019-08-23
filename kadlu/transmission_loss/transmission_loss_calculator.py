@@ -222,10 +222,9 @@ class TransmissionLossCalculator():
                     data if the depth only changes gradually, implying that the gradient 
                     can be ignored.
         """
-        import time
-        start = time.time()
-
         if self.verbose:
+            import time
+            start = time.time()
             print('Begin transmission-loss calculation')
             print('Source depth is: {0} m'.format(source_depth))
             print('Computing the transmission loss at depths:', receiver_depths)

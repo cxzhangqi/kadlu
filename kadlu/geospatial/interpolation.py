@@ -379,7 +379,7 @@ class Interpolator3D():
         self.depth_nodes = depths
         self.values = values
 
-    def eval_xy(self, x, y, z, v, grid=False):
+    def eval_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).
 
             x,y,z can be floats or arrays.

@@ -358,8 +358,8 @@ def test_interpolate_3d_data_using_xy_coordinates():
     # initialize interpolator
     ip = Interpolator3D(val, lat, lon, depth)
     # check interpolation
-    x = np.array([0, 0, 0])
-    y = np.array([0, 0, 0])
+    x = np.array([0, 100, 200])
+    y = np.array([0, 100, 200])
     depths = np.array([4, 4.5, 5])
     vi = ip.eval_xy(x=x, y=y, z=depths)
     assert vi[0] == pytest.approx(4, abs=1E-9)

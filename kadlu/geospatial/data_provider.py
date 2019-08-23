@@ -133,7 +133,7 @@ class DataProvider():
         return z
 
 
-    def bathy_gradient(self, axis='x', x=None, y=None, grid=False, geometry='planar'): 
+    def bathy_gradient(self, x=None, y=None, axis='x', grid=False, geometry='planar'): 
         """ Evaluate interpolated bathymetry gradient in spherical (lat-lon) or  
             planar (x-y) geometry, along the specified axis.
 
@@ -306,7 +306,7 @@ def _generate_fake_data_3d(value, south, north, west, east, max_depth):
     N = 30
     lats = (np.arange(N) + 0.5) / N * (north - south) + south 
     lons = (np.arange(N) + 0.5) / N * (east - west) + west 
-    depths = (np.arange(N) + 0.5) / N * max_depth
+    depths = np.arange(N) / (N-1) * max_depth
     shape = (len(lats), len(lons), len(depths))
     values = value * np.ones(shape)
     return (values, lats, lons, depths)

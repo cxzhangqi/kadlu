@@ -33,9 +33,10 @@ def test_interpolate_bathymetry():
     folder = os.path.join(path_to_assets, "tif")
     provider = DataProvider(storage_location=folder, bathy_source="CHS", south=43, west=-60, north=44, east=-59)
     N = 10
-    x = y = np.arange(N)
+    x = y = np.arange(N) + 1
     provider.bathy(x,y)
-    provider.bathy_gradient(x,y)
+    provider.bathy_gradient(x,y,axis='x')
+    provider.bathy_gradient(x,y,axis='y')
     
 def test_load_dummy_temperature():
     provider = DataProvider(storage_location='')
@@ -44,38 +45,41 @@ def test_load_dummy_temperature():
 def test_interpolate_dummy_temperature():
     provider = DataProvider(storage_location='')
     N = 10
-    x = y = z = np.arange(N)
+    x = y = z = np.arange(N) + 1
     temp = provider.temp(x, y, z)
     assert temp.shape[0] == N
 
 def test_interpolate_dummy_temperature_on_grid():
     provider = DataProvider(storage_location='')
-    x = np.arange(10)
-    y = np.arange(20)
-    z = np.arange(30)
+    x = np.arange(10) + 1
+    y = np.arange(11) + 1
+    z = np.arange(12) + 1
     # planar coordinates
     temp = provider.temp(x=x, y=y, z=z, grid=True)
     assert temp.shape[0] == 10
-    assert temp.shape[1] == 20
-    assert temp.shape[2] == 30
+    assert temp.shape[1] == 11
+    assert temp.shape[2] == 12
     # spherical coordinates
-    lat = np.arange(11)
-    lon = np.arange(21)
+    lat = np.arange(10)
+    lon = np.arange(11)
     temp = provider.temp(x=lon, y=lat, z=z, grid=True, geometry='spherical')
-    assert temp.shape[0] == 11
-    assert temp.shape[1] == 21
-    assert temp.shape[2] == 30
+    assert temp.shape[0] == 10
+    assert temp.shape[1] == 11
+    assert temp.shape[2] == 12
 
 def test_interpolate_dummy_salinity():
     provider = DataProvider(storage_location='')
     N = 10
-    x = y = z = np.arange(N)
+    x = y = z = np.arange(N) + 1
+    x = x * 10000
+    y = y * 10000
+    z = z * 100
     salinity = provider.salinity(x, y, z)
     assert salinity.shape[0] == N
 
 def test_interpolate_dummy_wave():
     provider = DataProvider(storage_location='')
     N = 10
-    x = y = np.arange(N)
+    x = y = np.arange(N) + 1
     wave = provider.wave(x, y)
     assert wave.shape[0] == N

@@ -15,7 +15,7 @@ import pytest
 import os
 import numpy as np
 from kadlu.geospatial.geospatial import load_data_from_file
-from kadlu.geospatial.interpolation import Interpolator2D
+from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D
 import kadlu.geospatial.data_sources.chs as chs
 from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
 
@@ -302,3 +302,44 @@ def test_can_interpolate_geotiff_data():
     assert depths_grid.shape[1] == 4
     for i in range(4):
         assert depths_grid[i,i] == depths[i]
+
+
+def test_interpolate_uniform_3d_data():
+    N = 10
+    np.random.seed(1)
+    # create fake data
+    val = np.ones(shape=(N,N,N))
+    lat = np.arange(N)
+    lon = np.arange(N)
+    depth = np.arange(N)
+    # initialize interpolator
+    ip = Interpolator3D(val, lat, lon, depth)
+    # check interpolation at a few random points
+    lats = np.random.rand(3) * (N - 1)
+    lons = np.random.rand(3) * (N - 1)
+    depths = np.random.rand(3) * (N - 1)
+    vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
+    for v in vi:
+        assert v == pytest.approx(1, abs=1E-9)
+
+
+def test_interpolate_3d_data_with_constant_slope():
+    N = 10
+    np.random.seed(1)
+    # create fake data
+    val = np.ones(shape=(N,N,N))
+    for k in range(N):
+        val[:,:,k] = k * val[:,:,k]        
+    lat = np.arange(N)
+    lon = np.arange(N)
+    depth = np.arange(N)
+    # initialize interpolator
+    ip = Interpolator3D(val, lat, lon, depth)
+    # check interpolation
+    lats = np.array([4, 4, 4])
+    lons = np.array([4, 4, 4])
+    depths = np.array([4, 4.5, 5])
+    vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
+    assert vi[0] == pytest.approx(4, abs=1E-9)
+    assert vi[1] == pytest.approx(4.5, abs=1E-9)
+    assert vi[2] == pytest.approx(5, abs=1E-9)

@@ -453,18 +453,18 @@ class Interpolator3D():
             Returns:
                 zi: Interpolated bathymetry values (or derivates)
         """
-        lat = np.squeeze(np.array(lat))
-        lon = np.squeeze(np.array(lon))
-        lat_rad, lon_rad = torad(lat, lon)
-
         M = len(lat)
         N = len(lon)
         K = len(z)
 
-        if grid:
-            lat, lon, z = self._reshape(lat, lon, z)
+        lat = np.squeeze(np.array(lat))
+        lon = np.squeeze(np.array(lon))
+        lat_rad, lon_rad = torad(lat, lon)
 
-        pts = np.column_stack((lat,lon,z))        
+        if grid:
+            lat_rad, lon_rad, z = self._reshape(lat_rad, lon_rad, z)
+
+        pts = np.column_stack((lat_rad, lon_rad, z))        
         vi = self.interp_ll(pts)
 
         if grid:

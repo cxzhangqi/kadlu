@@ -321,6 +321,15 @@ def test_interpolate_uniform_3d_data():
     vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
     for v in vi:
         assert v == pytest.approx(1, abs=1E-9)
+    # check interpolation on a grid
+    lats = np.random.rand(3) * (N - 1)
+    lons = np.random.rand(4) * (N - 1)
+    depths = np.random.rand(5) * (N - 1)
+    vi = ip.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
+    assert vi.shape[0] == 3
+    assert vi.shape[1] == 4
+    assert vi.shape[2] == 5
+    assert np.all(np.abs(vi - 1.0) < 1E-9)
 
 
 def test_interpolate_3d_data_with_constant_slope():

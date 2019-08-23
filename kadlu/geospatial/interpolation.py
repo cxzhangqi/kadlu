@@ -407,6 +407,10 @@ class Interpolator3D():
             Returns:
                 vi: Interpolated values
         """
+        M = len(y)
+        N = len(x)
+        K = len(z)
+
         lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
 
         if grid:
@@ -448,7 +452,7 @@ class Interpolator3D():
                 z: float or array
                     Depth of the positions(s) where the interpolation is to be evaluated
                 grid: bool
-                    Specify how to combine elements of lat and lon.
+                    Specify how to combine elements of lat,lon,z.
 
             Returns:
                 zi: Interpolated bathymetry values (or derivates)
@@ -504,8 +508,8 @@ class Interpolator3D():
         b = np.reshape(b, newshape=(M*N))
 
         K = c.shape[0]
-        a, c = np.meshgrid(a, c)
-        b, _ = np.meshgrid(b, c)
+        a, _ = np.meshgrid(a, c)
+        b, c = np.meshgrid(b, c)
 
         a = np.reshape(a, newshape=(M*N*K))
         b = np.reshape(b, newshape=(M*N*K))

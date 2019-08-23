@@ -11,6 +11,7 @@
     License:
 
 """
+
 import os
 import numpy as np
 from kadlu.geospatial.geospatial import crop, read_geotiff
@@ -24,17 +25,23 @@ def fetch(south=-90, north=90, west=-180, east=180):
 
     # api call: get raster IDs within bounding box
     source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
-    spatialReference = "4326"
+    spatialRel = "esriSpatialRelIntersects"
+    spatialReference = "4326"  # WGS-84 spec
+    #spatialReference = "3857"  # used for the web map service
     geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})
-    url1 = f"{source}ImageServer/query?geometry={geometry}&returnIdsOnly=true&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelWithin&f=json&outFields=*&inSR={spatialReference}"
+    url1 = f"{source}ImageServer/query?geometry={geometry}&returnIdsOnly=true&geometryType=esriGeometryEnvelope&spatialRel={spatialRel}&f=json&outFields=*&inSR={spatialReference}"
     req = requests.get(url1)
     rasterIdsCSV = ','.join([f"{x}" for x in json.loads(req.text)['objectIds']])
+    try:
+        assert(rasterIdsCSV is not '')
+    except AssertionError as err:
+        print(f"Could not fetch: no records found for query")
+        raise
 
     # api call: get resource location of rasters for each raster ID 
     url2 = f"{source}ImageServer/download?rasterIds={rasterIdsCSV}&geometry={geometry}&geometryType=esriGeometryPolygon&format=TIFF&f=json"
     req = requests.get(url2)
     assert(req.status_code == 200)
-    print(req.text)
     jsondata = json.loads(req.text)
     assert("error" not in jsondata.keys())
 
@@ -44,6 +51,7 @@ def fetch(south=-90, north=90, west=-180, east=180):
     # api call: for each resource location, download the rasters for each tiff file
     for img in jsondata['rasterFiles']:
         fname = img['id'].split('\\')[-1]
+        if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
         fpath = f"{storage_location}{fname}"
         filepaths.append(fpath)
         if os.path.isfile(fpath):
@@ -52,8 +60,8 @@ def fetch(south=-90, north=90, west=-180, east=180):
 
         print(f"Downloading {fname} from Canadian Hydrographic Service NONNA-100...")
         assert(len(img['rasterIds']) == 1)  # we make an assumption that each file has only one associated raster
-        rasterId = img['rasterIds'][0]
-        url3 = f"https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/ImageServer/file?id={img['id'][0:]}&rasterId={rasterId}"
+        #rasterId = img['rasterIds'][0]
+        url3 = f"https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
         tiff = requests.get(url3)
         assert(tiff.status_code == 200)
         with open(fpath, "wb") as f: f.write(tiff.content)

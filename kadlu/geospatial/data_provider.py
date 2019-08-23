@@ -11,6 +11,7 @@
 
 """
 import numpy as np
+from kadlu.utils import LatLon
 import kadlu.geospatial.data_sources.chs as chs
 import kadlu.geospatial.data_sources.gebco as gebco 
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D
@@ -68,30 +69,33 @@ class DataProvider():
         self.wave_data = _generate_fake_data_2d(1, south, north, west, east)
 
         # reference coordinates for x-y coordinate system
-        if lat_ref is not None and lon_ref is not None:
-            origin = LatLon(lat_ref, lon_ref)
-        else:
-            origin = None
+        if lat_ref is None:
+            lat_ref = (south + north) / 2
+
+        if lon_ref is None:
+            lon_ref = (west + east) / 2
+
+        self.origin = LatLon(lat_ref, lon_ref)
 
         # initialize bathymetry interpolation table
         if self.bathy_data is not None:    
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
-                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=origin, method=interpolation_method)       
+                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin, method=interpolation_method)       
 
         # initialize temperature interpolation table
         if self.temp_data is not None:    
             self.temp_interpolator = Interpolator3D(values=self.temp_data[0],\
-                    lats=self.temp_data[1], lons=self.temp_data[2], depths=self.temp_data[3], origin=origin)       
+                    lats=self.temp_data[1], lons=self.temp_data[2], depths=self.temp_data[3], origin=self.origin)       
 
         # initialize salinity interpolation table
         if self.salinity_data is not None:    
             self.salinity_interpolator = Interpolator3D(values=self.salinity_data[0],\
-                    lats=self.salinity_data[1], lons=self.salinity_data[2], depths=self.salinity_data[3], origin=origin)       
+                    lats=self.salinity_data[1], lons=self.salinity_data[2], depths=self.salinity_data[3], origin=self.origin)       
 
         # initialize wave interpolation table
         if self.wave_data is not None:    
             self.wave_interpolator = Interpolator2D(values=self.wave_data[0],\
-                    lats=self.wave_data[1], lons=self.wave_data[2], origin=origin, method=interpolation_method)       
+                    lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin, method=interpolation_method)       
 
 
     def bathy(self, x, y, grid=False, geometry='planar'):
@@ -306,7 +310,7 @@ def _generate_fake_data_3d(value, south, north, west, east, max_depth):
     N = 30
     lats = (np.arange(N) + 0.5) / N * (north - south) + south 
     lons = (np.arange(N) + 0.5) / N * (east - west) + west 
-    depths = np.arange(N) / (N-1) * max_depth
+    depths = 2 * np.arange(N) / (N-1) * max_depth
     shape = (len(lats), len(lons), len(depths))
     values = value * np.ones(shape)
     return (values, lats, lons, depths)

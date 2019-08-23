@@ -31,9 +31,10 @@
     Contents:
         EnvironmentInput class
 """
-
+import gsw
 import numpy as np
 from numpy.lib import scimath
+from kadlu.utils import XYtoLL
 
 class EnvironmentInput():
     """ Compute the reduction in intensity (transmission loss) of 
@@ -79,6 +80,7 @@ class EnvironmentInput():
         self.verbose = verbose
 
         self.k0 = ref_wavenumber
+        self.c0 = c0
 
         self.xs = xs
         self.ys = ys
@@ -330,7 +332,7 @@ class EnvironmentInput():
             below_sea_surf = np.nonzero(self.Z <= 0)
 
             # load refractive index squared
-            self.n2w_new[below_sea_surf] = self.__refractive_index__(dist, below_sea_surf)
+            self.n2w_new[below_sea_surf] = self.__refractive_index__(dist, self.grid.z[self.grid.z <= 0])
 
             # number of vertical bins
             Nz = self.grid.Nz
@@ -399,7 +401,7 @@ class EnvironmentInput():
         return depth, gradient
 
 
-    def __refractive_index__(self, dist, IDZ):
+    def __refractive_index__(self, dist, z):
         """ Compute refractive index squared. 
 
             The computation is performed at equally spaced points on a circle, 
@@ -408,22 +410,64 @@ class EnvironmentInput():
             Args:
                 dist: float
                     Distance from source in meters
+                z: numpy array
+                    Depths
 
             Returns:
                 nsq: 2d numpy array
                     Refractive index squared. Has shape (Nz,Nq) where Nz and Nq 
                     are the number of vertical and angular bins, respectively.
         """
-        if self.verbose:
-            print('\n *** WARNING: Adopting uniform sound-speed profile\n')
+        x = self.xs + self.costheta * dist
+        y = self.ys + self.sintheta * dist
 
-        # idy = np.nonzero(IDZ)[1]
+        x, _ = np.meshgrid(x,z)
+        y, z = np.meshgrid(y,z) 
 
-        n = self.Z[IDZ].shape
+        x = x.flatten()
+        y = y.flatten()
+        z = z.flatten()
 
-        nsq = np.ones(n)
+        if self.env_data is None:
+            c = np.ones(z.shape) * self.sound_speed
+
+        else:
+            t = self.env_data.temp(x=x, y=y, z=-z)  # in-situ temperature
+            SP = self.env_data.salinity(x=x, y=y, z=-z)  # practical salinity
+            lat_ref = self.env_data.origin.latitude
+            lon_ref = self.env_data.origin.longitude
+            lats, lons = XYtoLL(x=x, y=y, lat_ref=lat_ref, lon_ref=lon_ref)
+            c = self._sound_speed(lats=lats, lons=lons, z=z, t=t, SP=SP)
+        
+        nsq = (self.c0 / c)**2
 
         return nsq
+
+
+    def _sound_speed(self, lats, lons, z, t, SP):
+        """ Compute sound speed.
+
+            Args:
+                lats: numpy array
+                    Latitudes (-90 to 90 degrees)
+                lons: numpy array
+                    Longitudes (-180 to 180 degrees)
+                z: numpy array
+                    Depths (meters)
+                t: numpy array
+                    In-situ temperature (Celsius)
+                SP: numpy array
+                    Practical Salinity (psu)
+
+            Returns:
+                c: numpy array
+                    Sound speed (m/s) 
+        """
+        p = gsw.p_from_z(z=z, lat=lats)  # sea pressure
+        SA = gsw.SA_from_SP(SP, p, lons, lats)  # absolute salinity
+        CT = gsw.CT_from_t(SA, t, p)  # conservative temperature
+        c = gsw.density.sound_speed(SA=SA, CT=CT, p=p)
+        return c
 
 
     def seafloor_depth_transect(self, dist, angle):

@@ -154,6 +154,8 @@ class TransmissionLossCalculator():
         self.env_data = env_data
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
+        if env_data is None and sound_speed is None:
+            self.sound_speed = ref_sound_speed
 
         self.c0 = ref_sound_speed
         self.water_density = water_density
@@ -173,13 +175,9 @@ class TransmissionLossCalculator():
 
         self.steps_btw_bathy_updates = max(1, steps_btw_bathy_updates)
         self.steps_btw_sound_speed_updates = max(1, steps_btw_sound_speed_updates)
-        if sound_speed is None:
-            self.steps_btw_sound_speed_updates = math.inf
 
         self.verbose = verbose
         self.progress_bar = progress_bar
-
-        self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
 
         if self.verbose:
             print('\nTransmission loss calculator successfully initialized')
@@ -295,7 +293,7 @@ class TransmissionLossCalculator():
             smoothing_length_sound_speed=smoothing_length_sound_speed, smoothing_length_density=smoothing_length_density,
             absorption_layer=self.absorption_layer, env_data=self.env_data,\
             flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient,\
-            verbose=self.verbose)
+            sound_speed=self.sound_speed, verbose=self.verbose)
 
         # Configure the PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\
@@ -507,7 +505,7 @@ class PEGrid():
         self.Q, self.Z = np.meshgrid(self.q, self.z)
 
     def __make_radial_grid__(self, dr, rmax):
-        N = round(rmax / dr)
+        N = int(round(rmax / dr))
         r = np.arange(N+1, dtype=float)
         r *= dr
         return r, dr, N
@@ -525,7 +523,7 @@ class PEGrid():
 
     def __make_vertical_grid__(self, dz, zmax):
         N = zmax / dz
-        N = round(N / 2) * 2  # ensure even number of vertical bins
+        N = int(round(N / 2) * 2)  # ensure even number of vertical bins
         z_pos = np.arange(start=0, stop=N/2, step=1, dtype=float)
         z_neg = np.arange(start=-N/2, stop=0, step=1, dtype=float)
         z = np.concatenate((z_pos, z_neg))

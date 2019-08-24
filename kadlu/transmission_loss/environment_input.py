@@ -31,7 +31,6 @@
     Contents:
         EnvironmentInput class
 """
-import gsw
 import numpy as np
 from numpy.lib import scimath
 from kadlu.utils import XYtoLL
@@ -433,42 +432,11 @@ class EnvironmentInput():
             c = np.ones(z.shape) * self.sound_speed
 
         else:
-            t = self.env_data.temp(x=x, y=y, z=-z)  # in-situ temperature
-            SP = self.env_data.salinity(x=x, y=y, z=-z)  # practical salinity
-            lat_ref = self.env_data.origin.latitude
-            lon_ref = self.env_data.origin.longitude
-            lats, lons = XYtoLL(x=x, y=y, lat_ref=lat_ref, lon_ref=lon_ref)
-            c = self._sound_speed(lats=lats, lons=lons, z=z, t=t, SP=SP)
+            c = self.env_data.sound_speed(x=x, y=y, z=-z)
         
         nsq = (self.c0 / c)**2
 
         return nsq
-
-
-    def _sound_speed(self, lats, lons, z, t, SP):
-        """ Compute sound speed.
-
-            Args:
-                lats: numpy array
-                    Latitudes (-90 to 90 degrees)
-                lons: numpy array
-                    Longitudes (-180 to 180 degrees)
-                z: numpy array
-                    Depths (meters)
-                t: numpy array
-                    In-situ temperature (Celsius)
-                SP: numpy array
-                    Practical Salinity (psu)
-
-            Returns:
-                c: numpy array
-                    Sound speed (m/s) 
-        """
-        p = gsw.p_from_z(z=z, lat=lats)  # sea pressure
-        SA = gsw.SA_from_SP(SP, p, lons, lats)  # absolute salinity
-        CT = gsw.CT_from_t(SA, t, p)  # conservative temperature
-        c = gsw.density.sound_speed(SA=SA, CT=CT, p=p)
-        return c
 
 
     def seafloor_depth_transect(self, dist, angle):

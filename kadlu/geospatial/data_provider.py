@@ -10,6 +10,7 @@
     License:
 
 """
+import gsw
 import numpy as np
 from kadlu.utils import LatLon
 import kadlu.geospatial.data_sources.chs as chs
@@ -49,6 +50,7 @@ class DataProvider():
         self.temp_interpolator = None
         self.salinity_interpolator = None
         self.wave_interpolator = None
+        self.sound_speed_interpolator = None
 
         # load bathymetry data
         if bathy_source == "CHS":
@@ -123,6 +125,13 @@ class DataProvider():
             
             self.salinity_interpolator = Interpolator3D(values=salinities, lats=lats, lons=lons,\
                     depths=depths, origin=self.origin, method='linear')       
+
+        # initialize sound speed interpolation table
+        if self.temp_data is not None and self.salinity_data is not None:
+            c = self._sound_speed(lats=lats, lons=lons, z=depths, t=temps, SP=salinities)
+            self.sound_speed_interpolator = Interpolator3D(values=c, lats=lats, lons=lons,\
+                    depths=depths, origin=self.origin, method='linear')
+
 
         # initialize wave interpolation table
         if self.wave_data is not None:    
@@ -329,6 +338,72 @@ class DataProvider():
             w = self.wave_interpolator.eval_ll(lat=y, lon=x, grid=grid)
 
         return w
+
+
+    def sound_speed(self, x, y, z, grid=False, geometry='planar'):
+        """ Evaluate interpolated sound speed in spherical (lat-lon) or  
+            planar (x-y) geometry.
+
+            x,y,z can be floats or arrays.
+
+            If grid is set to False, the interpolation will be evaluated at 
+            the positions (x_i, y_i, z_i), where x=(x_1,...,x_N),  
+            y=(y_1,...,y_N), and z=(z_1,...,z_N). Note that in this case, 
+            x,y,z must have the same length.
+
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
+            y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
+            lengths of x,y,z do not have to be the same.
+
+            Args: 
+                x: float or array
+                    x-coordinate(s) or longitude(s)
+                y: float or array
+                    y-coordinate(s) or latitude(s)
+                z: float or array
+                    depth(s)
+                grid: bool
+                   Specify how to combine elements of x,y,z.
+                geometry: str
+                    Can be either 'planar' (default) or 'spherical'
+
+            Returns:
+                s: Interpolated sound speed values
+        """
+        if geometry == 'planar':
+            s = self.sound_speed_interpolator.eval_xy(x=x, y=y, z=z, grid=grid)
+
+        elif geometry == 'spherical':
+            s = self.sound_speed_interpolator.eval_ll(lat=y, lon=x, z=z, grid=grid)
+
+        return s
+
+
+    def _sound_speed(self, lats, lons, z, t, SP):
+        """ Compute sound speed.
+
+            Args:
+                lats: numpy array
+                    Latitudes (-90 to 90 degrees)
+                lons: numpy array
+                    Longitudes (-180 to 180 degrees)
+                z: numpy array
+                    Depths (meters)
+                t: numpy array
+                    In-situ temperature (Celsius)
+                SP: numpy array
+                    Practical Salinity (psu)
+
+            Returns:
+                c: numpy array
+                    Sound speed (m/s) 
+        """
+        p = gsw.p_from_z(z=z, lat=lats)  # sea pressure
+        SA = gsw.SA_from_SP(SP, p, lons, lats)  # absolute salinity
+        CT = gsw.CT_from_t(SA, t, p)  # conservative temperature
+        c = gsw.density.sound_speed(SA=SA, CT=CT, p=p)
+        return c
 
 
 def _generate_fake_data_2d(value, south, north, west, east):

@@ -94,6 +94,11 @@ class GridData2D():
             phi=(phi_1,...,phi_M). Note that in this case, the lengths of theta 
             and phi do not have to be the same.
 
+            Only first-order derivatives have been implemented. A request to interpolate 
+            higher-order derivatives will give an Assertion error.
+
+            TODO: Improve the algorithm used to compute the derivatives. 
+
             Args: 
                 theta: float or array
                    1st coordinate of the points where the interpolation is to be evaluated
@@ -122,7 +127,7 @@ class GridData2D():
             pts = self._prep_input(theta, phi, grid)
             ri = griddata(self.uv, self.r, pts, method=self.method)
 
-        # quick and dirty interpolation of 1st derivative in u
+        # 1st derivative in u
         elif dtheta == 1 and dphi == 0:
             theta1 = theta - 0.5 * self.u_step
             theta2 = theta + 0.5 * self.u_step
@@ -132,7 +137,7 @@ class GridData2D():
             ri2 = griddata(self.uv, self.r, pts2, method=self.method)
             ri = (ri2 - ri1) / (theta2 - theta1)
 
-        # quick and dirty interpolation of 1st derivative in v
+        # 1st derivative in v
         elif dtheta == 0 and dphi == 1:
             phi1 = phi - 0.5 * self.v_step
             phi2 = phi + 0.5 * self.v_step
@@ -143,7 +148,8 @@ class GridData2D():
             ri = (ri2 - ri1) / (phi2 - phi1)
 
         if grid:
-            ri = np.reshape(ri, newshape=(M,N))
+            ri = np.reshape(ri, newshape=(N,M))
+            ri = np.swapaxes(ri, 0, 1)
 
         return ri
 
@@ -194,10 +200,25 @@ class Interpolator2D():
                 Longitude values
             latlon_ref: LatLon
                 Reference location (origo of XY coordinate system).
-            method : {‘linear’, ‘nearest’, ‘cubic’}, optional
-                Interpolation method used only for irregular grids.
+            method_irreg : {‘linear’, ‘nearest’, ‘cubic’, ‘regular’}, optional
+                Interpolation method used for irregular grids.
+                Note that 'nearest' is usually significantly faster than 
+                the 'linear' and 'cubic'.
+                If the 'regular' is selected, the data is first mapped onto 
+                a regular grid by means of a cubic interpolation (for points outside 
+                the area covered by the data, a nearest-point interpolation is used).
+                The coordiantes of the regular grid onto which the data is mapped 
+                is given by the arguments 'lats_reg' and 'lons_reg'.
+            lats_reg: 1d numpy array
+                Latitude values for regular interpolation grid.
+                Must be specified for irregular grids if the interpolation method 
+                'regular' is chosen. In all other cases, the argument is ignored.
+            lons_reg: 1d numpy array
+                Longitude values for regular interpolation grid.
+                Must be specified for irregular grids if the interpolation method 
+                'regular' is chosen. In all other cases, the argument is ignored.
     """
-    def __init__(self, values, lats, lons, origin=None, method='cubic'):
+    def __init__(self, values, lats, lons, origin=None, method_irreg='cubic', lats_reg=None, lons_reg=None):
         
         # compute coordinates of origin, if not provided
         if origin is None:
@@ -217,9 +238,28 @@ class Interpolator2D():
         if reggrid:
             self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
         else:
-            self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method)
+            if method_irreg == 'regular':
+                assert lats_reg is not None and lons_reg is not None,\
+                    'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
+    
+                # interpolators for irregular grid
+                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
+                gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
-        # store grids
+                # map to regular grid
+                lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
+                zi = gd_cubic.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
+                zi_nearest = gd_nearest.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
+                indices_nan = np.where(np.isnan(zi))
+                zi[indices_nan] = zi_nearest[indices_nan] 
+
+                # interpolator for regular grid
+                self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=zi)
+
+            else:
+                self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
+
+        # store data used for interpolation
         self.lat_nodes = lats
         self.lon_nodes = lons
         self.values = values
@@ -319,9 +359,6 @@ class Interpolator2D():
 
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
-        if np.ndim(self.values) == 1 and np.ndim(zi) == 2:
-            zi = np.swapaxes(zi, 0, 1)
-
         if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
             zi = float(zi)
 
@@ -371,7 +408,7 @@ class Interpolator3D():
         lats_rad, lons_rad = torad(lats, lons)
 
         # initialize lat-lon interpolator
-        self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values)
+        self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values, method=method)
 
         # store grids
         self.lat_nodes = lats

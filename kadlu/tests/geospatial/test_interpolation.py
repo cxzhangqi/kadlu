@@ -260,7 +260,7 @@ def test_can_interpolate_multiple_points_in_xx():
         assert z == pytest.approx(d, rel=1e-3)
 
 
-def test_can_interpolate_unstructured_grid():
+def test_can_interpolate_irregular_grid():
     # create fake data
     lat = np.array([0.0, 1.0, 1.5, 2.1, 3.0])
     lon = np.array([0.0, 2.0, 0.2, 0.7, 1.2])
@@ -268,16 +268,41 @@ def test_can_interpolate_unstructured_grid():
     # initialize interpolator
     ip = Interpolator2D(bathy, lat, lon)
     # --- 4 latitudes ---
-    lats = [0.01, 0.1, 0.2, 2.1]
+    lats = [0.01, 1.0, 0.5, 2.1]
     # --- 4 longitudes --- 
-    lons = [0.01, 0.15, 0.08, 0.71]
-    # interpolate
+    lons = [0.01, 2.0, 1.0, 0.71]
+    # interpolate all at once
     depths = ip.eval_ll(lat=lats, lon=lons)
+    assert depths[1] == pytest.approx(-200, abs=1E-9)
+    assert depths[2] < -90 and depths[2] > -200
+    # interpolate one at a time
     zi = list()
     for lat, lon in zip(lats, lons):
         zi.append(ip.eval_ll(lat=lat, lon=lon))
+    # check that the all-at-once and one-at-a-time 
+    # approaches give the same result
     for z,d in zip(zi, depths):
         assert z == pytest.approx(d, rel=1e-3)
+
+
+def test_can_interpolate_irregular_grid_by_mapping_to_regular_grid():
+    # create fake data
+    lat = np.array([0.0, 1.0, 1.5, 2.1, 3.0])
+    lon = np.array([0.0, 2.0, 0.2, 0.7, 1.2])
+    bathy = np.array([-90.0, -200.0, -140.0, -44.0, -501.0])
+    # regular grid that data will be mapped to
+    lat_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
+    lon_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+    # initialize interpolator
+    ip = Interpolator2D(bathy, lat, lon, method_irreg='regular', lats_reg=lat_reg, lons_reg=lon_reg)
+    # --- 4 latitudes ---
+    lats = [0.01, 1.0, 0.5, 2.1]
+    # --- 4 longitudes --- 
+    lons = [0.01, 2.0, 1.0, 0.71]
+    # interpolate all at once
+    depths = ip.eval_ll(lat=lats, lon=lons)
+    assert depths[1] == pytest.approx(-200, abs=1E-9)
+    assert depths[2] < -90 and depths[2] > -200
 
 
 def test_can_interpolate_geotiff_data():
@@ -374,3 +399,5 @@ def test_interpolate_3d_data_using_xy_coordinates():
     assert vi[0] == pytest.approx(4, abs=1E-9)
     assert vi[1] == pytest.approx(4.5, abs=1E-9)
     assert vi[2] == pytest.approx(5, abs=1E-9)
+
+

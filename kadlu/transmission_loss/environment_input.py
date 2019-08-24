@@ -165,13 +165,14 @@ class EnvironmentInput():
                     Propagation matrix. Has shape (Nz,Nq) where Nz and Nq are the 
                     number of vertical and angular grid points, respectively.
         """
-        do_update, indices = self.__update_env_model__(dist)        
-        if do_update:
-            self.U[:, indices] = np.exp(1j * self.dr * self.k0 * (-1 + scimath.sqrt( self.n2in[:,indices] + self.attenuation[:,indices] +\
-                1/2 / self.k0**2 * (self.d2denin[:,indices] / self.denin[:,indices] - 3/2 * (self.ddenin[:,indices] / self.denin[:,indices])**2))))
+        do_update, indices = self.__update_env_model__(dist)   
 
+        if do_update:
             if self.verbose:
                 print('Computing U matrix {0:.2f} m'.format(dist))
+
+            self.U[:, indices] = np.exp(1j * self.dr * self.k0 * (-1 + scimath.sqrt( self.n2in[:,indices] + self.attenuation[:,indices] +\
+                1/2 / self.k0**2 * (self.d2denin[:,indices] / self.denin[:,indices] - 3/2 * (self.ddenin[:,indices] / self.denin[:,indices])**2))))
 
         return self.U
 
@@ -273,7 +274,7 @@ class EnvironmentInput():
 
             # next distance at which to update bathymetry
             self.dist_next_bathy_update = dist + self.dn_bathy * self.dr
-            
+
             # get bathymetry
             depth_new, gradient_new = self.__seafloor_depth__(dist)
 
@@ -292,7 +293,7 @@ class EnvironmentInput():
 
             # update height above seafloor matrix
             self.height_above_seafloor[:,new[0]] = np.abs(self.Z[:,new[0]]) - self.depth[:,new[0]]
-            
+
         new = np.squeeze(new)
 
         return new
@@ -361,7 +362,7 @@ class EnvironmentInput():
             The computation is performed at equally spaced points on a circle, 
             at the specified distance from the source.
 
-            The depth is positive below the sea surface, positive above.
+            The depth is positive below the sea surface and negative above.
 
             The gradient is computed in the direction perpendicular to the circle.
 
@@ -394,7 +395,7 @@ class EnvironmentInput():
                 dfdy = self.env_data.bathy_gradient(x=x, y=y, axis='y')
                 gradient = self.costheta * dfdx + self.sintheta * dfdy
                 gradient *= (-1.)
-            
+
         depth = depth[np.newaxis,:]
         gradient = gradient[np.newaxis,:]
 

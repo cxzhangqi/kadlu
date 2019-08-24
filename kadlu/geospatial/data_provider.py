@@ -80,7 +80,7 @@ class DataProvider():
         # initialize bathymetry interpolation table
         if self.bathy_data is not None:    
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
-                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin, method=interpolation_method)       
+                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin, method_irreg=interpolation_method)       
 
         # initialize temperature interpolation table
         if self.temp_data is not None:    
@@ -95,7 +95,7 @@ class DataProvider():
         # initialize wave interpolation table
         if self.wave_data is not None:    
             self.wave_interpolator = Interpolator2D(values=self.wave_data[0],\
-                    lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin, method=interpolation_method)       
+                    lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin, method_irreg=interpolation_method)       
 
 
     def bathy(self, x, y, grid=False, geometry='planar'):

@@ -211,10 +211,9 @@ def torad(lat, lon):
             lat_rad: float or array
                 latitude(s) in radians from 0 to pi.
             lon_rad: float or array
-                longitude(s) in radians from 0 to 2*pi.
+                longitude(s) in radians from -pi to pi.
     """
     lat_rad = (lat + 90) * deg2rad
-#    lon_rad = (lon + 180) * deg2rad
     lon_rad = lon * deg2rad
     return lat_rad, lon_rad
 
@@ -257,7 +256,6 @@ def get_slices(distance, num_slices=1, bins=100, angle=0):
         y = y[0]
     
     return x, y
-
 
 
 def get_files(path, substr, fullpath=True, subdirs=False):

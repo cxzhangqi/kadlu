@@ -89,10 +89,6 @@ class DataProvider():
         lats = np.linspace(south, north, num=num_lats)
         lons = np.linspace(west, east, num=num_lons)
 
-        print(lats)
-        print(lons)
-        print(lat_ref, lon_ref)
-
         # initialize bathymetry interpolation table
         if self.bathy_data is not None:    
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\

@@ -234,32 +234,41 @@ class Interpolator2D():
         # convert to radians
         lats_rad, lons_rad = torad(lats, lons)
 
+        # necessary to resolve a mismatch between scipy and underlying Fortran code
+        # https://github.com/scipy/scipy/issues/6556
+        if np.min(lons_rad) < 0:
+            self._lon_corr = np.pi
+        else:
+            self._lon_corr = 0
+
         # initialize lat-lon interpolator
         if reggrid:
+            lons_rad += self._lon_corr
             self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
+
         else:
             if method_irreg == 'regular':
                 assert lats_reg is not None and lons_reg is not None,\
                     'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
     
                 # interpolators on irregular grid
+                lons_rad += self._lon_corr
                 gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
                 gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
                 # map to regular grid
                 lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
+                lons_reg_rad += self._lon_corr
                 zi = gd_cubic.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
                 zi_nearest = gd_nearest.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
                 indices_nan = np.where(np.isnan(zi))
                 zi[indices_nan] = zi_nearest[indices_nan] 
 
                 # interpolator on regular grid
-                print('regular grid:')
-                print(lats_reg_rad)
-                print(lons_reg_rad)
                 self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=zi)
 
             else:
+                lons_rad += self._lon_corr
                 self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
 
         # store data used for interpolation
@@ -359,9 +368,7 @@ class Interpolator2D():
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = torad(lat, lon)
-
-        print(lat_rad)
-        print(lon_rad)
+        lon_rad += self._lon_corr
 
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
@@ -413,7 +420,15 @@ class Interpolator3D():
         # convert to radians
         lats_rad, lons_rad = torad(lats, lons)
 
+        # necessary to resolve a mismatch between scipy and underlying Fortran code
+        # https://github.com/scipy/scipy/issues/6556
+        if np.min(lons_rad) < 0:
+            self._lon_corr = np.pi
+        else:
+            self._lon_corr = 0
+
         # initialize lat-lon interpolator
+        lons_rad += self._lon_corr
         self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values, method=method)
 
         # store grids
@@ -507,6 +522,7 @@ class Interpolator3D():
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = torad(lat, lon)
+        lon_rad += self._lon_corr
 
         if grid:
             lat_rad, lon_rad, z = self._reshape(lat_rad, lon_rad, z)

@@ -25,12 +25,12 @@ class DataProvider():
         TODO: Implement loading of temp, salinity and wave data.
 
         Args:
-            lat_bin_size: float
-                Latitude bin size used for interpolation grid. 
-                The default values is 0.001 degrees (110 meters)
-            lon_bin_size: float
-                Longitude bin size used for interpolation grid
-                The default values is 0.001 degrees (110 meters at the Equator)
+            lats: 1d numpy array
+                Latitude coordinates used for interpolation. 
+            lons: 1d numpy array
+                Longitude coordinates used for interpolation.
+            depths: 1d numpy array
+                Depth coordinates used for interpolation.
 
         Attributes: 
 
@@ -38,7 +38,7 @@ class DataProvider():
     def __init__(self, storage_location, bathy_source=None, temp_source=None,\
                 salinity_source=None, wave_source=None, wave_var=None,\
                 south=-90, north=90, west=-180, east=180, time=None,\
-                lat_ref=None, lon_ref=None, lat_bin_size=0.001, lon_bin_size=0.001):
+                lat_ref=None, lon_ref=None, lats=None, lons=None, depths=None):
 
         self.bathy_data = None
         self.temp_data = None
@@ -83,12 +83,19 @@ class DataProvider():
 
         self.origin = LatLon(lat_ref, lon_ref)
 
-        # coordinates of regular lat-lon grid for 2D interpolation
-        num_lats = int(np.ceil((north - south) / lat_bin_size)) + 1
-        num_lons = int(np.ceil((east - west) / lon_bin_size)) + 1
-        lats = np.linspace(south, north, num=num_lats)
-        lons = np.linspace(west, east, num=num_lons)
+        # coordinates of lat-lon-depth grid
+        if lats is None:
+            num_lats = 101
+            lats = np.linspace(south, north, num=num_lats, endpoint=True)
 
+        if lons is None:
+            num_lons = 101
+            lons = np.linspace(west, east, num=num_lons)
+
+        if depths is None:
+            num_depths = 101
+            depths = np.linspace(0, max_depth, num=num_depths)
+ 
         # initialize bathymetry interpolation table
         if self.bathy_data is not None:    
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
@@ -97,15 +104,25 @@ class DataProvider():
 
         # initialize temperature interpolation table
         if self.temp_data is not None:    
-            self.temp_interpolator = Interpolator3D(values=self.temp_data[0],\
-                    lats=self.temp_data[1], lons=self.temp_data[2], depths=self.temp_data[3],\
-                    origin=self.origin, method='linear')       
+            interp = Interpolator3D(values=self.temp_data[0], lats=self.temp_data[1],\
+                    lons=self.temp_data[2], depths=self.temp_data[3],\
+                    origin=self.origin, method='linear')
+
+            temps = interp.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
+            
+            self.temp_interpolator = Interpolator3D(values=temps, lats=lats, lons=lons,\
+                    depths=depths, origin=self.origin, method='linear')       
 
         # initialize salinity interpolation table
         if self.salinity_data is not None:    
-            self.salinity_interpolator = Interpolator3D(values=self.salinity_data[0],\
-                    lats=self.salinity_data[1], lons=self.salinity_data[2], depths=self.salinity_data[3],\
+            interp = Interpolator3D(values=self.salinity_data[0], lats=self.salinity_data[1],\
+                    lons=self.salinity_data[2], depths=self.salinity_data[3],\
                     origin=self.origin, method='linear')       
+
+            salinities = interp.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
+            
+            self.salinity_interpolator = Interpolator3D(values=salinities, lats=lats, lons=lons,\
+                    depths=depths, origin=self.origin, method='linear')       
 
         # initialize wave interpolation table
         if self.wave_data is not None:    
@@ -326,7 +343,7 @@ def _generate_fake_data_3d(value, south, north, west, east, max_depth):
     N = 30
     lats = (np.arange(N) + 0.5) / N * (north - south) + south 
     lons = (np.arange(N) + 0.5) / N * (east - west) + west 
-    depths = 2 * np.arange(N) / (N-1) * max_depth
+    depths = np.arange(N) / (N-1) * max_depth
     shape = (len(lats), len(lons), len(depths))
     values = value * np.ones(shape)
     return (values, lats, lons, depths)

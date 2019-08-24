@@ -401,3 +401,19 @@ def test_interpolate_3d_data_using_xy_coordinates():
     assert vi[2] == pytest.approx(5, abs=1E-9)
 
 
+def test_interpolate_3d_outside_grid():
+    N = 10
+    np.random.seed(1)
+    # create fake data
+    val = np.ones(shape=(N,N,N))
+    lat = np.arange(N)
+    lon = np.arange(N)
+    depth = np.arange(N)
+    # initialize interpolator
+    ip = Interpolator3D(val, lat, lon, depth)
+    # check interpolation outside grid
+    lats = 20
+    lons = 5
+    depths = 5
+    vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
+    assert vi == 1

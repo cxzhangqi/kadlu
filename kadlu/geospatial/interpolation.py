@@ -429,7 +429,7 @@ class Interpolator3D():
 
         # initialize lat-lon interpolator
         lons_rad += self._lon_corr
-        self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values, method=method)
+        self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values, method=method, bounds_error=False, fill_value=None)
 
         # store grids
         self.lat_nodes = lats
@@ -465,9 +465,13 @@ class Interpolator3D():
             Returns:
                 vi: Interpolated values
         """
-        M = len(y)
-        N = len(x)
-        K = len(z)
+        M = N = K = 1
+        if np.ndim(y) == 1: 
+            M = len(y)
+        if np.ndim(x) == 1: 
+            N = len(x)
+        if np.ndim(z) == 1: 
+            K = len(z)
 
         lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
 
@@ -515,9 +519,13 @@ class Interpolator3D():
             Returns:
                 zi: Interpolated bathymetry values (or derivates)
         """
-        M = len(lat)
-        N = len(lon)
-        K = len(z)
+        M = N = K = 1
+        if np.ndim(lat) == 1: 
+            M = len(lat)
+        if np.ndim(lon) == 1: 
+            N = len(lon)
+        if np.ndim(z) == 1: 
+            K = len(z)
 
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))

@@ -211,9 +211,10 @@ def torad(lat, lon):
             lat_rad: float or array
                 latitude(s) in radians from 0 to pi.
             lon_rad: float or array
-                longitude(s) in radians from -pi to +pi.
+                longitude(s) in radians from 0 to 2*pi.
     """
     lat_rad = (lat + 90) * deg2rad
+#    lon_rad = (lon + 180) * deg2rad
     lon_rad = lon * deg2rad
     return lat_rad, lon_rad
 

@@ -242,7 +242,7 @@ class Interpolator2D():
                 assert lats_reg is not None and lons_reg is not None,\
                     'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
     
-                # interpolators for irregular grid
+                # interpolators on irregular grid
                 gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
                 gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
@@ -253,7 +253,10 @@ class Interpolator2D():
                 indices_nan = np.where(np.isnan(zi))
                 zi[indices_nan] = zi_nearest[indices_nan] 
 
-                # interpolator for regular grid
+                # interpolator on regular grid
+                print('regular grid:')
+                print(lats_reg_rad)
+                print(lons_reg_rad)
                 self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=zi)
 
             else:
@@ -356,6 +359,9 @@ class Interpolator2D():
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = torad(lat, lon)
+
+        print(lat_rad)
+        print(lon_rad)
 
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
@@ -510,9 +516,6 @@ class Interpolator3D():
 
         if grid:
             vi = np.reshape(vi, newshape=(M,N,K))
-
-        if np.ndim(self.values) == 1 and np.ndim(vi) == 3:
-            vi = np.swapaxes(vi, 0, 1)
 
         if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
             vi = float(vi)

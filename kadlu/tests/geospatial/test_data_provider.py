@@ -40,7 +40,7 @@ def test_interpolate_bathymetry():
     
 def test_load_dummy_temperature():
     provider = DataProvider(storage_location='')
-    temp_data = provider.temp_data
+    _ = provider.temp_data
 
 def test_interpolate_dummy_temperature():
     provider = DataProvider(storage_location='')

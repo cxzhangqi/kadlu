@@ -25,6 +25,12 @@ class DataProvider():
         TODO: Implement loading of temp, salinity and wave data.
 
         Args:
+            lat_bin_size: float
+                Latitude bin size used for interpolation grid. 
+                The default values is 0.001 degrees (110 meters)
+            lon_bin_size: float
+                Longitude bin size used for interpolation grid
+                The default values is 0.001 degrees (110 meters at the Equator)
 
         Attributes: 
 
@@ -32,7 +38,7 @@ class DataProvider():
     def __init__(self, storage_location, bathy_source=None, temp_source=None,\
                 salinity_source=None, wave_source=None, wave_var=None,\
                 south=-90, north=90, west=-180, east=180, time=None,\
-                lat_ref=None, lon_ref=None, interpolation_method='cubic'):
+                lat_ref=None, lon_ref=None, lat_bin_size=0.001, lon_bin_size=0.001):
 
         self.bathy_data = None
         self.temp_data = None
@@ -77,25 +83,39 @@ class DataProvider():
 
         self.origin = LatLon(lat_ref, lon_ref)
 
+        # coordinates of regular lat-lon grid for 2D interpolation
+        num_lats = int(np.ceil((north - south) / lat_bin_size)) + 1
+        num_lons = int(np.ceil((east - west) / lon_bin_size)) + 1
+        lats = np.linspace(south, north, num=num_lats)
+        lons = np.linspace(west, east, num=num_lons)
+
+        print(lats)
+        print(lons)
+        print(lat_ref, lon_ref)
+
         # initialize bathymetry interpolation table
         if self.bathy_data is not None:    
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
-                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin, method_irreg=interpolation_method)       
+                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin,\
+                    method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
         # initialize temperature interpolation table
         if self.temp_data is not None:    
             self.temp_interpolator = Interpolator3D(values=self.temp_data[0],\
-                    lats=self.temp_data[1], lons=self.temp_data[2], depths=self.temp_data[3], origin=self.origin)       
+                    lats=self.temp_data[1], lons=self.temp_data[2], depths=self.temp_data[3],\
+                    origin=self.origin, method='linear')       
 
         # initialize salinity interpolation table
         if self.salinity_data is not None:    
             self.salinity_interpolator = Interpolator3D(values=self.salinity_data[0],\
-                    lats=self.salinity_data[1], lons=self.salinity_data[2], depths=self.salinity_data[3], origin=self.origin)       
+                    lats=self.salinity_data[1], lons=self.salinity_data[2], depths=self.salinity_data[3],\
+                    origin=self.origin, method='linear')       
 
         # initialize wave interpolation table
         if self.wave_data is not None:    
             self.wave_interpolator = Interpolator2D(values=self.wave_data[0],\
-                    lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin, method_irreg=interpolation_method)       
+                    lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin,\
+                    method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
 
     def bathy(self, x, y, grid=False, geometry='planar'):

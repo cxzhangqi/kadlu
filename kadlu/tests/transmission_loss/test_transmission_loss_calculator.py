@@ -61,7 +61,7 @@ def test_run_TL_calculator_with_flat_seafloor():
 def test_run_TL_calculator_with_realistic_bathymetry():
     # load bathymetric data
     folder = os.path.join(path_to_assets, "tif")
-    provider = DataProvider(storage_location=folder, bathy_source="CHS", south=43, west=-60, north=44, east=-59, interpolation_method='nearest')
+    provider = DataProvider(storage_location=folder, bathy_source="CHS", south=43, west=-60, north=44, east=-59)
     # depth at center
     seafloor_depth = -provider.bathy(x=0, y=0)
     max_depth = -np.min(provider.bathy_data[0]) 

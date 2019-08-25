@@ -14,7 +14,7 @@
 import pytest
 import os
 import numpy as np
-from kadlu.utils import LLtoXY, XYtoLL
+from kadlu.utils import LLtoXY, XYtoLL, interp_grid_1d
 
 def test_can_convert_single_point_from_ll_to_xy():
     lat_ref = 45
@@ -54,3 +54,16 @@ def test_can_convert_single_point_from_xy_to_ll():
     lat, lon = XYtoLL(xs, ys, lat_ref, lon_ref)    
     assert lon == pytest.approx(lon_ref, 0.1)
     assert lat == pytest.approx(lat_ref+1, 0.1)
+
+def test_interp_grid_1d():
+    # example function y(x)
+    x = np.linspace(0, 2*np.pi, num=100)
+    y = np.sin(pow(x/(2*np.pi),2)*x)
+    x = np.concatenate((np.linspace(-10,0,num=100), x))
+    y = np.concatenate((np.zeros(100), y))
+    # compute grid
+    indices, max_err = interp_grid_1d(y=y, x=x, num_pts=101, rel_err=0.02)
+    assert len(indices) == 15
+    assert max_err == pytest.approx(0.01842, abs=0.001)
+    answ = np.array([0, 115, 133, 156, 163, 168, 172, 176, 185, 188, 190, 192, 194, 196, 199])
+    assert np.all(indices == answ) 

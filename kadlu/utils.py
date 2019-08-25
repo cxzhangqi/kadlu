@@ -1,6 +1,8 @@
 import numpy as np
 import os
 from collections import namedtuple
+import math
+from scipy.interpolate import interp1d
 
 # Equatorial radius (6,378.1370 km)
 # Polar radius (6,356.7523 km)
@@ -306,6 +308,70 @@ def get_files(path, substr, fullpath=True, subdirs=False):
     files.sort()
 
     return files
+
+
+def interp_grid_1d(y, x=None, num_pts=math.inf, rel_err=None, method='linear'):
+    """ Determine the optimal interpolation grid for the 
+        function y(x). 
+        
+        The grid will in general not be uniform, as the 
+        grid points will be more densily clustered in 
+        regions where y(x) is changing more rapidly. 
+        
+        Args:
+            y: 1d numpy array
+                y values
+            x: 1d numpy array
+                x values. If none are specified, they are 
+                assumed to be 0,1,2,...
+            num_pts: int
+                Number of grid points. If rel_err is specified, 
+                num_pts becomes the maximum possible number of 
+                grid points.
+            rel_err: float
+                Maximum deviation between the interpolation and 
+                y, relative to the range of values spanned by y.
+            method: str
+                Interpolation method
+
+        Returns:
+            a: 1d numpy array
+                Indices of the grid points
+            e: float
+                Maximum relative error
+    """
+    n = len(y)
+    norm = np.max(y) - np.min(y)
+
+    if x is None:
+        x = np.arange(n)
+        
+    if num_pts == math.inf and rel_err is None:
+        num_pts = 101
+
+    a = np.array([0, n-1])
+    num = len(a)
+
+    while num < num_pts:
+        
+        f = interp1d(x=x[a], y=y[a], kind=method)
+        
+        dev = np.abs(y - f(x))
+        
+        a0 = np.argmax(dev)
+        dev0 = dev[a0]
+        
+        e = dev0 / norm
+        
+        if rel_err is not None and e < rel_err:
+            break
+        else:
+            a = np.append(a, a0)
+
+        num = len(a)
+
+    a = np.sort(a)
+    return a, e
 
 
 def get_member(cls, member_name):

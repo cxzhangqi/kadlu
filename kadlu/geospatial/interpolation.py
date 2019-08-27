@@ -26,17 +26,25 @@
 """ Interpolation module within the kadlu library
 
     This module handles two- and three-dimensional interpolation of geospatial data in 
-    spherical and planar geometry, on regular and irregular grids.
+    spherical and planar geometry.
+
+    In the two-dimensional case, the interpolation can be made on both regular and 
+    irregular grids. 
+    
+    In the three-dimensional case, only interpolation on regular grids has been 
+    implemented, although an extension to irregular grids (following the same 
+    methodology as in the two-dimensional case) should be straightforward. 
 
     Contents:
-        GridData class:
+        GridData2D class:
         Interpolator2D class
+        Interpolator3D class
 """
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
-from kadlu.geospatial.bathy_reader import LatLon
-from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY
+from scipy.interpolate import RegularGridInterpolator
+from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
 from scipy.interpolate import griddata
 
 from sys import platform as sys_pf
@@ -46,24 +54,30 @@ if sys_pf == 'darwin':
 from matplotlib import pyplot as plt
 
 
-class GridData():
+class GridData2D():
     """ Wrapper function around scipy's interpolate.griddata
 
         https://docs.scipy.org/doc/scipy-0.15.1/reference/generated/scipy.interpolate.griddata.html
 
+        An alternative to griddata could be Rbf, as discussed here:
+
+        https://stackoverflow.com/questions/37872171/how-can-i-perform-two-dimensional-interpolation-using-scipy
+
         Attributes: 
-            x: float or 1d array
+            u: 1d numpy array
                 data points 1st coordinate
-            y: float or 1d array
+            v: 1d numpy array
                 data points 2nd coordinate
-            z: float or 1d array
+            r: 1d numpy array
                 data values
             method : {‘linear’, ‘nearest’, ‘cubic’}, optional
     """
-    def __init__(self, x, y, z, method='cubic'):
-        self.xy = np.column_stack((x,y))
-        self.z = z
+    def __init__(self, u, v, r, method='cubic'):
+        self.uv = np.column_stack((u,v))
+        self.r = r
         self.method = method
+        self.u_step = (np.max(u) - np.min(u)) / 1E4
+        self.v_step = (np.max(v) - np.min(v)) / 1E4
 
     def __call__(self, theta, phi, grid=False, dtheta=0, dphi=0):
         """ Interpolate data
@@ -80,6 +94,11 @@ class GridData():
             phi=(phi_1,...,phi_M). Note that in this case, the lengths of theta 
             and phi do not have to be the same.
 
+            Only first-order derivatives have been implemented. A request to interpolate 
+            higher-order derivatives will give an Assertion error.
+
+            TODO: Improve the algorithm used to compute the derivatives. 
+
             Args: 
                 theta: float or array
                    1st coordinate of the points where the interpolation is to be evaluated
@@ -93,7 +112,61 @@ class GridData():
                     Order of phi-derivative
 
             Returns:
-                zi: Interpolated values
+                ri: Interpolated values
+        """        
+        assert dtheta + dphi <= 1, "Interpolation of higher-order derivatives not implemented for irregular grids"
+
+        if grid:
+            M = N = 1
+            if np.ndim(theta) == 1: 
+                M = len(theta)
+            if np.ndim(phi) == 1: 
+                N = len(phi)
+
+        if dtheta == dphi == 0:
+            pts = self._prep_input(theta, phi, grid)
+            ri = griddata(self.uv, self.r, pts, method=self.method)
+
+        # 1st derivative in u
+        elif dtheta == 1 and dphi == 0:
+            theta1 = theta - 0.5 * self.u_step
+            theta2 = theta + 0.5 * self.u_step
+            pts1 = self._prep_input(theta1, phi, grid)
+            pts2 = self._prep_input(theta2, phi, grid)
+            ri1 = griddata(self.uv, self.r, pts1, method=self.method)
+            ri2 = griddata(self.uv, self.r, pts2, method=self.method)
+            ri = (ri2 - ri1) / (theta2 - theta1)
+
+        # 1st derivative in v
+        elif dtheta == 0 and dphi == 1:
+            phi1 = phi - 0.5 * self.v_step
+            phi2 = phi + 0.5 * self.v_step
+            pts1 = self._prep_input(theta, phi1, grid)
+            pts2 = self._prep_input(theta, phi2, grid)
+            ri1 = griddata(self.uv, self.r, pts1, method=self.method)
+            ri2 = griddata(self.uv, self.r, pts2, method=self.method)
+            ri = (ri2 - ri1) / (phi2 - phi1)
+
+        if grid:
+            ri = np.reshape(ri, newshape=(N,M))
+            ri = np.swapaxes(ri, 0, 1)
+
+        return ri
+
+    def _prep_input(self, theta, phi, grid):
+        """ Transform the input data to format appropriate for scipy.interpolate.griddata.
+
+            Args: 
+                theta: 1d numpy array
+                   1st coordinate of the points where the interpolation is to be evaluated
+                phi: 1d numpy array
+                   2nd coordinate of the points where the interpolation is to be evaluated
+                grid: bool
+                   Specify how to combine elements of theta and phi.
+
+            Returns:
+                pts: numpy array 
+                    Input data
         """        
         if grid:
             M = len(theta)
@@ -102,32 +175,50 @@ class GridData():
             theta = np.reshape(theta, newshape=(M*N))
             phi = np.reshape(phi, newshape=(M*N))        
 
-        xi = np.column_stack((theta, phi))
+        pts = np.column_stack((theta, phi))
 
-        zi = griddata(self.xy, self.z, xi, method=self.method)
-
-        if grid:
-            zi = np.reshape(zi, newshape=(M,N))
-
-        return zi
+        return pts
 
 
 class Interpolator2D():
-    """ Class for interpolating geospatial data.
+    """ Class for interpolating 2D (lat,lon) geospatial data.
+
+        For irregular grids, the data values must be passed as a 
+        1d array and all three arrays (values, lats, lons) must have 
+        the same length.
+
+        For regular grids, the data values must be passed as a 
+        2d array with shape (M,N) where M and N are the lengths 
+        of the latitude and longitude array, respectively.
 
         Attributes: 
-            values: numpy array
+            values: 1d or 2d numpy array
                 Values to be interpolated
-            lats: numpy array
+            lats: 1d numpy array
                 Latitude values
-            lons: numpy array
+            lons: 1d numpy array
                 Longitude values
             latlon_ref: LatLon
                 Reference location (origo of XY coordinate system).
-            method : {‘linear’, ‘nearest’, ‘cubic’}, optional
-                Interpolation method used for unstructured data (GeoTIFF and XYZ)
+            method_irreg : {‘linear’, ‘nearest’, ‘cubic’, ‘regular’}, optional
+                Interpolation method used for irregular grids.
+                Note that 'nearest' is usually significantly faster than 
+                the 'linear' and 'cubic'.
+                If the 'regular' is selected, the data is first mapped onto 
+                a regular grid by means of a cubic interpolation (for points outside 
+                the area covered by the data, a nearest-point interpolation is used).
+                The coordiantes of the regular grid onto which the data is mapped 
+                is given by the arguments 'lats_reg' and 'lons_reg'.
+            lats_reg: 1d numpy array
+                Latitude values for regular interpolation grid.
+                Must be specified for irregular grids if the interpolation method 
+                'regular' is chosen. In all other cases, the argument is ignored.
+            lons_reg: 1d numpy array
+                Longitude values for regular interpolation grid.
+                Must be specified for irregular grids if the interpolation method 
+                'regular' is chosen. In all other cases, the argument is ignored.
     """
-    def __init__(self, values, lats, lons, origin=None, method='cubic'):
+    def __init__(self, values, lats, lons, origin=None, method_irreg='cubic', lats_reg=None, lons_reg=None):
         
         # compute coordinates of origin, if not provided
         if origin is None:
@@ -137,43 +228,74 @@ class Interpolator2D():
 
         self.origin = origin
 
-        # check if bathymetry data are on a regular or unstructured grid
+        # check if bathymetry data are on a regular or irregular grid
         reggrid = (np.ndim(values) == 2)
 
         # convert to radians
         lats_rad, lons_rad = torad(lats, lons)
 
+        # necessary to resolve a mismatch between scipy and underlying Fortran code
+        # https://github.com/scipy/scipy/issues/6556
+        if np.min(lons_rad) < 0:
+            self._lon_corr = np.pi
+        else:
+            self._lon_corr = 0
+
         # initialize lat-lon interpolator
         if reggrid:
+            lons_rad += self._lon_corr
             self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
-        else:
-            self.interp_ll = GridData(x=lats_rad, y=lons_rad, z=values, method=method)
 
-        # store grids
+        else:
+            if method_irreg == 'regular':
+                assert lats_reg is not None and lons_reg is not None,\
+                    'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
+    
+                # interpolators on irregular grid
+                lons_rad += self._lon_corr
+                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
+                gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
+
+                # map to regular grid
+                lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
+                lons_reg_rad += self._lon_corr
+                zi = gd_cubic.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
+                zi_nearest = gd_nearest.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
+                indices_nan = np.where(np.isnan(zi))
+                zi[indices_nan] = zi_nearest[indices_nan] 
+
+                # interpolator on regular grid
+                self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=zi)
+
+            else:
+                lons_rad += self._lon_corr
+                self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
+
+        # store data used for interpolation
         self.lat_nodes = lats
         self.lon_nodes = lons
         self.values = values
 
     def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
-        """ Evaluate interpolated bathymetry in position coordinates (XY).
+        """ Interpolate using planar coordinate system (xy).
 
             x and y can be floats or arrays.
 
-            If grid is set to False, the bathymetry will be evaluated at 
+            If grid is set to False, the interpolation will be evaluated at 
             the positions (x_i, y_i), where x=(x_1,...,x_N) and 
             y=(y_1,...,y_N). Note that in this case, x and y must have 
             the same length.
 
-            If grid is set to True, the bathymetry will be evaluated at 
+            If grid is set to True, the interpolation will be evaluated at 
             all combinations (x_i, y_j), where x=(x_1,...,x_N) and 
             y=(y_1,...,y_M). Note that in this case, the lengths of x 
             and y do not have to be the same.
 
             Args: 
                 x: float or array
-                   x-coordinate of the positions(s) where the bathymetry is to be evaluated
+                   x-coordinate of the positions(s) where the interpolation is to be evaluated
                 y: float or array
-                   y-coordinate of the positions(s) where the bathymetry is to be evaluated
+                   y-coordinate of the positions(s) where the interpolation is to be evaluated
                 grid: bool
                    Specify how to combine elements of x and y.
                 x_deriv_order: int
@@ -182,9 +304,9 @@ class Interpolator2D():
                     Order of y-derivative
 
             Returns:
-                zi: Interpolated bathymetry values
+                zi: Interpolated interpolation values
         """
-        lat, lon = self._xy_to_ll(x, y, grid=grid)
+        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
 
         if grid:
             M = lat.shape[0]
@@ -210,234 +332,251 @@ class Interpolator2D():
         return zi
 
     def eval_ll(self, lat, lon, grid=False, lat_deriv_order=0, lon_deriv_order=0):
-        """ Interpolate bathymetry grid in latitude and longitude coordinates (LL).
+        """ Interpolate using spherical coordinate system (latitude-longitude).
 
             lat and lot can be floats or arrays.
 
-            If grid is set to False, the bathymetry will be evaluated at 
+            If grid is set to False, the interpolation will be evaluated at 
             the coordinates (lat_i, lon_i), where lat=(lat_1,...,lat_N) 
             and lon=(lon_1,...,lon_N). Note that in this case, lat and 
             lon must have the same length.
 
-            If grid is set to True, the bathymetry will be evaluated at 
+            If grid is set to True, the interpolation will be evaluated at 
             all combinations (lat_i, lon_j), where lat=(lat_1,...,lat_N) 
             and lon=(lon_1,...,lon_M). Note that in this case, the lengths 
             of lat and lon do not have to be the same.
 
-            Bathymetry values are given in meters and derivates are given in meters 
-            per radians^n, where n is the overall derivative order.
+            Derivates are given per radians^n, where n is the overall 
+            derivative order.
 
             Args: 
                 lat: float or array
-                    latitude of the positions(s) where the bathymetry is to be evaluated
+                    latitude of the positions(s) where the interpolation is to be evaluated
                 lon: float or array
-                    longitude of the positions(s) where the bathymetry is to be evaluated
+                    longitude of the positions(s) where the interpolation is to be evaluated
                 grid: bool
-                    Specify how to combine elements of lat and lon.
+                    Specify how to combine elements of lat and lon. If lat and lon have different
+                    lengths, specifying grid has no effect as it is automatically set to True.
                 lat_deriv_order: int
                     Order of latitude-derivative
                 lon_deriv_order: int
                     Order of longitude-derivative
 
             Returns:
-                zi: Interpolated bathymetry values (or derivates)
+                zi: Interpolated values (or derivates)
         """
         lat = np.squeeze(np.array(lat))
         lon = np.squeeze(np.array(lon))
         lat_rad, lon_rad = torad(lat, lon)
+        lon_rad += self._lon_corr
 
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
-
-        if np.ndim(self.values) == 1 and np.ndim(zi) == 2:
-            zi = np.swapaxes(zi, 0, 1)
 
         if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
             zi = float(zi)
 
         return zi
 
-    def slice(self, angle=0, distance=1000, bins=100, num_slices=1, origin=None):
 
-        # x,y coordinates of origin
-        if origin is None:
-            origin = self.origin
-            xo, yo = 0, 0
-        else:
-            xo, yo = self._ll_to_xy(origin.latitude, origin.longitude)
+class Interpolator3D():
+    """ Class for interpolating 3D (lat,lon,depth) geospatial data.
 
-        # distance array
-        dr = distance / float(bins)
-        r = np.arange(bins, dtype=np.float)
-        r *= dr
-        r += 0.5 * dr
+        For regular grids, the data values must be passed as a 
+        3d array with shape (M,N,K) where M,N,K are the lengths 
+        of the latitude, longitude, and depth arrays, respectively.
 
-        val = list()
+        The current implementation does not handle irregular grids, 
+        although an extension to irregular grids (following the same 
+        methodology as in the two-dimensional case) should be 
+        straightforward. 
 
-        # loop over angles
-        a = angle
-        da = 360. / float(num_slices)
-        for _ in range(num_slices):
-            x = r * np.cos(a * np.pi / 180.)
-            y = r * np.sin(a * np.pi / 180.)
-            x += xo
-            y += yo
-            b = self.eval_xy(x=x, y=y)
-            val.append(b)
-            a += da
-
-        if num_slices == 1:
-            val = val[0]
+        Attributes: 
+            values: 3d numpy array
+                Values to be interpolated
+            lats: 1d numpy array
+                Latitude values
+            lons: 1d numpy array
+                Longitude values
+            depths: 1d numpy array
+                Depth values
+            latlon_ref: LatLon
+                Reference location (origo of XY coordinate system).
+            method : {‘linear’, ‘nearest’}, optional
+                Interpolation method. Default is linear
+    """
+    def __init__(self, values, lats, lons, depths, origin=None, method='linear'):
         
-        return val
+        # compute coordinates of origin, if not provided
+        if origin is None:
+            lat_ref = (np.min(lats) + np.max(lats)) / 2
+            lon_ref = (np.min(lons) + np.max(lons)) / 2
+            origin = LatLon(lat_ref, lon_ref)
 
-    def _ll_to_xy(self, lat, lon, lat_ref=None, lon_ref=None, grid=False):
+        self.origin = origin
 
-        if lat_ref is None:
-            lat_ref = self.origin.latitude
-        if lon_ref is None:
-            lon_ref = self.origin.longitude
+        # check if bathymetry data are on a regular or irregular grid
+        assert np.ndim(values) == 3, 'values must be a 3d array'
 
-        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=lat_ref, lon_ref=lon_ref, grid=grid)
-        return x, y
+        # convert to radians
+        lats_rad, lons_rad = torad(lats, lons)
 
-    def _xy_to_ll(self, x, y, lat_ref=None, lon_ref=None, grid=False):
+        # necessary to resolve a mismatch between scipy and underlying Fortran code
+        # https://github.com/scipy/scipy/issues/6556
+        if np.min(lons_rad) < 0:
+            self._lon_corr = np.pi
+        else:
+            self._lon_corr = 0
 
-        if lat_ref is None:
-            lat_ref = self.origin.latitude
-        if lon_ref is None:
-            lon_ref = self.origin.longitude
+        # initialize lat-lon interpolator
+        lons_rad += self._lon_corr
+        self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values, method=method, bounds_error=False, fill_value=None)
 
-        lat, lon = XYtoLL(x=x, y=y, lat_ref=lat_ref, lon_ref=lon_ref, grid=grid)
-        return lat, lon
+        # store grids
+        self.lat_nodes = lats
+        self.lon_nodes = lons
+        self.depth_nodes = depths
+        self.values = values
 
-    def plot_ll(self, lat_bins=100, lat_min=None, lat_max=None, lon_bins=100, lon_min=None, lon_max=None):        
-        """ Draw a map of the elevation in polar coordinates.
+    def eval_xy(self, x, y, z, grid=False):
+        """ Interpolate using planar coordinate system (xy).
+
+            x,y,z can be floats or arrays.
+
+            If grid is set to False, the interpolation will be evaluated at 
+            the positions (x_i, y_i, z_i), where x=(x_1,...,x_N),  
+            y=(y_1,...,y_N), and z=(z_1,...,z_N). Note that in this case, 
+            x,y,z must have the same length.
+
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
+            y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
+            lengths of x,y,z do not have to be the same.
+
+            Args: 
+                x: float or array
+                   x-coordinate of the positions(s) where the interpolation is to be evaluated
+                y: float or array
+                   y-coordinate of the positions(s) where the interpolation is to be evaluated
+                z: float or array
+                   Depth of the positions(s) where the interpolation is to be evaluated
+                grid: bool
+                   Specify how to combine elements of x,y,z.
 
             Returns:
-                fig: matplotlib.figure.Figure
-                    A figure object.
+                vi: Interpolated values
         """
-        fig = self._plot(True, lat_bins, lat_min, lat_max, lon_bins, lon_min, lon_max)
-        return fig
+        M = N = K = 1
+        if np.ndim(y) == 1: 
+            M = len(y)
+        if np.ndim(x) == 1: 
+            N = len(x)
+        if np.ndim(z) == 1: 
+            K = len(z)
 
-    def plot_xy(self, x_bins=100, x_min=None, x_max=None, y_bins=100, y_min=None, y_max=None):        
-        """ Draw a map of the elevation in planar coordinates.
+        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
+
+        if grid:
+            lat, lon, z = self._reshape(lat, lon, z)
+
+        vi = self.eval_ll(lat=lat, lon=lon, z=z)
+
+        if grid:
+            vi = np.reshape(vi, newshape=(M,N,K))
+
+        if np.ndim(vi) == 3:
+            vi = np.swapaxes(vi, 0, 1)
+
+        if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
+            vi = float(vi)
+
+        return vi
+
+    def eval_ll(self, lat, lon, z, grid=False):
+        """ Interpolate using spherical coordinate system (lat-lon).
+
+            lat,lot,z can be floats or arrays.
+
+            If grid is set to False, the interpolation will be evaluated at 
+            the coordinates (lat_i, lon_i, z_i), where lat=(lat_1,...,lat_N), 
+            lon=(lon_1,...,lon_N) and z=(z_,...,z_K). Note that in this case, lat and 
+            lon must have the same length.
+
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (lat_i, lon_j, z_k), where lat=(lat_1,...,lat_N), 
+            lon=(lon_1,...,lon_M) and z=(z_1,...,z_K). Note that in this case, the lengths 
+            of lat and lon do not have to be the same.
+
+            Args: 
+                lat: float or array
+                    Latitude of the positions(s) where the bathymetry is to be evaluated
+                lon: float or array
+                    Longitude of the positions(s) where the bathymetry is to be evaluated
+                z: float or array
+                    Depth of the positions(s) where the interpolation is to be evaluated
+                grid: bool
+                    Specify how to combine elements of lat,lon,z.
 
             Returns:
-                fig: matplotlib.figure.Figure
-                    A figure object.
+                zi: Interpolated bathymetry values (or derivates)
         """
-        fig = self._plot(False, x_bins, x_min, x_max, y_bins, y_min, y_max)
-        return fig
+        M = N = K = 1
+        if np.ndim(lat) == 1: 
+            M = len(lat)
+        if np.ndim(lon) == 1: 
+            N = len(lon)
+        if np.ndim(z) == 1: 
+            K = len(z)
 
-    def _plot(self, ll=True, x_bins=100, x_min=None, x_max=None, y_bins=100, y_min=None, y_max=None):
-        """ Draw a map of the elevation using either polar or
-            planar coordinates.
+        lat = np.squeeze(np.array(lat))
+        lon = np.squeeze(np.array(lon))
+        lat_rad, lon_rad = torad(lat, lon)
+        lon_rad += self._lon_corr
 
-            Args:
-                ll: bool
-                    If ll=True use polar coordinates; otherwise 
-                        use planar coordinates.
+        if grid:
+            lat_rad, lon_rad, z = self._reshape(lat_rad, lon_rad, z)
+
+        pts = np.column_stack((lat_rad, lon_rad, z))        
+        vi = self.interp_ll(pts)
+
+        if grid:
+            vi = np.reshape(vi, newshape=(M,N,K))
+
+        if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
+            vi = float(vi)
+
+        return vi
+
+    def _reshape(self, a, b, c):
+        """ Create 3d grid from all possible combinations of the 
+            elements of a,b,c and return the flatten coordinate 
+            arrays.
+
+            Args: 
+                a: 1d or 2d numpy array
+                    Coordinates along 1st axis
+                b: 1d or 2d numpy array
+                    Coordinates along 2nd axis
+                c: 1d numpy array
+                    Coordinates along 3rd axis
 
             Returns:
-                fig: matplotlib.figure.Figure
-                    A figure object.
-        """        
-        # interpolation grid
-        if ll:
-            x0 = self.lon_nodes
-            y0 = self.lat_nodes
-        else:
-            grid = (np.ndim(self.values) == 2)
-            x0, y0 = self._ll_to_xy(lat=self.lat_nodes, lon=self.lon_nodes, grid=grid)
+                a,b,c: 1d numpy arrays
+                    Flattened arrays
+        """
+        if np.ndim(a) == np.ndim(b) == 1:
+            a,b = np.meshgrid(a,b)
+            
+        M = a.shape[0]
+        N = a.shape[1]
+        a = np.reshape(a, newshape=(M*N))
+        b = np.reshape(b, newshape=(M*N))
 
-        # axes ranges
-        if x_min is None:
-            x_min = np.min(x0)
-        if x_max is None:
-            x_max = np.max(x0)
-        if y_min is None:
-            y_min = np.min(y0)
-        if y_max is None:
-            y_max = np.max(y0)
+        K = c.shape[0]
+        a, _ = np.meshgrid(a, c)
+        b, c = np.meshgrid(b, c)
 
-        # binning
-        dx = (x_max - x_min) / x_bins
-        dy = (y_max - y_min) / y_bins
+        a = np.reshape(a, newshape=(M*N*K))
+        b = np.reshape(b, newshape=(M*N*K))
+        c = np.reshape(c, newshape=(M*N*K))
 
-        # create axes
-        X = np.arange(x_bins, dtype=np.float)
-        X *= dx
-        X += x_min + 0.5*dx
-        Y = np.arange(y_bins, dtype=np.float)
-        Y *= dy
-        Y += y_min + 0.5*dy
-
-        # interpolate bathymetry
-        if ll:
-            Z = self.eval_ll(lat=Y, lon=X, grid=True)
-            Z = np.swapaxes(Z, 0, 1)
-        else:
-            Z = self.eval_xy(x=X, y=Y, grid=True)
-
-        # mask NaN entries
-        Z = np.ma.masked_invalid(Z)
-
-        # meshgrid
-        X,Y = np.meshgrid(X,Y)#,indexing='ij')
-
-        # x and y axis range
-        xrange = x_max - x_min
-        yrange = y_max - y_min
-        if xrange > 1e3:
-            X = X / 1.e3
-            x_max = x_max / 1.e3
-            x_min = x_min / 1.e3
-            xlabel = 'x (km)'
-        else:
-            xlabel = 'x (m)'
-
-        if yrange > 1e3:
-            Y = Y / 1.e3
-            y_max = y_max / 1.e3
-            y_min = y_min / 1.e3
-            ylabel = 'y (km)'
-        else:
-            ylabel = 'y (m)'
-
-        # z axis binning and range
-        zmin = np.min(Z)
-        zmax = np.max(Z)
-        zrange = zmax - zmin
-        p = int(np.log10(zrange)) - 1
-        p = max(0, p)
-        dz = pow(10,p)
-        zmax = np.ceil(zmax / dz) * pow(10,p)
-        zmin = np.floor(zmin / dz) * pow(10,p)
-
-        if zrange > 1e3:
-            zmax = zmax / 1.e3
-            zmin = zmin / 1.e3
-            Z = Z / 1.e3
-
-        # plot
-        fig, ax = plt.subplots(figsize=(8,6))
-        img = ax.imshow(Z.T, aspect='auto', origin='lower', extent=(x_min, x_max, y_min, y_max))
-
-        # axes titles
-        if ll:
-            ax.set_xlabel('Longitude (degrees east)')
-            ax.set_ylabel('Latitude (degrees north)')
-        else:
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
-
-        if zrange > 1e3:
-            zlabel = 'Elevation (km)'
-        else:
-            zlabel = 'Elevation (m)'
-
-        # Add a color bar which maps values to colors
-        fig.colorbar(img, format='%.02f', label=zlabel)
-
-        return fig
+        return a,b,c

@@ -1,5 +1,8 @@
 import numpy as np
 import os
+from collections import namedtuple
+import math
+from scipy.interpolate import interp1d
 
 # Equatorial radius (6,378.1370 km)
 # Polar radius (6,356.7523 km)
@@ -10,6 +13,18 @@ R1_IUGG = 6371009
 
 # Degree to radian conversion factor
 deg2rad = np.pi / 180.
+
+
+LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
+""" Latitude and longitude coordinates for a given location.
+
+    Args: 
+        latitude: float
+            Latitude in degrees from -90 (South Pole) to +90 (North Pole).
+        longitude: float
+            Longitude in degrees from -180 to +180 (West to East) with 0 
+            corresponding to the Greenwich Meridian.
+"""
 
 
 def DLDL_over_DXDY(lat, lat_deriv_order, lon_deriv_order):
@@ -198,11 +213,51 @@ def torad(lat, lon):
             lat_rad: float or array
                 latitude(s) in radians from 0 to pi.
             lon_rad: float or array
-                longitude(s) in radians from -pi to +pi.
+                longitude(s) in radians from -pi to pi.
     """
     lat_rad = (lat + 90) * deg2rad
     lon_rad = lon * deg2rad
     return lat_rad, lon_rad
+
+
+def get_slices(distance, num_slices=1, bins=100, angle=0):
+    """ Generate x,y coordinates for equally spaced radial slices 
+        originating from (0,0).
+
+        Args:
+            distance: float
+                Length of the radial slice.
+            num_slices: int
+                Number of slices
+            bins: int
+                Number of points per slice
+            angle: float
+                Angle of the first slice relative to the x-axis.
+
+        Returns:
+            x,y: list of numpy arrays
+                x,y coordinate arrays for each slice
+    """
+    x,y = list(), list()
+
+    # distance array
+    dr = distance / float(bins)
+    r = np.arange(bins, dtype=np.float)
+    r *= dr
+    r += 0.5 * dr
+
+    # loop over angles
+    a = angle
+    da = 360. / float(num_slices)
+    for _ in range(num_slices):
+        x.append(r * np.cos(a * np.pi / 180.))
+        y.append(r * np.sin(a * np.pi / 180.))
+
+    if num_slices == 1:
+        x = x[0]
+        y = y[0]
+    
+    return x, y
 
 
 def get_files(path, substr, fullpath=True, subdirs=False):
@@ -253,6 +308,70 @@ def get_files(path, substr, fullpath=True, subdirs=False):
     files.sort()
 
     return files
+
+
+def interp_grid_1d(y, x=None, num_pts=math.inf, rel_err=None, method='linear'):
+    """ Determine the optimal interpolation grid for the 
+        function y(x). 
+        
+        The grid will in general not be uniform, as the 
+        grid points will be more densily clustered in 
+        regions where y(x) is changing more rapidly. 
+        
+        Args:
+            y: 1d numpy array
+                y values
+            x: 1d numpy array
+                x values. If none are specified, they are 
+                assumed to be 0,1,2,...
+            num_pts: int
+                Number of grid points. If rel_err is specified, 
+                num_pts becomes the maximum possible number of 
+                grid points.
+            rel_err: float
+                Maximum deviation between the interpolation and 
+                y, relative to the range of values spanned by y.
+            method: str
+                Interpolation method
+
+        Returns:
+            a: 1d numpy array
+                Indices of the grid points
+            e: float
+                Maximum relative error
+    """
+    n = len(y)
+    norm = np.max(y) - np.min(y)
+
+    if x is None:
+        x = np.arange(n)
+        
+    if num_pts == math.inf and rel_err is None:
+        num_pts = 101
+
+    a = np.array([0, n-1])
+    num = len(a)
+
+    while num < num_pts:
+        
+        f = interp1d(x=x[a], y=y[a], kind=method)
+        
+        dev = np.abs(y - f(x))
+        
+        a0 = np.argmax(dev)
+        dev0 = dev[a0]
+        
+        e = dev0 / norm
+        
+        if rel_err is not None and e < rel_err:
+            break
+        else:
+            a = np.append(a, a0)
+
+        num = len(a)
+
+    a = np.sort(a)
+    return a, e
 
 
 def get_member(cls, member_name):

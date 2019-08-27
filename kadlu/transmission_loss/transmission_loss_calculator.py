@@ -63,12 +63,11 @@ class TransmissionLossCalculator():
             z: vertical depth in meters
 
         Args:
-            bathymetry: BathyInterpolator
-                Interpolated bathymetry data
+            env_data: DataProvider
+                Environment data provider
             flat_seafloor_depth: float
                 Depth of flat seafloor in meters. Useful for testing purposes. 
-                If flat_seafloor_depth is specified, the bathymetry input 
-                argument will be ignored. 
+                Overwrites the bathymetry from `env_data`. 
             sound_speed: SoundSpeedInterpolator
                 Interpolated sound-speed profile. If None is specified, a uniform 
                 sound-speed profile equal to the reference sound speed will be assumed.
@@ -145,16 +144,18 @@ class TransmissionLossCalculator():
 
         Example:
     """
-    def __init__(self, bathymetry=None, flat_seafloor_depth=None, sound_speed=None, ref_sound_speed=1500,\
+    def __init__(self, env_data=None, flat_seafloor_depth=None, sound_speed=None, ref_sound_speed=1500,\
             water_density=1.0, bottom_sound_speed=1700, bottom_loss=0.5, bottom_density=1.5,\
             step_size=None, range=50e3, angular_bin_size=1, vertical_bin_size=10, max_depth=12e3,\
             absorption_layer=1./6., starter_method='THOMSON', starter_aperture=88,\
             steps_btw_bathy_updates=1, steps_btw_sound_speed_updates=math.inf,\
             verbose=False, progress_bar=True):
 
-        self.bathymetry = bathymetry
+        self.env_data = env_data
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
+        if env_data is None and sound_speed is None:
+            self.sound_speed = ref_sound_speed
 
         self.c0 = ref_sound_speed
         self.water_density = water_density
@@ -174,13 +175,9 @@ class TransmissionLossCalculator():
 
         self.steps_btw_bathy_updates = max(1, steps_btw_bathy_updates)
         self.steps_btw_sound_speed_updates = max(1, steps_btw_sound_speed_updates)
-        if sound_speed is None:
-            self.steps_btw_sound_speed_updates = math.inf
 
         self.verbose = verbose
         self.progress_bar = progress_bar
-
-        self.nsq = 1 # = (self.c0 / self.sound_speed)^2  refractive index squared
 
         if self.verbose:
             print('\nTransmission loss calculator successfully initialized')
@@ -197,7 +194,7 @@ class TransmissionLossCalculator():
         self.env_input = None
 
 
-    def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=True,\
+    def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=False,\
             ignore_bathy_gradient=False):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
@@ -294,9 +291,9 @@ class TransmissionLossCalculator():
             c0=self.c0, cb=self.cb, bottom_loss=self.bottom_loss,\
             bottom_density=self.bottom_density, water_density=self.water_density,\
             smoothing_length_sound_speed=smoothing_length_sound_speed, smoothing_length_density=smoothing_length_density,
-            absorption_layer=self.absorption_layer, bathymetry=self.bathymetry,\
+            absorption_layer=self.absorption_layer, env_data=self.env_data,\
             flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient,\
-            verbose=self.verbose)
+            sound_speed=self.sound_speed, verbose=self.verbose)
 
         # Configure the PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\
@@ -310,9 +307,12 @@ class TransmissionLossCalculator():
         TL = 20 * np.log10(np.abs(TL))
         TL = np.squeeze(TL)
 
-        # transmission loss in dB (vertical plane)
-        TL_vertical = 20 * np.ma.log10(np.abs(output.field_vert[:,:,:]))
-        TL_vertical = np.squeeze(TL_vertical)
+        # transmission loss in dB (vertical plane)  
+        if vertical_slice:
+            TL_vertical = 20 * np.ma.log10(np.abs(output.field_vert))  # OBS: this computation is rather slow
+            TL_vertical = np.squeeze(TL_vertical)
+        else:
+            TL_vertical = None
 
         if self.verbose:
             end = time.time()
@@ -508,7 +508,7 @@ class PEGrid():
         self.Q, self.Z = np.meshgrid(self.q, self.z)
 
     def __make_radial_grid__(self, dr, rmax):
-        N = round(rmax / dr)
+        N = int(round(rmax / dr))
         r = np.arange(N+1, dtype=float)
         r *= dr
         return r, dr, N
@@ -526,7 +526,7 @@ class PEGrid():
 
     def __make_vertical_grid__(self, dz, zmax):
         N = zmax / dz
-        N = round(N / 2) * 2  # ensure even number of vertical bins
+        N = int(round(N / 2) * 2)  # ensure even number of vertical bins
         z_pos = np.arange(start=0, stop=N/2, step=1, dtype=float)
         z_neg = np.arange(start=-N/2, stop=0, step=1, dtype=float)
         z = np.concatenate((z_pos, z_neg))

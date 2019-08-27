@@ -12,6 +12,7 @@
 """
 import numpy as np
 from osgeo import gdal
+from netCDF4 import Dataset
 import scipy.io as sio
 from sys import platform as sys_pf
 if sys_pf == 'darwin':
@@ -156,9 +157,9 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
     # load data
     if ext == '.nc': # NetCDF
         d = Dataset(path)
-        val = np.array(val_name)
-        lat = np.array(lat_name)
-        lon = np.array(lon_name)
+        val = np.array(d[val_name])
+        lat = np.array(d[lat_name])
+        lon = np.array(d[lon_name])
 
     elif ext == '.mat': # MatLab
         d = sio.loadmat(path)
@@ -170,9 +171,10 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
         print('Unknown file format *{0}'.format(ext))
         exit(1)
 
-    # flip axes, if necessary
-    if lon_axis == 0:
-        val = np.swapaxes(val, 0, 1)
+    # crop the region of interest
+    grid = (np.ndim(val) == 2)
+    indices, lat, lon = crop(lat, lon, south, north, west, east, grid=grid)
+    val = val[indices]
 
     # ensure that lat and lon are strictly increasing
     if np.all(np.diff(lat) < 0):
@@ -182,16 +184,50 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
         lon = np.flip(lon, axis=0)
         val = np.flip(val, axis=1)
 
-    # crop the region of interest
-    grid = (np.ndim(val) == 2)
-    indices, lat, lon = crop(lat, lon, south, north, west, east, grid=grid)
-    val = val[indices]
+    # flip axes, if necessary
+    if lon_axis == 0:
+        val = np.swapaxes(val, 0, 1)
+
+    # if axis size are inconsistent, try swapping
+    if val.shape[0] != lat.shape[0]:
+        val = np.swapaxes(val, 0, 1)
 
     return val, lat, lon
 
 
-def plot(x, y, z, geometry='planar'):
-    """ Draw a color map using either polar or planar coordinates.
+def write_data_to_file(lat, lon, val, destination, compression=False):
+    """ Write latitude, longitude, and geospatial data to a file.
+
+        The current implementation only supports MatLab format (*.mat)
+
+        Returns AssertionError if the destination path does not have *.mat extension.
+
+        Args:
+            lat: 1d numpy array
+                Latitude values
+            lon: 1d numpy array
+                Longitude values
+            val: 1d or 2d numpy array
+                Geospatial data values
+            destination: str
+                Name of output file. Must have extension *.mat
+            compression: bool
+                Compress matrices on write. Default is False
+    """
+    # parse file format
+    p = destination.rfind('.')
+    ext = destination[p:]
+    
+    assert ext == '.mat', 'Destination file must have extension *.mat (MATLAB file)'
+
+    output = {'lat': lat, 'lon': lon, 'data': val}
+    sio.savemat(file_name=destination, mdict=output, do_compression=compression)
+
+    print('Data saved to ' + destination)
+
+
+def plot(x, y, z, x_label='x (m)', y_label='y (m)', z_label='Elevation (m)'):
+    """ Plot 2d geospatial data by drawing a color heat map.
 
         Args:
             x: 1d numpy array
@@ -200,8 +236,12 @@ def plot(x, y, z, geometry='planar'):
                 y-coordinates or latitudes
             z: 2d numpy array
                 data values
-            geometry: str
-                Can be either 'planar' (default) or 'spherical'
+            x_label: str
+                x-axis label
+            y_label: str
+                y-axis label
+            z_label: str
+                z-axis label
 
         Returns:
             fig: matplotlib.figure.Figure
@@ -216,22 +256,17 @@ def plot(x, y, z, geometry='planar'):
     # meshgrid
     x,y = np.meshgrid(x,y)
 
-    if geometry is 'spherical':
-        z = np.swapaxes(z, 0, 1)
-
     # plot
     fig, ax = plt.subplots(figsize=(8,6))
     img = ax.imshow(z.T, aspect='auto', origin='lower', extent=(x_min, x_max, y_min, y_max))
 
     # axes titles
-    if geometry is 'planar':
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("y (m)")
-    else:
-        ax.set_xlabel('Longitude (degrees east)')
-        ax.set_ylabel('Latitude (degrees north)')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
 
     # Add a color bar which maps values to colors
     fig.colorbar(img, format='%.02f', label='Elevation (m)')
 
     return fig
+
+

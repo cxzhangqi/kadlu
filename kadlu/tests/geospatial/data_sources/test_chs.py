@@ -19,10 +19,9 @@ from kadlu.utils import LatLon
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
 
 def test_fetch_returns_two_files():
-    paths = chs.fetch(south=42, west=-61, north=44.6, east=-59.1)
-    assert len(paths) == 2
-    assert os.path.basename(paths[0]) == "CA2_4300N06000W.tif"
-    assert os.path.basename(paths[1]) == "CA2_4400N06000W.tif"
+    paths = chs.fetch(south=42.1, west=-60.9, north=44.6, east=-59.1)
+    assert len(paths) == 6
+    assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
 
 def test_filename():
     fname = chs.filename(south=50, west=-62)
@@ -54,9 +53,9 @@ def test_load_single_chs_file():
     assert bathy.shape[0] == lons.shape[0]
 
 def test_load_multiple_chs_files():
-    bathy1, lats1, lons1 = chs.load(south=43, west=-60, north=44, east=-59)
-    bathy2, lats2, lons2 = chs.load(south=44, west=-60, north=45, east=-59)
-    bathy12, lats12, lons12 = chs.load(south=43, west=-60, north=45, east=-59)
+    bathy1, lats1, lons1 = chs.load(south=43.0001, west=-59.9999, north=44, east=-59)
+    bathy2, lats2, lons2 = chs.load(south=44.0001, west=-59.9999, north=45, east=-59)
+    bathy12, lats12, lons12 = chs.load(south=43.0001, west=-59.9999, north=45, east=-59)
     assert bathy12.shape[0] == bathy1.shape[0] + bathy2.shape[0]
     assert np.min(lats12) == np.min(lats1)
     assert np.max(lats12) == np.max(lats2)

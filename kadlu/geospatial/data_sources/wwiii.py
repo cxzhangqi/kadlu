@@ -34,8 +34,8 @@ def fetch(wavevar=waveSources['swh'], time=datetime.now(), region=regions['globa
         the desired date
     """
     storage_location = fetch_util.instantiate_storage_config() 
-    fetchname = fetchname(wavevar, time, region)
-    fetchfile = f"{storage_location}{fetchname}"
+    fname = fetchname(wavevar, time, region)
+    fetchfile = f"{storage_location}{fname}"
 
     if os.path.isfile(fetchfile):
         print("File exists, skipping retrieval...")
@@ -43,7 +43,7 @@ def fetch(wavevar=waveSources['swh'], time=datetime.now(), region=regions['globa
         #validate_wavesource(fetchfile, waveSources)
     else:
         print("Downloading file from NOAA WaveWatch III...")
-        fetchurl = f"https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/{time.strftime('%Y/%m')}/gribs/{fetchname}"
+        fetchurl = f"https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/{time.strftime('%Y/%m')}/gribs/{fname}"
         urllib.request.urlretrieve(fetchurl, fetchfile)
 
 

@@ -381,3 +381,45 @@ def get_member(cls, member_name):
 
     s = ", ".join(name for name, _ in cls.__members__.items())
     raise ValueError("Unknown value \'{0}\'. Select between: {1}".format(member_name, s))
+
+
+def reshape(a, b, c):
+    """ Create 3d grid from all possible combinations of the 
+        elements of a,b,c and return the flatten coordinate 
+        arrays.
+
+        Args: 
+            a: 1d or 2d numpy array
+                Coordinates along 1st axis
+            b: 1d or 2d numpy array
+                Coordinates along 2nd axis
+            c: 1d numpy array
+                Coordinates along 3rd axis
+
+        Returns:
+            a,b,c: 1d numpy arrays
+                Flattened arrays
+    """
+    if np.ndim(a) == 0:
+        a = np.array([a])
+
+    if np.ndim(b) == 0:
+        b = np.array([b])
+
+    if np.ndim(a) == np.ndim(b) == 1:
+        a,b = np.meshgrid(a,b)
+        
+    M = a.shape[0]
+    N = a.shape[1]
+    a = np.reshape(a, newshape=(M*N))
+    b = np.reshape(b, newshape=(M*N))
+
+    K = c.shape[0]
+    a, _ = np.meshgrid(a, c)
+    b, c = np.meshgrid(b, c)
+
+    a = np.reshape(a, newshape=(M*N*K))
+    b = np.reshape(b, newshape=(M*N*K))
+    c = np.reshape(c, newshape=(M*N*K))
+
+    return a,b,c

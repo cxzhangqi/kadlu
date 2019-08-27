@@ -54,13 +54,8 @@ def test_run_TL_calculator_with_flat_seafloor():
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535]])
     np.testing.assert_array_almost_equal(field, expected, decimal=3)
 
-#    import matplotlib.pyplot as plt
-#    calc.plot_vertical(angle=0, show_bathy=True)
-#    plt.show()
-
 def test_run_TL_calculator_with_realistic_bathymetry():
     # load bathymetric data
-    folder = os.path.join(path_to_assets, "tif")
     provider = DataProvider(bathy_source="CHS", south=43, west=-60, north=44, east=-59)
     # depth at center
     seafloor_depth = -provider.bathy(x=0, y=0)

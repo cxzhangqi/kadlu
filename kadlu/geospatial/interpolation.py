@@ -44,7 +44,7 @@
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
 from scipy.interpolate import RegularGridInterpolator
-from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
+from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon, reshape
 from scipy.interpolate import griddata
 
 from sys import platform as sys_pf
@@ -476,7 +476,7 @@ class Interpolator3D():
         lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
 
         if grid:
-            lat, lon, z = self._reshape(lat, lon, z)
+            lat, lon, z = reshape(lat, lon, z)
 
         vi = self.eval_ll(lat=lat, lon=lon, z=z)
 
@@ -485,6 +485,8 @@ class Interpolator3D():
 
         if np.ndim(vi) == 3:
             vi = np.swapaxes(vi, 0, 1)
+
+        vi = np.squeeze(vi)
 
         if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
             vi = float(vi)
@@ -533,7 +535,7 @@ class Interpolator3D():
         lon_rad += self._lon_corr
 
         if grid:
-            lat_rad, lon_rad, z = self._reshape(lat_rad, lon_rad, z)
+            lat_rad, lon_rad, z = reshape(lat_rad, lon_rad, z)
 
         pts = np.column_stack((lat_rad, lon_rad, z))        
         vi = self.interp_ll(pts)
@@ -541,42 +543,10 @@ class Interpolator3D():
         if grid:
             vi = np.reshape(vi, newshape=(M,N,K))
 
+        vi = np.squeeze(vi)
+
         if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
             vi = float(vi)
 
         return vi
 
-    def _reshape(self, a, b, c):
-        """ Create 3d grid from all possible combinations of the 
-            elements of a,b,c and return the flatten coordinate 
-            arrays.
-
-            Args: 
-                a: 1d or 2d numpy array
-                    Coordinates along 1st axis
-                b: 1d or 2d numpy array
-                    Coordinates along 2nd axis
-                c: 1d numpy array
-                    Coordinates along 3rd axis
-
-            Returns:
-                a,b,c: 1d numpy arrays
-                    Flattened arrays
-        """
-        if np.ndim(a) == np.ndim(b) == 1:
-            a,b = np.meshgrid(a,b)
-            
-        M = a.shape[0]
-        N = a.shape[1]
-        a = np.reshape(a, newshape=(M*N))
-        b = np.reshape(b, newshape=(M*N))
-
-        K = c.shape[0]
-        a, _ = np.meshgrid(a, c)
-        b, c = np.meshgrid(b, c)
-
-        a = np.reshape(a, newshape=(M*N*K))
-        b = np.reshape(b, newshape=(M*N*K))
-        c = np.reshape(c, newshape=(M*N*K))
-
-        return a,b,c

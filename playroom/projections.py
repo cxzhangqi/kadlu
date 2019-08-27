@@ -24,4 +24,4 @@ for tif in tifs:
     x1, x1binsize, z1, y1, z2, y1binsize = bathy.GetGeoTransform()
     if "CA2" in tif.split('/')[-1]: x2, y2 = x1, y1
     else: x2, y2 = transform(inproj, outproj, x1, y1)
-    print(f"lat: {y2:.5f}\tlon: {x2:.5f}\t\tfile: {tif.split('/')[-1]}")
+    print(f"file: {tif.split('/')[-1]}\tlat: {y2:.5f}\tlon: {x2:.5f}")

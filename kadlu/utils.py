@@ -63,7 +63,7 @@ def DLDL_over_DXDY(lat, lat_deriv_order, lon_deriv_order):
     return ratio
 
 
-def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False):
+def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     """ Transform lat-lon coordinates to xy position coordinates.
 
         By default, the origin of the xy coordinate system is 
@@ -95,7 +95,10 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False):
     global R1_IUGG, deg2rad
 
     if grid:
-        lat, lon = np.meshgrid(lat, lon)
+        if z is None:
+            lat, lon = np.meshgrid(lat, lon)
+        else:
+            lat, lon, z = np.meshgrid(lat, lon, z)
 
     else:
         lat = np.array([lat])
@@ -126,9 +129,12 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False):
         x = float(x)
         y = float(y)
 
-    return x, y
-
-def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False):
+    if z is None:
+        return x, y
+    else:
+        return x, y, z
+        
+def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     """ Transform xy position coordinates to lat-lon coordinates.
 
         By default, the origin of the xy coordinate system is 
@@ -160,7 +166,10 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False):
     global R1_IUGG, deg2rad
 
     if grid:
-        x, y = np.meshgrid(x, y)
+        if z is None:
+            x, y = np.meshgrid(x, y)
+        else:
+            x, y, z = np.meshgrid(x, y, z)
 
     else:
         x = np.array([x])
@@ -192,7 +201,10 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False):
         lat = float(lat)
         lon = float(lon)
 
-    return lat, lon
+    if z is None:
+        return lat, lon
+    else:
+        return lat, lon, z
 
 def torad(lat, lon):
     """ Convert latitute and longitude values from degrees to radians.

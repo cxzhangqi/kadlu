@@ -67,3 +67,36 @@ def test_interp_grid_1d():
     assert max_err == pytest.approx(0.01842, abs=0.001)
     answ = np.array([0, 115, 133, 156, 163, 168, 172, 176, 185, 188, 190, 192, 194, 196, 199])
     assert np.all(indices == answ) 
+
+def test_can_convert_grid_from_xy_to_ll():
+    lat_ref = 45
+    lon_ref = 10
+    xs = [0, 788E3]
+    ys = [0, 111E3]
+    lat, lon = XYtoLL(xs, ys, lat_ref, lon_ref, grid=True)    
+    assert lat.shape[0] == 2
+    assert lat.shape[1] == 2
+    assert lon[0,0] == pytest.approx(lon_ref, 0.1)
+    assert lat[0,0] == pytest.approx(lat_ref, 0.1)
+    assert lon[1,0] == pytest.approx(lon_ref, 0.1)
+    assert lat[1,0] == pytest.approx(lat_ref+1, 0.1)
+    assert lon[0,1] == pytest.approx(lon_ref+10, 0.1)
+    assert lat[0,1] == pytest.approx(lat_ref, 0.1)
+
+def test_can_convert_grid_from_xy_to_ll_with_z_coordinate():
+    lat_ref = 45
+    lon_ref = 10
+    xs = [0, 788E3]
+    ys = [0, 111E3]
+    zs = [0, 100, 200]
+    lat, lon = XYtoLL(xs, ys, lat_ref, lon_ref, grid=True, z=z)    
+    assert lat.shape[0] == 2
+    assert lat.shape[1] == 2
+    assert lat.shape[2] == 3
+    for i in range(3):
+        assert lon[0,0,i] == pytest.approx(lon_ref, 0.1)
+        assert lat[0,0,i] == pytest.approx(lat_ref, 0.1)
+        assert lon[1,0,i] == pytest.approx(lon_ref, 0.1)
+        assert lat[1,0,i] == pytest.approx(lat_ref+1, 0.1)
+        assert lon[0,1,i] == pytest.approx(lon_ref+10, 0.1)
+        assert lat[0,1,i] == pytest.approx(lat_ref, 0.1)

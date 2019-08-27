@@ -210,7 +210,20 @@ class EnvironmentInput():
             itmp = (self.depth[0,:] == 0) 
             if np.any(itmp):
                 self.n2in[0,itmp] = self.n2b
-            
+
+            print(itmp)
+            print(self.n2b)
+            print(self.n2in.shape, self.H_c.shape, self.height_above_seafloor.shape, self.Z.shape)
+            print('n2in')
+            print(self.n2in[:,0])
+            print('H_c')
+            print(self.H_c[:,0])
+            print('height above seafloor')
+            print(self.height_above_seafloor[:,0])
+            print('Z')
+            print(self.Z[:,0])
+            input()
+
             # smooth density
             _tanh = np.tanh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
             self.H_rho[:,new] = (1 + _tanh) / 2

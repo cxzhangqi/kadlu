@@ -15,6 +15,7 @@ def fetch():
 
     slx = lambda tup, step=1: f"[{tup[0]}:{step}:{tup[1]}]"
     varslices = lambda var, slxs : f"{var}{''.join([slx(v) for v in slxs])}"
+
     salinity_txt = requests.get(f"{source}{varslices('salinity', [t, d, x, y])}")
     assert(salinity_txt.status_code == 200)
 
@@ -26,13 +27,13 @@ def fetch():
     salinity = np.ndarray(shape, dtype=np.int)
     for arr in payload.split("\n"):
         ix_str, row_csv = arr.split(", ", 1)
-        ix = [int(x) for x in ix_str[1:-1].split("][")]
-        salinity[ix[0]][ix[1]][ix[2]] = np.array(row_csv.split(", "), dtype=np.int)
-        print(f"{ix}\t{row}")
-        break
+        a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
+        salinity[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
+    # not sure if we need the other values also
     #for arr in arrs[1:]:
     #    header, vals = arr.split("\n")
     #    print(f"{header}:\t{vals}")
 
     return salinity
+

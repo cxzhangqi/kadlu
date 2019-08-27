@@ -36,7 +36,7 @@ class DataProvider():
         Attributes: 
 
     """
-    def __init__(self, storage_location, bathy_source=None, temp_source=None,\
+    def __init__(self, bathy_source=None, temp_source=None,\
                 salinity_source=None, wave_source=None, wave_var=None,\
                 south=-90, north=90, west=-180, east=180, time=None,\
                 lat_ref=None, lon_ref=None, lats=None, lons=None, depths=None):
@@ -54,10 +54,10 @@ class DataProvider():
 
         # load bathymetry data
         if bathy_source == "CHS":
-            self.bathy_data = chs.load(storage_location, south, north, west, east)
+            self.bathy_data = chs.load(south, north, west, east)
 
         elif bathy_source == "GEBCO":
-            self.bathy_data = gebco.load(storage_location, south, north, west, east)
+            self.bathy_data = gebco.load(south, north, west, east)
 
         elif bathy_source is not None:
             print('Warning: Unknown bathymetry data source {0}.'.format(bathy_source))

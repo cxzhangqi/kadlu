@@ -83,14 +83,9 @@ def load(south=-90, north=90, west=-180, east=180):
     bathy, lats, lons = list(), list(), list()        
 
     for f in files:
-        z = read(path=f)                # read data from geotiff file
-        lat, lon = latlon(path=f)       # create lat-lon arrays
-        x, y = np.meshgrid(lon, lat)    # make a grid
 
-        # select non-masked entries
-        x = x[~z.mask]
-        y = y[~z.mask]
-        z = z[~z.mask]
+        # load data from a single file
+        z,y,x = load_from_file(f) 
 
         # crop the region of interest
         indices, y, x = crop(y, x, south, north, west, east)
@@ -108,48 +103,39 @@ def load(south=-90, north=90, west=-180, east=180):
 
     return (bathy,lats,lons)
 
-def select_files(south, north, west, east):
-    """ Select the bathymetry data files that overlap with a specific 
-        geographic region.
+
+def load_from_file(path):
+    """ Load bathymetric data from a GeoTIFF file provided by the Canadian Hydrographic 
+        Service (CHS) as part of the Non-Navigational NONNA-100 bathymetric data series.
 
         Args: 
-            south: float
-                Southern boundary of the region of interest.
-            north: float
-                Northern boundary of the region of interest.
-            west: float
-                Western boundary of the region of interest.
-            east: float
-                Eastern boundary of the region of interest.
+            path: str
+                Path to the GeoTIFF file.
 
         Returns:
-            fnames: list
-                Names of the bathymetry data files.
+            z: 1d numpy array
+                Bathymetry values
+            y: 1d numpy array
+                Latitude values
+            x: 1d numpy array
+                Longitude values
     """
-    # lat range
-    lat_min = int(np.floor(south))
-    lat_max = int(np.floor(north))
-    if lat_max == north:
-        lat_max -= 1
 
-    # lon range
-    lon_min = int(np.floor(west))
-    lon_max = int(np.floor(east))
-    if lon_max == east:
-        lon_max -= 1
+    # read data from geotiff file
+    z = read(path)
 
-    # create lat,lon arrays
-    lats = np.arange(start=lat_min, stop=lat_max+1, step=1)
-    lons = np.arange(start=lon_min, stop=lon_max+1, step=1)
+    # create lat-lon arrays
+    lat, lon = latlon(path)
 
-    # create list of filenames
-    fnames = list()
-    for lat in lats:
-        for lon in lons:
-            fname = filename(lat, lon)
-            fnames.append(fname)
+    # make a grid
+    x, y = np.meshgrid(lon, lat)
 
-    return fnames
+    # select non-masked entries
+    x = x[~z.mask]
+    y = y[~z.mask]
+    z = z[~z.mask]
+
+    return z,y,x
 
 
 def read(path):

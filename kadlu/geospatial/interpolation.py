@@ -36,7 +36,7 @@
     methodology as in the two-dimensional case) should be straightforward. 
 
     Contents:
-        GridData2D class:
+        IrregInterpolator2D class:
         Interpolator2D class
         Interpolator3D class
 """
@@ -54,8 +54,10 @@ if sys_pf == 'darwin':
 from matplotlib import pyplot as plt
 
 
-class GridData2D():
-    """ Wrapper function around scipy's interpolate.griddata
+class IrregInterpolator2D():
+    """ Interpolation of data on a two-dimensional irregular grid.
+    
+        Essentially, a wrapper function around scipy's interpolate.griddata.
 
         https://docs.scipy.org/doc/scipy-0.15.1/reference/generated/scipy.interpolate.griddata.html
 
@@ -253,8 +255,8 @@ class Interpolator2D():
     
                 # interpolators on irregular grid
                 lons_rad += self._lon_corr
-                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
-                gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
+                gd_cubic = IrregInterpolator2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
+                gd_nearest = IrregInterpolator2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
                 # map to regular grid
                 lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
@@ -269,7 +271,7 @@ class Interpolator2D():
 
             else:
                 lons_rad += self._lon_corr
-                self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
+                self.interp_ll = IrregInterpolator2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
 
         # store data used for interpolation
         self.lat_nodes = lats
@@ -473,10 +475,12 @@ class Interpolator3D():
         if np.ndim(z) == 1: 
             K = len(z)
 
-        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
+        lat, lon, z = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid, z=z)
 
         if grid:
-            lat, lon, z = self._reshape(lat, lon, z)
+            lat = lat.flatten()
+            lon = lon.flatten()
+            z = z.flatten()
 
         vi = self.eval_ll(lat=lat, lon=lon, z=z)
 
@@ -485,6 +489,8 @@ class Interpolator3D():
 
         if np.ndim(vi) == 3:
             vi = np.swapaxes(vi, 0, 1)
+
+        vi = np.squeeze(vi)
 
         if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
             vi = float(vi)
@@ -532,8 +538,13 @@ class Interpolator3D():
         lat_rad, lon_rad = torad(lat, lon)
         lon_rad += self._lon_corr
 
+        z = np.squeeze(np.array(z))
+
         if grid:
-            lat_rad, lon_rad, z = self._reshape(lat_rad, lon_rad, z)
+            lat_rad, lon_rad, z = np.meshgrid(lat_rad, lon_rad, z)
+            lat_rad = lat_rad.flatten()
+            lon_rad = lon_rad.flatten()
+            z = z.flatten()
 
         pts = np.column_stack((lat_rad, lon_rad, z))        
         vi = self.interp_ll(pts)
@@ -541,42 +552,10 @@ class Interpolator3D():
         if grid:
             vi = np.reshape(vi, newshape=(M,N,K))
 
+        vi = np.squeeze(vi)
+
         if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
             vi = float(vi)
 
         return vi
 
-    def _reshape(self, a, b, c):
-        """ Create 3d grid from all possible combinations of the 
-            elements of a,b,c and return the flatten coordinate 
-            arrays.
-
-            Args: 
-                a: 1d or 2d numpy array
-                    Coordinates along 1st axis
-                b: 1d or 2d numpy array
-                    Coordinates along 2nd axis
-                c: 1d numpy array
-                    Coordinates along 3rd axis
-
-            Returns:
-                a,b,c: 1d numpy arrays
-                    Flattened arrays
-        """
-        if np.ndim(a) == np.ndim(b) == 1:
-            a,b = np.meshgrid(a,b)
-            
-        M = a.shape[0]
-        N = a.shape[1]
-        a = np.reshape(a, newshape=(M*N))
-        b = np.reshape(b, newshape=(M*N))
-
-        K = c.shape[0]
-        a, _ = np.meshgrid(a, c)
-        b, c = np.meshgrid(b, c)
-
-        a = np.reshape(a, newshape=(M*N*K))
-        b = np.reshape(b, newshape=(M*N*K))
-        c = np.reshape(c, newshape=(M*N*K))
-
-        return a,b,c

@@ -10,7 +10,6 @@
     License:
 
 """
-import gsw
 import numpy as np
 from kadlu.utils import LatLon
 import kadlu.geospatial.data_sources.chs as chs
@@ -20,8 +19,6 @@ from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D
 
 class DataProvider():
     """ Class for handling geospatial data requests. 
-
-        TODO: Get rid of the storage_location argument and instead use the config.ini file.
 
         TODO: Implement loading of temp, salinity and wave data.
 
@@ -39,7 +36,7 @@ class DataProvider():
     def __init__(self, bathy_source=None, temp_source=None,\
                 salinity_source=None, wave_source=None, wave_var=None,\
                 south=-90, north=90, west=-180, east=180, time=None,\
-                lat_ref=None, lon_ref=None, lats=None, lons=None, depths=None):
+                lat_ref=None, lon_ref=None):
 
         self.bathy_data = None
         self.temp_data = None
@@ -50,31 +47,6 @@ class DataProvider():
         self.temp_interpolator = None
         self.salinity_interpolator = None
         self.wave_interpolator = None
-        self.sound_speed_interpolator = None
-
-        # load bathymetry data
-        if bathy_source == "CHS":
-            self.bathy_data = chs.load(south, north, west, east)
-
-        elif bathy_source == "GEBCO":
-            self.bathy_data = gebco.load(south, north, west, east)
-
-        elif bathy_source is not None:
-            print('Warning: Unknown bathymetry data source {0}.'.format(bathy_source))
-            print('Proceeding without bathymetry data')
-
-        # load temperature and salinity
-        # TODO: replace this with calls to the actual load methods
-        if self.bathy_data is None:
-            max_depth = 10000
-        else:
-            max_depth = -np.min(self.bathy_data[0])
-        print('\n*** generating dummy temperature data ***')
-        self.temp_data = _generate_fake_data_3d(4, south, north, west, east, max_depth)
-        print('*** generating dummy salinity data *** ')
-        self.salinity_data = _generate_fake_data_3d(35, south, north, west, east, max_depth)
-        print('*** generating dummy wave data *** ')
-        self.wave_data = _generate_fake_data_2d(1, south, north, west, east)
 
         # reference coordinates for x-y coordinate system
         if lat_ref is None:
@@ -85,59 +57,97 @@ class DataProvider():
 
         self.origin = LatLon(lat_ref, lon_ref)
 
-        # coordinates of lat-lon-depth grid
-        if lats is None:
-            num_lats = 101
-            lats = np.linspace(south, north, num=num_lats, endpoint=True)
+        # South-west and north-east corners
+        self.SW = LatLon(south, west)
+        self.NE = LatLon(north, east)
 
-        if lons is None:
-            num_lons = 101
+        # load data and initialize interpolation tables
+        self._init_bathy(bathy_source, south, north, west, east)
+        self._init_temp(temp_source, south, north, west, east)
+        self._init_salinity(salinity_source, south, north, west, east)
+        self._init_wave(wave_source, south, north, west, east)
+
+
+    def _init_bathy(self, source, south, north, west, east):
+
+        if source == "CHS":
+
+            # load data
+            self.bathy_data = chs.load(south, north, west, east)
+
+            # lat coordinates
+            num_lats = int(np.ceil((north - south) / 0.001)) + 1
+            lats = np.linspace(south, north, num=num_lats)
+
+            # lon coordinates
+            num_lons = int(np.ceil((east - west) / 0.001)) + 1
             lons = np.linspace(west, east, num=num_lons)
 
-        if depths is None:
-            num_depths = 101
-            depths = np.linspace(0, max_depth, num=num_depths)
- 
-        # initialize bathymetry interpolation table
-        if self.bathy_data is not None:    
+            # interpolate
             self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
                     lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin,\
                     method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
-        # initialize temperature interpolation table
-        if self.temp_data is not None:    
-            interp = Interpolator3D(values=self.temp_data[0], lats=self.temp_data[1],\
-                    lons=self.temp_data[2], depths=self.temp_data[3],\
-                    origin=self.origin, method='linear')
+        elif source == "GEBCO":
 
-            temps = interp.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
-            
-            self.temp_interpolator = Interpolator3D(values=temps, lats=lats, lons=lons,\
-                    depths=depths, origin=self.origin, method='linear')       
+            # load data
+            self.bathy_data = gebco.load(south, north, west, east)
 
-        # initialize salinity interpolation table
-        if self.salinity_data is not None:    
-            interp = Interpolator3D(values=self.salinity_data[0], lats=self.salinity_data[1],\
-                    lons=self.salinity_data[2], depths=self.salinity_data[3],\
-                    origin=self.origin, method='linear')       
+            # interpolate
+            self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
+                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin)       
 
-            salinities = interp.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
-            
-            self.salinity_interpolator = Interpolator3D(values=salinities, lats=lats, lons=lons,\
-                    depths=depths, origin=self.origin, method='linear')       
-
-        # initialize sound speed interpolation table
-        if self.temp_data is not None and self.salinity_data is not None:
-            c = self._sound_speed(lats=lats, lons=lons, z=depths, t=temps, SP=salinities)
-            self.sound_speed_interpolator = Interpolator3D(values=c, lats=lats, lons=lons,\
-                    depths=depths, origin=self.origin, method='linear')
+        elif source is not None:
+ 
+            print('Error: Unknown bathymetry source {0}.'.format(source))
+            exit(1)
 
 
-        # initialize wave interpolation table
-        if self.wave_data is not None:    
-            self.wave_interpolator = Interpolator2D(values=self.wave_data[0],\
-                    lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin,\
-                    method_irreg='regular', lats_reg=lats, lons_reg=lons)       
+    def _init_temp(self, source, south, north, west, east):
+
+        # TODO: replace this with calls to the actual load methods
+        if self.bathy_data is None:
+            max_depth = 10000
+        else:
+            max_depth = -np.min(self.bathy_data[0])
+
+        print('\n*** generating dummy temperature data ***')
+        self.temp_data = _generate_fake_data_3d(4, south, north, west, east, max_depth)
+
+        self.temp_interpolator = Interpolator3D(values=self.temp_data[0], lats=self.temp_data[1],\
+                lons=self.temp_data[2], depths=self.temp_data[3],\
+                origin=self.origin, method='linear')
+
+
+    def _init_salinity(self, source, south, north, west, east):
+
+        # TODO: replace this with calls to the actual load methods
+        if self.bathy_data is None:
+            max_depth = 10000
+        else:
+            max_depth = -np.min(self.bathy_data[0])
+
+        print('*** generating dummy salinity data *** ')
+        self.salinity_data = _generate_fake_data_3d(35, south, north, west, east, max_depth)
+
+        self.salinity_interpolator = Interpolator3D(values=self.salinity_data[0], lats=self.salinity_data[1],\
+                lons=self.salinity_data[2], depths=self.salinity_data[3],\
+                origin=self.origin, method='linear')
+
+
+    def _init_wave(self, source, south, north, west, east):
+
+        # TODO: replace this with calls to the actual load methods
+        if self.bathy_data is None:
+            max_depth = 10000
+        else:
+            max_depth = -np.min(self.bathy_data[0])
+
+        print('*** generating dummy wave data *** ')
+        self.wave_data = _generate_fake_data_2d(1, south, north, west, east)
+
+        self.wave_interpolator = Interpolator2D(values=self.wave_data[0], lats=self.wave_data[1],\
+                lons=self.wave_data[2], origin=self.origin) 
 
 
     def bathy(self, x, y, grid=False, geometry='planar'):
@@ -338,72 +348,6 @@ class DataProvider():
             w = self.wave_interpolator.eval_ll(lat=y, lon=x, grid=grid)
 
         return w
-
-
-    def sound_speed(self, x, y, z, grid=False, geometry='planar'):
-        """ Evaluate interpolated sound speed in spherical (lat-lon) or  
-            planar (x-y) geometry.
-
-            x,y,z can be floats or arrays.
-
-            If grid is set to False, the interpolation will be evaluated at 
-            the positions (x_i, y_i, z_i), where x=(x_1,...,x_N),  
-            y=(y_1,...,y_N), and z=(z_1,...,z_N). Note that in this case, 
-            x,y,z must have the same length.
-
-            If grid is set to True, the interpolation will be evaluated at 
-            all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
-            y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
-            lengths of x,y,z do not have to be the same.
-
-            Args: 
-                x: float or array
-                    x-coordinate(s) or longitude(s)
-                y: float or array
-                    y-coordinate(s) or latitude(s)
-                z: float or array
-                    depth(s)
-                grid: bool
-                   Specify how to combine elements of x,y,z.
-                geometry: str
-                    Can be either 'planar' (default) or 'spherical'
-
-            Returns:
-                s: Interpolated sound speed values
-        """
-        if geometry == 'planar':
-            s = self.sound_speed_interpolator.eval_xy(x=x, y=y, z=z, grid=grid)
-
-        elif geometry == 'spherical':
-            s = self.sound_speed_interpolator.eval_ll(lat=y, lon=x, z=z, grid=grid)
-
-        return s
-
-
-    def _sound_speed(self, lats, lons, z, t, SP):
-        """ Compute sound speed.
-
-            Args:
-                lats: numpy array
-                    Latitudes (-90 to 90 degrees)
-                lons: numpy array
-                    Longitudes (-180 to 180 degrees)
-                z: numpy array
-                    Depths (meters)
-                t: numpy array
-                    In-situ temperature (Celsius)
-                SP: numpy array
-                    Practical Salinity (psu)
-
-            Returns:
-                c: numpy array
-                    Sound speed (m/s) 
-        """
-        p = gsw.p_from_z(z=z, lat=lats)  # sea pressure
-        SA = gsw.SA_from_SP(SP, p, lons, lats)  # absolute salinity
-        CT = gsw.CT_from_t(SA, t, p)  # conservative temperature
-        c = gsw.density.sound_speed(SA=SA, CT=CT, p=p)
-        return c
 
 
 def _generate_fake_data_2d(value, south, north, west, east):

@@ -144,7 +144,7 @@ class TransmissionLossCalculator():
 
         Example:
     """
-    def __init__(self, env_data=None, flat_seafloor_depth=None, sound_speed=None, ref_sound_speed=1500,\
+    def __init__(self, env_data=None, flat_seafloor_depth=None, sound_speed=None, uniform_sound_speed=None, ref_sound_speed=1500,\
             water_density=1.0, bottom_sound_speed=1700, bottom_loss=0.5, bottom_density=1.5,\
             step_size=None, range=50e3, angular_bin_size=1, vertical_bin_size=10, max_depth=12e3,\
             absorption_layer=1./6., starter_method='THOMSON', starter_aperture=88,\
@@ -154,8 +154,9 @@ class TransmissionLossCalculator():
         self.env_data = env_data
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
-        if env_data is None and sound_speed is None:
-            self.sound_speed = ref_sound_speed
+        self.uniform_sound_speed = uniform_sound_speed
+        if uniform_sound_speed is None and sound_speed is None:
+            self.uniform_sound_speed = ref_sound_speed
 
         self.c0 = ref_sound_speed
         self.water_density = water_density
@@ -293,7 +294,7 @@ class TransmissionLossCalculator():
             smoothing_length_sound_speed=smoothing_length_sound_speed, smoothing_length_density=smoothing_length_density,
             absorption_layer=self.absorption_layer, env_data=self.env_data,\
             flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient,\
-            sound_speed=self.sound_speed, verbose=self.verbose)
+            sound_speed=self.sound_speed, uniform_sound_speed=self.uniform_sound_speed, verbose=self.verbose)
 
         # Configure the PE propagator
         propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\

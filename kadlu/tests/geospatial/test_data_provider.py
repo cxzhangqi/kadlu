@@ -18,7 +18,7 @@ from kadlu.geospatial.data_provider import DataProvider
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
 
 def test_load_bathymetry_from_a_single_chs_file():
-    provider = DataProvider(bathy_source="CHS", south=43, west=-60, north=44, east=-59)
+    provider = DataProvider(bathy="CHS", south=43, west=-60, north=44, east=-59)
     bathy_data = provider.bathy_data
     bathy = bathy_data[0]
     lats = bathy_data[1]
@@ -29,26 +29,27 @@ def test_load_bathymetry_from_a_single_chs_file():
     assert bathy.shape[0] == lons.shape[0]
 
 def test_interpolate_bathymetry():
-    provider = DataProvider(bathy_source="CHS", south=43, west=-60, north=44, east=-59)
+    provider = DataProvider(bathy="CHS", south=43, west=-60, north=44, east=-59)
     N = 10
     x = y = np.arange(N) + 1
     provider.bathy(x,y)
     provider.bathy_gradient(x,y,axis='x')
     provider.bathy_gradient(x,y,axis='y')
     
-def test_load_dummy_temperature():
-    provider = DataProvider()
+def test_load_uniform_temperature():
+    provider = DataProvider(temp=4)
     _ = provider.temp_data
 
-def test_interpolate_dummy_temperature():
-    provider = DataProvider()
+def test_interpolate_uniform_temperature():
+    provider = DataProvider(temp=4)
     N = 10
     x = y = z = np.arange(N) + 1
     temp = provider.temp(x, y, z)
     assert temp.shape[0] == N
+    assert np.all(temp == 4)
 
-def test_interpolate_dummy_temperature_on_grid():
-    provider = DataProvider()
+def test_interpolate_uniform_temperature_on_grid():
+    provider = DataProvider(temp=8)
     x = np.arange(10) + 1
     y = np.arange(11) + 1
     z = np.arange(12) + 1
@@ -57,6 +58,7 @@ def test_interpolate_dummy_temperature_on_grid():
     assert temp.shape[0] == 10
     assert temp.shape[1] == 11
     assert temp.shape[2] == 12
+    assert np.all(temp == 8)
     # spherical coordinates
     lat = np.arange(10)
     lon = np.arange(11)
@@ -64,9 +66,10 @@ def test_interpolate_dummy_temperature_on_grid():
     assert temp.shape[0] == 10
     assert temp.shape[1] == 11
     assert temp.shape[2] == 12
+    assert np.all(temp == 8)
 
-def test_interpolate_dummy_salinity():
-    provider = DataProvider()
+def test_interpolate_uniform_salinity():
+    provider = DataProvider(salinity=35)
     N = 10
     x = y = z = np.arange(N) + 1
     x = x * 10000
@@ -74,10 +77,12 @@ def test_interpolate_dummy_salinity():
     z = z * 100
     salinity = provider.salinity(x, y, z)
     assert salinity.shape[0] == N
+    assert np.all(salinity == 35)
 
-def test_interpolate_dummy_wave():
-    provider = DataProvider()
+def test_interpolate_uniform_wave():
+    provider = DataProvider(wave=1.5)
     N = 10
     x = y = np.arange(N) + 1
     wave = provider.wave(x, y)
     assert wave.shape[0] == N
+    assert np.all(wave == 1.5)

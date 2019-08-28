@@ -14,7 +14,7 @@ import numpy as np
 from kadlu.utils import LatLon
 import kadlu.geospatial.data_sources.chs as chs
 import kadlu.geospatial.data_sources.gebco as gebco 
-from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D
+from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D
 
 
 class DataProvider():
@@ -33,121 +33,145 @@ class DataProvider():
         Attributes: 
 
     """
-    def __init__(self, bathy_source=None, temp_source=None,\
-                salinity_source=None, wave_source=None, wave_var=None,\
+    def __init__(self, bathy=None, temp=None, salinity=None, wave=None, wave_var=None,\
                 south=-90, north=90, west=-180, east=180, time=None,\
                 lat_ref=None, lon_ref=None):
 
-        self.bathy_data = None
-        self.temp_data = None
-        self.salinity_data = None
-        self.wave_data = None
-
-        self.bathy_interpolator = None
-        self.temp_interpolator = None
-        self.salinity_interpolator = None
-        self.wave_interpolator = None
-
-        # reference coordinates for x-y coordinate system
-        if lat_ref is None:
-            lat_ref = (south + north) / 2
-
-        if lon_ref is None:
-            lon_ref = (west + east) / 2
-
+        # origo of x-y coordinate system
+        if lat_ref is None: lat_ref = 0.5 * (south + north)
+        if lon_ref is None: lon_ref = 0.5 * (west + east)
         self.origin = LatLon(lat_ref, lon_ref)
 
-        # South-west and north-east corners
+        # save south-west and north-east corners as class attributes
         self.SW = LatLon(south, west)
         self.NE = LatLon(north, east)
 
         # load data and initialize interpolation tables
-        self._init_bathy(bathy_source, south, north, west, east)
-        self._init_temp(temp_source, south, north, west, east)
-        self._init_salinity(salinity_source, south, north, west, east)
-        self._init_wave(wave_source, south, north, west, east)
+        self._init_bathy(bathy, south, north, west, east)
+        self._init_temp(temp, south, north, west, east, time)
+        self._init_salinity(salinity, south, north, west, east, time)
+        self._init_wave(wave, south, north, west, east, time)
 
 
-    def _init_bathy(self, source, south, north, west, east):
+    def _init_bathy(self, bathy, south, north, west, east):
 
-        if source == "CHS":
+        if bathy is None:
+            self.bathy_data = None
+            self.bathy_interp = None
 
-            # load data
-            self.bathy_data = chs.load(south, north, west, east)
+        elif isinstance(bathy, str):
+    
+            if bathy == "CHS":
 
-            # lat coordinates
-            num_lats = int(np.ceil((north - south) / 0.001)) + 1
-            lats = np.linspace(south, north, num=num_lats)
+                # load data
+                self.bathy_data = chs.load(south, north, west, east)
 
-            # lon coordinates
-            num_lons = int(np.ceil((east - west) / 0.001)) + 1
-            lons = np.linspace(west, east, num=num_lons)
+                # lat coordinates
+                num_lats = int(np.ceil((north - south) / 0.001)) + 1
+                lats = np.linspace(south, north, num=num_lats)
 
-            # interpolate
-            self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
-                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin,\
-                    method_irreg='regular', lats_reg=lats, lons_reg=lons)       
+                # lon coordinates
+                num_lons = int(np.ceil((east - west) / 0.001)) + 1
+                lons = np.linspace(west, east, num=num_lons)
 
-        elif source == "GEBCO":
+                # interpolate
+                self.bathy_interp = Interpolator2D(values=self.bathy_data[0],\
+                        lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin,\
+                        method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
-            # load data
-            self.bathy_data = gebco.load(south, north, west, east)
+            elif bathy == "GEBCO":
 
-            # interpolate
-            self.bathy_interpolator = Interpolator2D(values=self.bathy_data[0],\
-                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin)       
+                # load data
+                self.bathy_data = gebco.load(south, north, west, east)
 
-        elif source is not None:
- 
-            print('Error: Unknown bathymetry source {0}.'.format(source))
-            exit(1)
+                # interpolate
+                self.bathy_interp = Interpolator2D(values=self.bathy_data[0],\
+                        lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin)       
 
+            else: 
+                print('Error: Unknown bathymetry source {0}.'.format(bathy))
+                exit(1)
 
-    def _init_temp(self, source, south, north, west, east):
-
-        # TODO: replace this with calls to the actual load methods
-        if self.bathy_data is None:
-            max_depth = 10000
         else:
-            max_depth = -np.min(self.bathy_data[0])
-
-        print('\n*** generating dummy temperature data ***')
-        self.temp_data = _generate_fake_data_3d(4, south, north, west, east, max_depth)
-
-        self.temp_interpolator = Interpolator3D(values=self.temp_data[0], lats=self.temp_data[1],\
-                lons=self.temp_data[2], depths=self.temp_data[3],\
-                origin=self.origin, method='linear')
+            self.bathy_data = bathy
+            self.bathy_interp = Uniform2D(bathy)
 
 
-    def _init_salinity(self, source, south, north, west, east):
+    def _init_temp(self, temp, south, north, west, east, time):
 
-        # TODO: replace this with calls to the actual load methods
-        if self.bathy_data is None:
-            max_depth = 10000
+        if temp is None:
+            self.temp_data = None
+            self.temp_interp = None
+
+        elif isinstance(temp, str):
+    
+            if temp == "HYCOM":
+                print('Error: Data loading from {0} not yet implemented.'.format(temp))
+
+###                self.temp_interp = Interpolator3D(values=self.temp_data[0], lats=self.temp_data[1],\
+###                        lons=self.temp_data[2], depths=self.temp_data[3],\
+###                        origin=self.origin, method='linear')
+
+            else: 
+                print('Error: Unknown temperature source {0}.'.format(temp))
+                exit(1)
+
         else:
-            max_depth = -np.min(self.bathy_data[0])
-
-        print('*** generating dummy salinity data *** ')
-        self.salinity_data = _generate_fake_data_3d(35, south, north, west, east, max_depth)
-
-        self.salinity_interpolator = Interpolator3D(values=self.salinity_data[0], lats=self.salinity_data[1],\
-                lons=self.salinity_data[2], depths=self.salinity_data[3],\
-                origin=self.origin, method='linear')
+            self.temp_data = temp
+            self.temp_interp = Uniform3D(temp)
 
 
-    def _init_wave(self, source, south, north, west, east):
+    def _init_salinity(self, salinity, south, north, west, east, time):
 
-        # TODO: replace this with calls to the actual load methods
-        if self.bathy_data is None:
-            max_depth = 10000
+        if salinity is None:
+            self.salinity_data = None
+            self.salinity_interp = None
+
+        elif isinstance(salinity, str):
+    
+            if salinity == "HYCOM":
+                print('Error: Data loading from {0} not yet implemented.'.format(salinity))
+
+###                self.salinity_interp = Interpolator3D(values=self.salinity_data[0], lats=self.salinity_data[1],\
+###                        lons=self.salinity_data[2], depths=self.salinity_data[3],\
+###                        origin=self.origin, method='linear')
+
+            else: 
+                print('Error: Unknown salinity source {0}.'.format(salinity))
+                exit(1)
+
         else:
-            max_depth = -np.min(self.bathy_data[0])
+            self.salinity_data = salinity
+            self.salinity_interp = Uniform3D(salinity)
 
-        print('*** generating dummy wave data *** ')
-        self.wave_data = _generate_fake_data_2d(1, south, north, west, east)
 
-        self.wave_interpolator = Interpolator2D(values=self.wave_data[0], lats=self.wave_data[1],\
-                lons=self.wave_data[2], origin=self.origin) 
+    def _init_wave(self, wave, south, north, west, east, time):
+
+        if wave is None:
+            self.wave_data = None
+            self.wave_interp = None
+
+        elif isinstance(wave, str):
+    
+            if wave == "ERA5":
+                print('Error: Data loading from {0} not yet implemented.'.format(wave))
+
+###                self.wave_interp = Interpolator2D(values=self.wave_data[0],\
+###                        lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin)       
+
+            elif wave == "RDWPS":
+                print('Error: Data loading from {0} not yet implemented.'.format(wave))
+
+            elif wave == "WWIII":
+                print('Error: Data loading from {0} not yet implemented.'.format(wave))
+
+            else: 
+                print('Error: Unknown wave source {0}.'.format(wave))
+                exit(1)
+
+        else:
+            self.wave_data = wave
+            self.wave_interp = Uniform2D(wave)
 
 
     def bathy(self, x, y, grid=False, geometry='planar'):
@@ -181,10 +205,10 @@ class DataProvider():
                 z: Interpolated bathymetry values
         """
         if geometry == 'planar':
-            z = self.bathy_interpolator.eval_xy(x=x, y=y, grid=grid)
+            z = self.bathy_interp.eval_xy(x=x, y=y, grid=grid)
 
         elif geometry == 'spherical':
-            z = self.bathy_interpolator.eval_ll(lat=y, lon=x, grid=grid)
+            z = self.bathy_interp.eval_ll(lat=y, lon=x, grid=grid)
 
         return z
 
@@ -223,10 +247,10 @@ class DataProvider():
         deriv_order = [(axis=='x'), (axis!='x')]
 
         if geometry == 'planar':                
-            grad = self.bathy_interpolator.eval_xy(x=x, y=y, grid=grid, x_deriv_order=deriv_order[0], y_deriv_order=deriv_order[1])
+            grad = self.bathy_interp.eval_xy(x=x, y=y, grid=grid, x_deriv_order=deriv_order[0], y_deriv_order=deriv_order[1])
 
         elif geometry == 'spherical':
-            grad = self.bathy_interpolator.eval_ll(lat=y, lon=x, grid=grid, lat_deriv_order=deriv_order[1], lon_deriv_order=deriv_order[0])
+            grad = self.bathy_interp.eval_ll(lat=y, lon=x, grid=grid, lat_deriv_order=deriv_order[1], lon_deriv_order=deriv_order[0])
 
         return grad
 
@@ -263,10 +287,10 @@ class DataProvider():
                 t: Interpolated temperature values
         """
         if geometry == 'planar':
-            t = self.temp_interpolator.eval_xy(x=x, y=y, z=z, grid=grid)
+            t = self.temp_interp.eval_xy(x=x, y=y, z=z, grid=grid)
 
         elif geometry == 'spherical':
-            t = self.temp_interpolator.eval_ll(lat=y, lon=x, z=z, grid=grid)
+            t = self.temp_interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
 
         return t
 
@@ -303,10 +327,10 @@ class DataProvider():
                 s: Interpolated salinity values
         """
         if geometry == 'planar':
-            s = self.salinity_interpolator.eval_xy(x=x, y=y, z=z, grid=grid)
+            s = self.salinity_interp.eval_xy(x=x, y=y, z=z, grid=grid)
 
         elif geometry == 'spherical':
-            s = self.salinity_interpolator.eval_ll(lat=y, lon=x, z=z, grid=grid)
+            s = self.salinity_interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
 
         return s
 
@@ -342,27 +366,11 @@ class DataProvider():
                 w: Interpolated wave data
         """
         if geometry == 'planar':
-            w = self.wave_interpolator.eval_xy(x=x, y=y, grid=grid)
+            w = self.wave_interp.eval_xy(x=x, y=y, grid=grid)
 
         elif geometry == 'spherical':
-            w = self.wave_interpolator.eval_ll(lat=y, lon=x, grid=grid)
+            w = self.wave_interp.eval_ll(lat=y, lon=x, grid=grid)
 
         return w
 
 
-def _generate_fake_data_2d(value, south, north, west, east):
-    N = 30
-    lats = (np.arange(N) + 0.5) / N * (north - south) + south 
-    lons = (np.arange(N) + 0.5) / N * (east - west) + west 
-    shape = (len(lats), len(lons))
-    values = value * np.ones(shape)
-    return (values, lats, lons)
-    
-def _generate_fake_data_3d(value, south, north, west, east, max_depth):
-    N = 30
-    lats = (np.arange(N) + 0.5) / N * (north - south) + south 
-    lons = (np.arange(N) + 0.5) / N * (east - west) + west 
-    depths = np.arange(N) / (N-1) * max_depth
-    shape = (len(lats), len(lons), len(depths))
-    values = value * np.ones(shape)
-    return (values, lats, lons, depths)

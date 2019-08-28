@@ -316,7 +316,7 @@ class Interpolator2D():
             lat = np.reshape(lat, newshape=(M*N))
             lon = np.reshape(lon, newshape=(M*N))
 
-        zi = self.eval_ll(lat=lat, lon=lon, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+        zi = self.eval_ll(lat=lat, lon=lon, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
 
         if x_deriv_order + y_deriv_order > 0:
             r = DLDL_over_DXDY(lat=lat, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
@@ -328,12 +328,14 @@ class Interpolator2D():
         if np.ndim(zi) == 2:
             zi = np.swapaxes(zi, 0, 1)
 
+        zi = np.squeeze(zi)
+
         if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
             zi = float(zi)
 
         return zi
 
-    def eval_ll(self, lat, lon, grid=False, lat_deriv_order=0, lon_deriv_order=0):
+    def eval_ll(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
         """ Interpolate using spherical coordinate system (latitude-longitude).
 
             lat and lot can be floats or arrays.
@@ -373,6 +375,9 @@ class Interpolator2D():
         lon_rad += self._lon_corr
 
         zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
+
+        if squeeze:
+            zi = np.squeeze(zi)
 
         if np.ndim(zi) == 0 or (np.ndim(zi) == 1 and len(zi) == 1):
             zi = float(zi)
@@ -482,7 +487,7 @@ class Interpolator3D():
             lon = lon.flatten()
             z = z.flatten()
 
-        vi = self.eval_ll(lat=lat, lon=lon, z=z)
+        vi = self.eval_ll(lat=lat, lon=lon, z=z, squeeze=False)
 
         if grid:
             vi = np.reshape(vi, newshape=(M,N,K))
@@ -497,7 +502,7 @@ class Interpolator3D():
 
         return vi
 
-    def eval_ll(self, lat, lon, z, grid=False):
+    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
         """ Interpolate using spherical coordinate system (lat-lon).
 
             lat,lot,z can be floats or arrays.
@@ -552,10 +557,90 @@ class Interpolator3D():
         if grid:
             vi = np.reshape(vi, newshape=(M,N,K))
 
-        vi = np.squeeze(vi)
+        if squeeze:
+            vi = np.squeeze(vi)
 
         if np.ndim(vi) == 0 or (np.ndim(vi) == 1 and len(vi) == 1):
             vi = float(vi)
 
         return vi
 
+
+class Uniform2D():
+
+    def __init__(self, value):
+        self.value = value
+    
+    def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
+
+        z = self.eval_ll(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+
+        if np.ndim(z) == 3:
+            z = np.swapaxes(z, 0, 1)
+
+        z = np.squeeze(z)
+
+        return z
+
+    def eval_ll(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
+
+        if np.ndim(lat) == 0: lat = np.array([lat])
+        if np.ndim(lon) == 0: lon = np.array([lon])
+
+        if grid:
+            s = (len(lat), len(lon))
+
+        else:
+            assert len(lat) == len(lon), 'when grid is False, lat and lon must have the same length'
+
+            s = len(lat)
+
+        if lat_deriv_order + lon_deriv_order > 0:
+            v = 0
+        else:
+            v = self.value
+
+        z = np.ones(s) * v
+
+        if squeeze:
+            z = np.squeeze(z)
+
+        return z
+
+
+class Uniform3D():
+
+    def __init__(self, value):
+        self.value = value
+    
+    def eval_xy(self, x, y, z, grid=False):
+
+        v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+
+        if np.ndim(v) == 3:
+            v = np.swapaxes(v, 0, 1)
+
+        v = np.squeeze(v)
+
+        return v
+
+    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+
+        if np.ndim(lat) == 0: lat = np.array([lat])
+        if np.ndim(lon) == 0: lon = np.array([lon])
+        if np.ndim(z) == 0: lon = np.array([z])
+
+        if grid:
+            s = (len(lat), len(lon), len(z))
+
+        else:
+            assert len(lat) == len(lon) == len(z), 'when grid is False, lat,lon,z must have the same length'
+
+            s = len(lat)
+
+        v = np.ones(s) * self.value
+        
+        if squeeze:
+            v = np.squeeze(v)
+
+        return v

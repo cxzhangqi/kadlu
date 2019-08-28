@@ -285,7 +285,7 @@ class DataProvider():
             y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
             lengths of x,y,z do not have to be the same.
 
-            If x and y are not specified, the method returns the underlying 
+            If x,y,z are not specified, the method returns the underlying 
             temperature data on which the interpolation is performed, either 
             as a (temp,lat,lon,z) tuple, or as a float if the temperature is 
             the same everywhere.
@@ -318,7 +318,7 @@ class DataProvider():
         return t
 
 
-    def salinity(self, x, y, z, grid=False, geometry='planar'):
+    def salinity(self, x=None, y=None, z=None, grid=False, geometry='planar'):
         """ Evaluate interpolated salinity in spherical (lat-lon) or  
             planar (x-y) geometry.
 
@@ -333,6 +333,11 @@ class DataProvider():
             all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
             y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
             lengths of x,y,z do not have to be the same.
+
+            If x,y,z are not specified, the method returns the underlying 
+            salinity data on which the interpolation is performed, either 
+            as a (salinity,lat,lon,z) tuple, or as a float if the salinity is 
+            the same everywhere.
 
             Args: 
                 x: float or array
@@ -349,6 +354,9 @@ class DataProvider():
             Returns:
                 s: Interpolated salinity values
         """
+        if x is None and y is None and z is None:
+            s = self.salinity_data
+
         if geometry == 'planar':
             s = self.salinity_interp.eval_xy(x=x, y=y, z=z, grid=grid)
 
@@ -374,6 +382,11 @@ class DataProvider():
             y=(y_1,...,y_M). Note that in this case, the lengths of x 
             and y do not have to be the same.
 
+            If x and y are not specified, the method returns the underlying 
+            wave data on which the interpolation is performed, either 
+            as a (wave,lat,lon) tuple, or as a float if the wave data is the same 
+            everywhere.
+
             Args: 
                 x: float or array
                     x-coordinate(s) or longitude(s)
@@ -388,11 +401,15 @@ class DataProvider():
             Returns:
                 w: Interpolated wave data
         """
-        if geometry == 'planar':
-            w = self.wave_interp.eval_xy(x=x, y=y, grid=grid)
+        if x is None and y is None:
+            w = self.wave_data
 
-        elif geometry == 'spherical':
-            w = self.wave_interp.eval_ll(lat=y, lon=x, grid=grid)
+        else:
+            if geometry == 'planar':
+                w = self.wave_interp.eval_xy(x=x, y=y, grid=grid)
+
+            elif geometry == 'spherical':
+                w = self.wave_interp.eval_ll(lat=y, lon=x, grid=grid)
 
         return w
 

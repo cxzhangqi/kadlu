@@ -260,6 +260,18 @@ def test_can_interpolate_multiple_points_in_xx():
         assert z == pytest.approx(d, rel=1e-3)
 
 
+def test_can_interpolate_regular_grid():
+    # create fake data
+    lat = np.array([44, 45, 46, 47, 48])
+    lon = np.array([60, 61, 62, 63])
+    bathy = np.random.rand(len(lat), len(lon))
+    # initialize interpolator
+    ip = Interpolator2D(bathy, lat, lon)
+    # check value at grid point
+    b = ip.eval_ll(lat=45, lon=62)
+    assert b == pytest.approx(bathy[1,2], abs=1E-9)
+
+
 def test_can_interpolate_irregular_grid():
     # create fake data
     lat = np.array([0.0, 1.0, 1.5, 2.1, 3.0])

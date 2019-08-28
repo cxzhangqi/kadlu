@@ -68,7 +68,8 @@ class EnvironmentInput():
             c0, cb, bottom_loss, bottom_density, water_density,\
             smoothing_length_sound_speed, smoothing_length_density,\
             absorption_layer, env_data=None, ignore_bathy_gradient=False,\
-            flat_seafloor_depth=None, sound_speed=None, verbose=False):
+            flat_seafloor_depth=None, sound_speed=None, uniform_sound_speed=None,\
+            verbose=False):
 
         assert env_data or flat_seafloor_depth, 'env_data or flat_seafloor_depth must be specified'
 
@@ -76,6 +77,7 @@ class EnvironmentInput():
         self.ignore_bathy_gradient = ignore_bathy_gradient
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
+        self.uniform_sound_speed = uniform_sound_speed
         self.verbose = verbose
 
         self.k0 = ref_wavenumber
@@ -210,7 +212,7 @@ class EnvironmentInput():
             itmp = (self.depth[0,:] == 0) 
             if np.any(itmp):
                 self.n2in[0,itmp] = self.n2b
-            
+
             # smooth density
             _tanh = np.tanh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
             self.H_rho[:,new] = (1 + _tanh) / 2
@@ -428,11 +430,11 @@ class EnvironmentInput():
         y = y.flatten()
         z = z.flatten()
 
-        if self.env_data is None:
-            c = np.ones(z.shape) * self.sound_speed
+        if self.sound_speed is None:
+            c = np.ones(z.shape) * self.uniform_sound_speed
 
         else:
-            c = self.env_data.sound_speed(x=x, y=y, z=-z)
+            c = self.sound_speed.eval(x=x, y=y, z=-z)
         
         nsq = (self.c0 / c)**2
 

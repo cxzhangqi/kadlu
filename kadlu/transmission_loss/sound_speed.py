@@ -20,7 +20,16 @@ from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Unifo
 class SoundSpeed():
     """ Class for handling computation and interpolation of sound speed. 
 
-        The sound speed is 
+        The sound speed can be specified via the argument ssp (sound speed 
+        profile) or computed from bathymetry, temperature and salinity data 
+        passed via the env_data argument.
+
+        ssp can be either a single value, in which case the sound speed is 
+        the same everywhere, or a tuple (z,c) where z is an array of depths 
+        and c is an array of sound speed values.
+
+        The eval method is used to obtain the interpolated sound speed at 
+        any 3D point(s) in space.
 
         Args:
             env_data: DataProvider
@@ -43,13 +52,18 @@ class SoundSpeed():
                 range of sound-speed values. The default value is 0.001.
 
         Attributes: 
-
+            self.interp: instance of DepthInterpolator3D, Uniform3D, or Interpolator3D
+                Sounds speed interpolation function
+            self.origin: LatLon
+                Origin of the x-y planar coordinate system.
+                None, if ssp is specified.
     """
     def __init__(self, env_data=None, ssp=None, xy_res=1000, num_depths=50, rel_err=1E-3):
 
         assert env_data is not None or ssp is not None, "env_data or ssp must be specified"
 
         if ssp is not None:
+            self.origin = None            
             if isinstance(ssp, tuple):
                 self.interp = DepthInterpolator3D(values=ssp[1], depths=ssp[0])
             else:

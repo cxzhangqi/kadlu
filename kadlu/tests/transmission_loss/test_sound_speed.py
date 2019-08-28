@@ -57,3 +57,14 @@ def test_sound_speed_from_ssp():
     # evaluate
     c = ss.eval(x=0, y=0, z=z0, grid=True)
     assert np.all(np.abs(c-c0) < 1E-6)
+
+def test_query_sound_speed_interpolation_data():
+    # sound speed profile
+    z0 = np.array([0, 10, 20, 30, 60])
+    c0 = np.array([1500, 1510, 1512, 1599, 1489])
+    # instance of sound speed class 
+    ss = SoundSpeed(ssp=(c0,z0), num_depths=50, rel_err=None)
+    # query underlying data
+    d = ss.eval()
+    assert np.all(np.abs(d[1]-z0) < 1E-6)
+    assert np.all(np.abs(d[0]-c0) < 1E-6)

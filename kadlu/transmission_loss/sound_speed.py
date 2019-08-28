@@ -63,9 +63,12 @@ class SoundSpeed():
         assert env_data is not None or ssp is not None, "env_data or ssp must be specified"
 
         if ssp is not None:
-            self.origin = None            
+            self.origin = None           
+            self.data = ssp 
+
             if isinstance(ssp, tuple):
                 self.interp = DepthInterpolator3D(values=ssp[0], depths=ssp[1])
+
             else:
                 self.interp = Uniform3D(value=ssp)
 
@@ -110,6 +113,9 @@ class SoundSpeed():
             self.interp = Interpolator3D(values=c, lats=lats, lons=lons,\
                     depths=depths, origin=self.origin, method='linear')
 
+            # store interpolation data
+            self.data = (c, lats, lons, depths)
+
 
     def _depth_coordinates(self, env_data, lats, lons, num_depths, rel_err):
 
@@ -136,7 +142,7 @@ class SoundSpeed():
         return depths
 
 
-    def eval(self, x, y, z, grid=False, geometry='planar'):
+    def eval(self, x=None, y=None, z=None, grid=False, geometry='planar'):
         """ Evaluate interpolated sound speed in spherical (lat-lon) or  
             planar (x-y) geometry.
 
@@ -165,15 +171,19 @@ class SoundSpeed():
                     Can be either 'planar' (default) or 'spherical'
 
             Returns:
-                s: Interpolated sound speed values
+                c: Interpolated sound speed values
         """
-        if geometry == 'planar':
-            z = self.interp.eval_xy(x=x, y=y, z=z, grid=grid)
+        if x is None and y is None and z is None:
+            c = self.data
 
-        elif geometry == 'spherical':
-            z = self.interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
+        else:
+            if geometry == 'planar':
+                c = self.interp.eval_xy(x=x, y=y, z=z, grid=grid)
 
-        return z
+            elif geometry == 'spherical':
+                c = self.interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
+
+        return c
 
 
     def _sound_speed(self, lats, lons, z, t, SP):

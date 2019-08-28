@@ -63,9 +63,24 @@ def test_query_for_bathymetry_grid_data():
     assert np.all(b[1] == lat)
     assert np.all(b[2] == lon)
 
-def test_load_uniform_temperature():
+def test_query_for_temperature_uniform_data():
     provider = DataProvider(temp=4)
-    _ = provider.temp_data
+    t = provider.temp()
+    assert t == 4
+
+def test_query_for_temp_grid_data():
+    lat = np.array([44, 45, 46, 47, 48])
+    lon = np.array([60, 61, 62, 63])
+    z = np.array([1000, 2000])
+    temp = np.random.rand(len(lat),len(lon),len(z))
+    provider = DataProvider(temp=(temp,lat,lon,z))
+    b = provider.temp()
+    assert isinstance(b, tuple)
+    assert np.all(b[0] == temp)
+    assert np.all(b[1] == lat)
+    assert np.all(b[2] == lon)
+    assert np.all(b[3] == z)
+
 
 def test_interpolate_uniform_temperature():
     provider = DataProvider(temp=4)

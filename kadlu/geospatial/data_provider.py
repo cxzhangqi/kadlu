@@ -113,13 +113,15 @@ class DataProvider():
             if temp == "HYCOM":
                 print('Error: Data loading from {0} not yet implemented.'.format(temp))
 
-###                self.temp_interp = Interpolator3D(values=self.temp_data[0], lats=self.temp_data[1],\
-###                        lons=self.temp_data[2], depths=self.temp_data[3],\
-###                        origin=self.origin, method='linear')
-
             else: 
                 print('Error: Unknown temperature source {0}.'.format(temp))
                 exit(1)
+
+        elif isinstance(temp, tuple):
+            self.temp_data = temp
+            self.temp_interp = Interpolator3D(values=self.temp_data[0], lats=self.temp_data[1],\
+                    lons=self.temp_data[2], depths=self.temp_data[3],\
+                    origin=self.origin, method='linear')
 
         else:
             self.temp_data = temp
@@ -137,13 +139,15 @@ class DataProvider():
             if salinity == "HYCOM":
                 print('Error: Data loading from {0} not yet implemented.'.format(salinity))
 
-###                self.salinity_interp = Interpolator3D(values=self.salinity_data[0], lats=self.salinity_data[1],\
-###                        lons=self.salinity_data[2], depths=self.salinity_data[3],\
-###                        origin=self.origin, method='linear')
-
             else: 
                 print('Error: Unknown salinity source {0}.'.format(salinity))
                 exit(1)
+
+        elif isinstance(salinity, tuple):
+            self.salinity_data = salinity
+            self.salinity_interp = Interpolator3D(values=self.salinity_data[0], lats=self.salinity_data[1],\
+                    lons=self.salinity_data[2], depths=self.salinity_data[3],\
+                    origin=self.origin, method='linear')
 
         else:
             self.salinity_data = salinity
@@ -161,9 +165,6 @@ class DataProvider():
             if wave == "ERA5":
                 print('Error: Data loading from {0} not yet implemented.'.format(wave))
 
-###                self.wave_interp = Interpolator2D(values=self.wave_data[0],\
-###                        lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin)       
-
             elif wave == "RDWPS":
                 print('Error: Data loading from {0} not yet implemented.'.format(wave))
 
@@ -173,6 +174,11 @@ class DataProvider():
             else: 
                 print('Error: Unknown wave source {0}.'.format(wave))
                 exit(1)
+
+        elif isinstance(wave, tuple):
+            self.wave_data = wave
+            self.wave_interp = Interpolator2D(values=self.wave_data[0],\
+                    lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin)       
 
         else:
             self.wave_data = wave

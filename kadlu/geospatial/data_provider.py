@@ -92,6 +92,11 @@ class DataProvider():
                 print('Error: Unknown bathymetry source {0}.'.format(bathy))
                 exit(1)
 
+        elif isinstance(bathy, tuple):
+            self.bathy_data = bathy
+            self.bathy_interp = Interpolator2D(values=self.bathy_data[0],\
+                    lats=self.bathy_data[1], lons=self.bathy_data[2], origin=self.origin)       
+
         else:
             self.bathy_data = bathy
             self.bathy_interp = Uniform2D(bathy)
@@ -174,7 +179,7 @@ class DataProvider():
             self.wave_interp = Uniform2D(wave)
 
 
-    def bathy(self, x, y, grid=False, geometry='planar'):
+    def bathy(self, x=None, y=None, grid=False, geometry='planar'):
         """ Evaluate interpolated bathymetry in spherical (lat-lon) or  
             planar (x-y) geometry.
 
@@ -190,6 +195,11 @@ class DataProvider():
             y=(y_1,...,y_M). Note that in this case, the lengths of x 
             and y do not have to be the same.
 
+            If x and y are not specified, the method returns the underlying 
+            bathymetric data on which the interpolation is performed, either 
+            as a (bathy,lat,lon) tuple, or as a float if the depth is the same 
+            everywhere.
+
             Args: 
                 x: float or array
                     x-coordinate(s) or longitude(s)
@@ -204,11 +214,15 @@ class DataProvider():
             Returns:
                 z: Interpolated bathymetry values
         """
-        if geometry == 'planar':
-            z = self.bathy_interp.eval_xy(x=x, y=y, grid=grid)
+        if x is None and y is None:
+            z = self.bathy_data
+        
+        else:
+            if geometry == 'planar':
+                z = self.bathy_interp.eval_xy(x=x, y=y, grid=grid)
 
-        elif geometry == 'spherical':
-            z = self.bathy_interp.eval_ll(lat=y, lon=x, grid=grid)
+            elif geometry == 'spherical':
+                z = self.bathy_interp.eval_ll(lat=y, lon=x, grid=grid)
 
         return z
 
@@ -255,7 +269,7 @@ class DataProvider():
         return grad
 
 
-    def temp(self, x, y, z, grid=False, geometry='planar'):
+    def temp(self, x=None, y=None, z=None, grid=False, geometry='planar'):
         """ Evaluate interpolated temperature in spherical (lat-lon) or  
             planar (x-y) geometry.
 
@@ -270,6 +284,11 @@ class DataProvider():
             all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
             y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
             lengths of x,y,z do not have to be the same.
+
+            If x and y are not specified, the method returns the underlying 
+            temperature data on which the interpolation is performed, either 
+            as a (temp,lat,lon,z) tuple, or as a float if the temperature is 
+            the same everywhere.
 
             Args: 
                 x: float or array
@@ -286,11 +305,15 @@ class DataProvider():
             Returns:
                 t: Interpolated temperature values
         """
-        if geometry == 'planar':
-            t = self.temp_interp.eval_xy(x=x, y=y, z=z, grid=grid)
+        if x is None and y is None and z is None:
+            t = self.temp_data
 
-        elif geometry == 'spherical':
-            t = self.temp_interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
+        else:
+            if geometry == 'planar':
+                t = self.temp_interp.eval_xy(x=x, y=y, z=z, grid=grid)
+
+            elif geometry == 'spherical':
+                t = self.temp_interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
 
         return t
 

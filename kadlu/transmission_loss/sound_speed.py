@@ -14,7 +14,7 @@ import gsw
 import numpy as np
 from kadlu.utils import LatLon, DLDL_over_DXDY, interp_grid_1d, deg2rad
 from kadlu.geospatial.data_provider import DataProvider 
-from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform3D
+from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform3D, DepthInterpolator3D
 
 
 class SoundSpeed():
@@ -25,8 +25,8 @@ class SoundSpeed():
         passed via the env_data argument.
 
         ssp can be either a single value, in which case the sound speed is 
-        the same everywhere, or a tuple (z,c) where z is an array of depths 
-        and c is an array of sound speed values.
+        the same everywhere, or a tuple (c,z) where c is an array of sound 
+        speed values and z is an array of depths.
 
         The eval method is used to obtain the interpolated sound speed at 
         any 3D point(s) in space.
@@ -38,8 +38,8 @@ class SoundSpeed():
             ssp: float or tuple
                 Sound speed profile. May be specified either as a float, 
                 in which case the sound speed is the same everywhere, or as 
-                a tuple (z,c) where z is an array of depth values and c is 
-                an array of sound speeds.
+                a tuple (c,z) where c is an array of sound speeds and z is 
+                an array of depth values.
             xy_res: float
                 Horizontal (xy) resolution of the interpolation grid in meters.
                 The default value is 1000 meters.
@@ -65,7 +65,7 @@ class SoundSpeed():
         if ssp is not None:
             self.origin = None            
             if isinstance(ssp, tuple):
-                self.interp = DepthInterpolator3D(values=ssp[1], depths=ssp[0])
+                self.interp = DepthInterpolator3D(values=ssp[0], depths=ssp[1])
             else:
                 self.interp = Uniform3D(value=ssp)
 

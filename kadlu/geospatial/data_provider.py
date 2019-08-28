@@ -99,7 +99,7 @@ class DataProvider():
 
         elif source is not None:
  
-            print('Error: Unknown bathymetry source {0}.'.format(bathy_source))
+            print('Error: Unknown bathymetry source {0}.'.format(source))
             exit(1)
 
 

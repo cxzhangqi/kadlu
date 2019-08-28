@@ -39,11 +39,5 @@ def test_can_create_sound_speed_instance():
     # environment data provider
     env = DataProvider(bathy_source="CHS", south=43, west=-60, north=44, east=-59)
     # instance of sound speed class 
-    c = SoundSpeed(env)
+    c = SoundSpeed(env, num_depths=50, rel_err=None)
     assert len(c.depths) == 50
-
-    import matplotlib.pyplot as plt
-    y = c.eval(x=0, y=0, z=np.arange(start=0, stop=1000, step=10), grid=True)
-    print(y)
-    plt.plot(y)
-    plt.show()

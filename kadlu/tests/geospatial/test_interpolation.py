@@ -377,7 +377,14 @@ def test_interpolate_3d_data_with_constant_slope():
     assert vi[0] == pytest.approx(4, abs=1E-9)
     assert vi[1] == pytest.approx(4.5, abs=1E-9)
     assert vi[2] == pytest.approx(5, abs=1E-9)
-
+    # check interpolation on grid
+    lats = np.array([2, 3, 4])
+    lons = np.array([1, 2, 3])
+    depths = np.array([4, 4.5, 5])
+    vi = ip.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
+    assert np.all(np.abs(vi[:,:,0] - 4) < 1E-9)
+    assert np.all(np.abs(vi[:,:,1] - 4.5) < 1E-9)
+    assert np.all(np.abs(vi[:,:,2] - 5) < 1E-9)
 
 def test_interpolate_3d_data_using_xy_coordinates():
     N = 11

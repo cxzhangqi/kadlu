@@ -12,7 +12,7 @@
 """
 import gsw
 import numpy as np
-from kadlu.utils import LatLon, DLDL_over_DXDY, interp_grid_1d, deg2rad, reshape
+from kadlu.utils import LatLon, DLDL_over_DXDY, interp_grid_1d, deg2rad
 from kadlu.geospatial.data_provider import DataProvider 
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D
 
@@ -54,10 +54,13 @@ class SoundSpeed():
 
         # sound speed
         grid_shape = t.shape
-        lats_grid, lons_grid, depths_grid = reshape(lats, lons, depths)
+        la, lo, de = np.meshgrid(lats, lons, depths)
+        la = la.flatten()
+        lo = lo.flatten()
+        de = de.flatten()
         t = t.flatten()
         s = s.flatten()
-        c = self._sound_speed(lats=lats_grid, lons=lons_grid, z=-depths_grid, t=t, SP=s)
+        c = self._sound_speed(lats=la, lons=lo, z=-de, t=t, SP=s)
         c = np.reshape(c, newshape=grid_shape)
 
         # create interpolator
@@ -67,6 +70,7 @@ class SoundSpeed():
         self.lats = lats
         self.lons = lons
         self.depths = depths
+
 
 
     def _depth_coordinates(self, env_data, lats, lons, num_depths, rel_err):

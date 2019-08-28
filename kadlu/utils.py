@@ -133,7 +133,7 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
         return x, y
     else:
         return x, y, z
-        
+
 def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     """ Transform xy position coordinates to lat-lon coordinates.
 
@@ -197,8 +197,10 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     lon = lon_ref + x / deg2rad / R2
     lat = lat_ref + y / deg2rad / R
 
-    if len(lat) == 1:
+    if np.ndim(lat) == 1 and len(lat) == 1:
         lat = float(lat)
+
+    if np.ndim(lon) == 1 and len(lon) == 1:
         lon = float(lon)
 
     if z is None:
@@ -393,45 +395,3 @@ def get_member(cls, member_name):
 
     s = ", ".join(name for name, _ in cls.__members__.items())
     raise ValueError("Unknown value \'{0}\'. Select between: {1}".format(member_name, s))
-
-
-def reshape(a, b, c):
-    """ Create 3d grid from all possible combinations of the 
-        elements of a,b,c and return the flatten coordinate 
-        arrays.
-
-        Args: 
-            a: 1d or 2d numpy array
-                Coordinates along 1st axis
-            b: 1d or 2d numpy array
-                Coordinates along 2nd axis
-            c: 1d numpy array
-                Coordinates along 3rd axis
-
-        Returns:
-            a,b,c: 1d numpy arrays
-                Flattened arrays
-    """
-    if np.ndim(a) == 0:
-        a = np.array([a])
-
-    if np.ndim(b) == 0:
-        b = np.array([b])
-
-    if np.ndim(a) == np.ndim(b) == 1:
-        a,b = np.meshgrid(a,b)
-        
-    M = a.shape[0]
-    N = a.shape[1]
-    a = np.reshape(a, newshape=(M*N))
-    b = np.reshape(b, newshape=(M*N))
-
-    K = c.shape[0]
-    a, _ = np.meshgrid(a, c)
-    b, c = np.meshgrid(b, c)
-
-    a = np.reshape(a, newshape=(M*N*K))
-    b = np.reshape(b, newshape=(M*N*K))
-    c = np.reshape(c, newshape=(M*N*K))
-
-    return a,b,c

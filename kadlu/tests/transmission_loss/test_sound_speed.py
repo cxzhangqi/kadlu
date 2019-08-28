@@ -35,8 +35,25 @@ from kadlu.geospatial.data_provider import DataProvider
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
 
 
-def test_can_create_sound_speed_instance():
+def test_sound_speed_from_uniform_data():
     # environment data provider
-    env = DataProvider(bathy="CHS", temp=4, salinity=35, south=43, west=-60, north=44, east=-59)
+    env = DataProvider(bathy=-1000, temp=4, salinity=35, south=44, north=45, west=60, east=61)
     # instance of sound speed class 
     _ = SoundSpeed(env, num_depths=50, rel_err=None)
+
+def test_sound_speed_from_uniform_ssp():
+    # instance of sound speed class 
+    ss = SoundSpeed(ssp=1499, num_depths=50, rel_err=None)
+    # evaluate
+    c = ss.eval(x=0, y=0, z=0)
+    assert c == 1499
+
+def test_sound_speed_from_ssp():
+    # sound speed profile
+    z0 = np.array([0, 10, 20, 30, 60])
+    c0 = np.array([1500, 1510, 1512, 1599, 1489])
+    # instance of sound speed class 
+    ss = SoundSpeed(ssp=(c0,z0), num_depths=50, rel_err=None)
+    # evaluate
+    c = ss.eval(x=0, y=0, z=z0, grid=True)
+    assert np.all(np.abs(c-c0) < 1E-6)

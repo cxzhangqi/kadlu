@@ -35,7 +35,18 @@ def test_interpolate_bathymetry():
     provider.bathy(x,y)
     provider.bathy_gradient(x,y,axis='x')
     provider.bathy_gradient(x,y,axis='y')
-    
+
+def test_interpolate_uniform_bathymetry():
+    provider = DataProvider(bathy=-2000, south=43, west=-60, north=44, east=-59)
+    N = 10
+    x = y = np.arange(N) + 1
+    b = provider.bathy(x,y)
+    assert np.all(b == -2000)
+    bx = provider.bathy_gradient(x,y,axis='x')
+    assert np.all(bx == 0)
+    by = provider.bathy_gradient(x,y,axis='y')
+    assert np.all(by == 0)
+
 def test_load_uniform_temperature():
     provider = DataProvider(temp=4)
     _ = provider.temp_data

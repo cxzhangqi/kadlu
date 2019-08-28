@@ -14,63 +14,87 @@ import gsw
 import numpy as np
 from kadlu.utils import LatLon, DLDL_over_DXDY, interp_grid_1d, deg2rad
 from kadlu.geospatial.data_provider import DataProvider 
-from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D
+from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform3D
 
 
 class SoundSpeed():
     """ Class for handling computation and interpolation of sound speed. 
 
+        The sound speed is 
+
         Args:
+            env_data: DataProvider
+                Provider of environmental data, including bathymetry, 
+                temperature and salinity.
+            ssp: float or tuple
+                Sound speed profile. May be specified either as a float, 
+                in which case the sound speed is the same everywhere, or as 
+                a tuple (z,c) where z is an array of depth values and c is 
+                an array of sound speeds.
+            xy_res: float
+                Horizontal (xy) resolution of the interpolation grid in meters.
+                The default value is 1000 meters.
+            num_depths: int
+                Number of depth values for the interpolation grid. If rel_err is specified, 
+                num_depths becomes the maximum allowed number of depth values. 
+                The default value is 50.
+            rel_err: float
+                Maximum deviation of the interpolation, expressed as a ratio of the 
+                range of sound-speed values. The default value is 0.001.
 
         Attributes: 
 
     """
-    def __init__(self, env_data, xy_res=1000, num_depths=50, rel_err=1E-6):
+    def __init__(self, env_data=None, ssp=None, xy_res=1000, num_depths=50, rel_err=1E-3):
 
-        self.origin = env_data.origin
+        assert env_data is not None or ssp is not None, "env_data or ssp must be specified"
 
-        # convert from meters to degrees
-        lat_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=1, lon_deriv_order=0)
-        lon_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=0, lon_deriv_order=1)
+        if ssp is not None:
+            if isinstance(ssp, tuple):
+                self.interp = DepthInterpolator3D(values=ssp[1], depths=ssp[0])
+            else:
+                self.interp = Uniform3D(value=ssp)
 
-        # geographic boundaries
-        S = env_data.SW.latitude
-        N = env_data.NE.latitude
-        W = env_data.SW.longitude
-        E = env_data.NE.longitude
+        else:
+            self.origin = env_data.origin
 
-        # lat and lon coordinates
-        num_lats = int(np.ceil((N - S) / lat_res)) + 1
-        lats = np.linspace(S, N, num=num_lats)
-        num_lons = int(np.ceil((E - W) / lon_res)) + 1
-        lons = np.linspace(W, E, num=num_lons)
+            # convert from meters to degrees
+            lat_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=1, lon_deriv_order=0)
+            lon_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=0, lon_deriv_order=1)
 
-        # generate depth coordinates
-        depths = self._depth_coordinates(env_data, lats, lons, num_depths=num_depths, rel_err=rel_err)
+            # geographic boundaries
+            S = env_data.SW.latitude
+            N = env_data.NE.latitude
+            W = env_data.SW.longitude
+            E = env_data.NE.longitude
 
-        # temperature and salinity
-        t = env_data.temp(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
-        s = env_data.salinity(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
+            # lat and lon coordinates
+            num_lats = int(np.ceil((N - S) / lat_res)) + 1
+            lats = np.linspace(S, N, num=num_lats)
+            num_lons = int(np.ceil((E - W) / lon_res)) + 1
+            lons = np.linspace(W, E, num=num_lons)
 
-        # sound speed
-        grid_shape = t.shape
-        la, lo, de = np.meshgrid(lats, lons, depths)
-        la = la.flatten()
-        lo = lo.flatten()
-        de = de.flatten()
-        t = t.flatten()
-        s = s.flatten()
-        c = self._sound_speed(lats=la, lons=lo, z=-de, t=t, SP=s)
-        c = np.reshape(c, newshape=grid_shape)
+            # generate depth coordinates
+            depths = self._depth_coordinates(env_data, lats, lons, num_depths=num_depths, rel_err=rel_err)
 
-        # create interpolator
-        self.interp = Interpolator3D(values=c, lats=lats, lons=lons,\
-                depths=depths, origin=self.origin, method='linear')
+            # temperature and salinity
+            t = env_data.temp(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
+            s = env_data.salinity(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
 
-        self.lats = lats
-        self.lons = lons
-        self.depths = depths
+            # sound speed
+            grid_shape = t.shape
+            la, lo, de = np.meshgrid(lats, lons, depths)
+            la = la.flatten()
+            lo = lo.flatten()
+            de = de.flatten()
+            t = t.flatten()
+            s = s.flatten()
+            c = self._sound_speed(lats=la, lons=lo, z=-de, t=t, SP=s)
+            c = np.reshape(c, newshape=grid_shape)
 
+            # create interpolator
+            self.interp = Interpolator3D(values=c, lats=lats, lons=lons,\
+                    depths=depths, origin=self.origin, method='linear')
 
 
     def _depth_coordinates(self, env_data, lats, lons, num_depths, rel_err):

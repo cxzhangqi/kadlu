@@ -36,16 +36,17 @@
     methodology as in the two-dimensional case) should be straightforward. 
 
     Contents:
-        IrregInterpolator2D class:
-        Interpolator2D class
-        Interpolator3D class
+        GridData2D class:
+        Interpolator2D class:
+        Interpolator3D class:
+        Uniform2D class:
+        Uniform3D class:
+        DepthInterpolator3D class
 """
 
 import numpy as np
-from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline, RegularGridInterpolator, interp1d, griddata
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
-from scipy.interpolate import griddata
 
 from sys import platform as sys_pf
 if sys_pf == 'darwin':
@@ -54,7 +55,7 @@ if sys_pf == 'darwin':
 from matplotlib import pyplot as plt
 
 
-class IrregInterpolator2D():
+class GridData2D():
     """ Interpolation of data on a two-dimensional irregular grid.
     
         Essentially, a wrapper function around scipy's interpolate.griddata.
@@ -255,8 +256,8 @@ class Interpolator2D():
     
                 # interpolators on irregular grid
                 lons_rad += self._lon_corr
-                gd_cubic = IrregInterpolator2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
-                gd_nearest = IrregInterpolator2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
+                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
+                gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
                 # map to regular grid
                 lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
@@ -271,7 +272,7 @@ class Interpolator2D():
 
             else:
                 lons_rad += self._lon_corr
-                self.interp_ll = IrregInterpolator2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
+                self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
 
         # store data used for interpolation
         self.lat_nodes = lats
@@ -628,7 +629,7 @@ class Uniform3D():
 
         if np.ndim(lat) == 0: lat = np.array([lat])
         if np.ndim(lon) == 0: lon = np.array([lon])
-        if np.ndim(z) == 0: lon = np.array([z])
+        if np.ndim(z) == 0: z = np.array([z])
 
         if grid:
             s = (len(lat), len(lon), len(z))
@@ -639,6 +640,117 @@ class Uniform3D():
             s = len(lat)
 
         v = np.ones(s) * self.value
+        
+        if squeeze:
+            v = np.squeeze(v)
+
+        return v
+
+
+class DepthInterpolator3D():
+    """ Class for interpolating 3D (lat,lon,depth) geospatial data
+        that only varies with depth.
+
+        Attributes: 
+            values: 1d or 3d numpy array
+                Values to be interpolated
+            depths: 1d numpy array
+                Depth values
+            method : {‘linear’, ‘nearest’, ‘zero’, ‘slinear’, ‘quadratic’, ‘cubic’, ‘previous’, ‘next’}, optional
+                Interpolation method. Default is quadratic.
+    """
+    def __init__(self, values, depths, method='quadratic'):
+        
+        if np.ndim(values) == 3:
+            values = values[0,0,:]
+
+        # initialize 1d interpolator
+        self.interp = interp1d(x=depths, y=values, kind=method, fill_value="extrapolate")
+
+        # store interpolation data
+        self.depth_nodes = depths
+        self.values = values
+
+    def eval_xy(self, x, y, z, grid=False):
+        """ Interpolate using planar coordinate system (xy).
+
+            x,y,z can be floats or arrays.
+
+            If grid is set to False, the interpolation will be evaluated at 
+            the positions (x_i, y_i, z_i), where x=(x_1,...,x_N),  
+            y=(y_1,...,y_N), and z=(z_1,...,z_N). Note that in this case, 
+            x,y,z must have the same length.
+
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
+            y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
+            lengths of x,y,z do not have to be the same.
+
+            Args: 
+                x: float or array
+                   x-coordinate of the positions(s) where the interpolation is to be evaluated
+                y: float or array
+                   y-coordinate of the positions(s) where the interpolation is to be evaluated
+                z: float or array
+                   Depth of the positions(s) where the interpolation is to be evaluated
+                grid: bool
+                   Specify how to combine elements of x,y,z.
+
+            Returns:
+                vi: Interpolated values
+        """
+        v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+
+        if np.ndim(v) == 3:
+            v = np.swapaxes(v, 0, 1)
+
+        v = np.squeeze(v)
+        return v
+
+    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+        """ Interpolate using spherical coordinate system (lat-lon).
+
+            lat,lot,z can be floats or arrays.
+
+            If grid is set to False, the interpolation will be evaluated at 
+            the coordinates (lat_i, lon_i, z_i), where lat=(lat_1,...,lat_N), 
+            lon=(lon_1,...,lon_N) and z=(z_,...,z_K). Note that in this case, lat and 
+            lon must have the same length.
+
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (lat_i, lon_j, z_k), where lat=(lat_1,...,lat_N), 
+            lon=(lon_1,...,lon_M) and z=(z_1,...,z_K). Note that in this case, the lengths 
+            of lat and lon do not have to be the same.
+
+            Args: 
+                lat: float or array
+                    Latitude of the positions(s) where the bathymetry is to be evaluated
+                lon: float or array
+                    Longitude of the positions(s) where the bathymetry is to be evaluated
+                z: float or array
+                    Depth of the positions(s) where the interpolation is to be evaluated
+                grid: bool
+                    Specify how to combine elements of lat,lon,z.
+
+            Returns:
+                zi: Interpolated bathymetry values (or derivates)
+        """
+        if np.ndim(lat) == 0: lat = np.array([lat])
+        if np.ndim(lon) == 0: lon = np.array([lon])
+        if np.ndim(z) == 0: z = np.array([z])
+
+        if grid:
+            s = (len(lat), len(lon), len(z))
+
+        else:
+            assert len(lat) == len(lon) == len(z), 'when grid is False, lat,lon,z must have the same length'
+
+            s = len(lat)
+
+        v = self.interp(z)
+
+        if grid:
+            v = np.ones(s) * v[np.newaxis, np.newaxis, :]
         
         if squeeze:
             v = np.squeeze(v)

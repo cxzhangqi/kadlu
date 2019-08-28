@@ -37,7 +37,6 @@ path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets
 
 def test_can_create_sound_speed_instance():
     # environment data provider
-    env = DataProvider(bathy_source="CHS", south=43, west=-60, north=44, east=-59)
+    env = DataProvider(bathy="CHS", temp=4, salinity=35, south=43, west=-60, north=44, east=-59)
     # instance of sound speed class 
-    c = SoundSpeed(env, num_depths=50, rel_err=None)
-    assert len(c.depths) == 50
+    _ = SoundSpeed(env, num_depths=50, rel_err=None)

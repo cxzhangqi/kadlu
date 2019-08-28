@@ -15,7 +15,7 @@ import pytest
 import os
 import numpy as np
 from kadlu.geospatial.geospatial import load_data_from_file
-from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D
+from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D
 import kadlu.geospatial.data_sources.chs as chs
 from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
 
@@ -424,3 +424,40 @@ def test_interpolate_3d_outside_grid():
     depths = 5
     vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
     assert vi == 1
+
+
+def test_interpolate_uniform_2d():
+    ip = Uniform2D(17)
+    v = ip.eval_ll(lat=5, lon=2000)
+    assert v == 17
+    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0, 1])
+    assert np.all(v == 17)
+    assert v.shape[0] == 3
+    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0], grid=True)
+    assert np.all(v == 17)
+    assert v.shape[0] == 3
+    assert v.shape[1] == 2
+
+
+def test_interpolate_uniform_3d():
+    ip = Uniform3D(17)
+    v = ip.eval_ll(lat=5, lon=2000, z=-10)
+    assert v == 17
+    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0, 1], z=[0, 2, -3])
+    assert np.all(v == 17)
+    assert v.shape[0] == 3
+    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0], z=[0, 2, -3], grid=True)
+    assert np.all(v == 17)
+    assert v.shape[0] == 3
+    assert v.shape[1] == 2
+    assert v.shape[2] == 3
+
+
+def test_interpolate_depth_3d():
+    ip = DepthInterpolator3D(values=[0,1,4,9], depths=[0,1,2,3], method='quadratic')
+    # inside range
+    v = ip.eval_ll(lat=5, lon=2000, z=1.5)
+    assert v == 1.5*1.5
+    # outside range
+    v = ip.eval_ll(lat=5, lon=2000, z=3.5)
+    assert v == 3.5*3.5

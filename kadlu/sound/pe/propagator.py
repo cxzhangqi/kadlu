@@ -110,7 +110,7 @@ class Propagator():
         arr = np.zeros(n, dtype=bool)
         if step == math.inf:
             arr[0] = True
-        else
+        else:
             arr[::step] = True
 
         return arr

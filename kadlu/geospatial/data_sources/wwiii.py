@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import os
 import urllib.request
 import pygrib
-
 from kadlu.geospatial.data_sources import fetch_util
 
 waveSources = {
@@ -45,14 +44,25 @@ def fetch(wavevar=waveSources['swh'], time=datetime.now(), region=regions['globa
         print("Downloading file from NOAA WaveWatch III...")
         fetchurl = f"https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/{time.strftime('%Y/%m')}/gribs/{fname}"
         urllib.request.urlretrieve(fetchurl, fetchfile)
+    return fetchfile
 
 
+def load(filepath, plot=False): 
     # matt_s 2019-08
     # the loadgrib function returns data for the whole month for the
     # WWIII source only. This should be updated here to parse grib
     # messages from the entire month, and return the 3-hour slice
     # with the desired data. 
-def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)
+    return fetch_util.loadgrib(filepath, plot)
+    grib = pygrib.open(filepath)
+
+    for msg in grib:
+        lat, lon = np.array(msg.latlons())
+        vals, lat, lon = msg.data()
+        mask = vals.mask
+        data = vals.data
+        print(lat.shape)
+        break
 
 
 """

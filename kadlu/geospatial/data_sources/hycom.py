@@ -22,8 +22,8 @@ def fetch(south=-90, north=90, west=-180, east=180):
     x = (ll_2_xy(west, lon),    ll_2_xy(east, lon))
     y = (ll_2_xy(south, lat),   ll_2_xy(north, lat))
 
-    slx = lambda tup, step=1: f"[{tup[0]}:{step}:{tup[1]}]"
-    varslices = lambda var, slxs : f"{var}{''.join([slx(v) for v in slxs])}"
+    slx         = lambda tup, step=1: f"[{tup[0]}:{step}:{tup[1]}]"
+    varslices   = lambda var, slxs  : f"{var}{''.join([slx(v) for v in slxs])}"
 
     salinity_txt = requests.get(f"{source}{varslices('salinity', [t, d, x, y])}")
     assert(salinity_txt.status_code == 200)
@@ -46,6 +46,7 @@ def fetch(south=-90, north=90, west=-180, east=180):
 
     return salinity, lat[y[0]:y[1]], lon[x[0]:x[1]]
 
+
 def fetch_grid():
     print("Fetching latitude and longitude grid from HYCOM...")
     url = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.ascii?lat%5B0:1:3250%5D,lon%5B0:1:4499%5D"
@@ -61,6 +62,7 @@ def fetch_grid():
     np.save(f"{stor_loc}hycom_lats.npy", lat, allow_pickle=False)
     np.save(f"{stor_loc}hycom_lons.npy", lon, allow_pickle=False)
 
+
 def load_grid():
     storage = fetch_util.instantiate_storage_config()
     def loadLatLon(storage): return np.load(f"{storage}hycom_lats.npy"), np.load(f"{storage}hycom_lons.npy")
@@ -70,8 +72,9 @@ def load_grid():
         fetch_grid()
         return loadLatLon(storage)
 
+
 def ll_2_xy(key, array): 
     """ converts lat/lon values to grid index """
     if key > array[-1]: return len(array) - 1
-    return np.nonzero(array >= key)[0][0]
+    return max(np.nonzero(array >= key)[0][0] - 1, 0)
 

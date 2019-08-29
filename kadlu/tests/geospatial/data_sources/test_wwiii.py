@@ -11,3 +11,7 @@ def test_plot_wwiii():
     filename = "multi_1.glo_30m.hs.201702.grb2"
     filepath = f"{storage_location}{filename}"
     data = wwiii.load(filepath=filepath, plot=True)
+
+def test_load_wwiii():
+    wave, lats, lons = wwiii.load(south=43, west=-60, north=44, east=-59)
+   

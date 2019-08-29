@@ -13,7 +13,7 @@
 import gsw
 import numpy as np
 from kadlu.utils import LatLon, DLDL_over_DXDY, interp_grid_1d, deg2rad
-from kadlu.geospatial.data_provider import DataProvider 
+from kadlu.geospatial.ocean import Ocean
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform3D, DepthInterpolator3D
 
 

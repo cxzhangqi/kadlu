@@ -30,14 +30,15 @@ import pytest
 import os
 import numpy as np
 from kadlu.transmission_loss.sound_speed import SoundSpeed
-from kadlu.geospatial.data_provider import DataProvider
+from kadlu.geospatial.ocean import Ocean
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
 
 
 def test_sound_speed_from_uniform_data():
     # environment data provider
-    env = DataProvider(bathy=-1000, temp=4, salinity=35, south=44, north=45, west=60, east=61)
+    env = Ocean(bathy=-1000, temp=4, salinity=3)
+    env.load(south=44, north=45, west=60, east=61)
     # instance of sound speed class 
     _ = SoundSpeed(env, num_depths=50, rel_err=None)
 

@@ -39,7 +39,6 @@ class Ocean():
 
         self.data_source = {'bathy': bathy, 'temp': temp, 'salinity': salinity, 'wave': wave}
 
-        self.origin = None
         self.bathy_data = None
         self.bathy_interp = None
         self.temp_data = None
@@ -48,6 +47,11 @@ class Ocean():
         self.salinity_interp = None
         self.wave_data = None
         self.wave_interp = None
+
+        self.set_origin(0,0)
+        
+        self.SW = LatLon(-90, -180)
+        self.NE = LatLon(90, 180)
 
         if not isinstance(bathy, str):
             self._load_bathy(bathy)
@@ -64,6 +68,10 @@ class Ocean():
 
     def load(self, south=-90, north=90, west=-180, east=180, time=None):
 
+        # save south-west and north-east corners as class attributes
+        self.SW = LatLon(south, west)
+        self.NE = LatLon(north, east)
+
         # origo of x-y coordinate system
         lat_ref = 0.5 * (south + north)
         lon_ref = 0.5 * (west + east)
@@ -73,7 +81,7 @@ class Ocean():
         self._load_bathy(self.data_source['bathy'], south, north, west, east)
         self._load_temp(self.data_source['temp'], south, north, west, east, time)
         self._load_salinity(self.data_source['salinity'], south, north, west, east, time)
-        self._load_wave(self.data_source['wave'], wave, south, north, west, east, time)
+        self._load_wave(self.data_source['wave'], south, north, west, east, time)
 
 
     def set_origin(self, lat_ref, lon_ref):

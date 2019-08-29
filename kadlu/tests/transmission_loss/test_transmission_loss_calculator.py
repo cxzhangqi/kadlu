@@ -30,7 +30,7 @@ import pytest
 import os
 import numpy as np
 from kadlu.transmission_loss.transmission_loss_calculator import TransmissionLossCalculator
-from kadlu.geospatial.data_provider import DataProvider
+from kadlu.geospatial.ocean import Ocean
 from kadlu.transmission_loss.sound_speed import SoundSpeed
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
@@ -57,7 +57,8 @@ def test_run_TL_calculator_with_flat_seafloor():
 
 def test_run_TL_calculator_with_realistic_bathymetry():
     # load bathymetric data
-    provider = DataProvider(bathy="CHS", south=43, west=-60, north=44, east=-59)
+    provider = Ocean(bathy="CHS")
+    provider.load(south=43, west=-60, north=44, east=-59)
     # depth at center
     seafloor_depth = -provider.bathy(x=0, y=0)
     max_depth = -np.min(provider.bathy_data[0]) 
@@ -71,7 +72,8 @@ def test_run_TL_calculator_with_realistic_bathymetry():
 
 def test_run_TL_calculator_with_uniform_temp_and_salinity():
     # load bathymetric data
-    provider = DataProvider(bathy="CHS", temp=4, salinity=35, south=43, west=-60, north=44, east=-59)
+    provider = Ocean(bathy="CHS", temp=4, salinity=35)
+    provider.load(south=43, west=-60, north=44, east=-59)
     # initialize sound speed module
     ss = SoundSpeed(env_data=provider)
     # depth at center

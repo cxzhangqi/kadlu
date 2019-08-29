@@ -39,7 +39,7 @@ from kadlu.sound.sound_speed import SoundSpeed
 from kadlu.sound.pe.grid import Grid
 from kadlu.sound.pe.starter import Starter
 from kadlu.sound.pe.propagator import Propagator
-from kadlu.utils import 
+from kadlu.utils import XYtoLL
 
 from sys import platform as sys_pf
 if sys_pf == 'darwin':

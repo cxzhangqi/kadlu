@@ -360,7 +360,7 @@ class TLCalculator():
         propagator = Propagator(ocean=self.ocean, seafloor=self.seafloor,\
             c=self.c, k0=k0, grid=grid,\
             smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
-            absorption_layer=self.absorption_layer,\    
+            absorption_layer=self.absorption_layer,\
             bathy_step=self.steps_btw_bathy_updates,\
             c_step=self.steps_btw_c_updates,\
             verbose=self.verbose, progress_bar=self.progress_bar)

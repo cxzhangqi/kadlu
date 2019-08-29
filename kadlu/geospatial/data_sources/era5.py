@@ -13,7 +13,7 @@ waveSources = {
 }
 
 
-def fetch(wavevar=waveSources['swh'], time=datetime.now()):
+def fetch_era5(wavevar, time):
     storage_location = fetch_util.instantiate_storage_config() 
     fetchfile = f"{storage_location}ERA5_reanalysis_{wavevar}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
 
@@ -22,7 +22,7 @@ def fetch(wavevar=waveSources['swh'], time=datetime.now()):
         # obsolete ???
         #validate_wavesource(fetchfile, waveSources)
     else:
-        print("Downloading file from Copernicus Climate Data Store...")
+        print(f"Downloading {wavevar} from Copernicus Climate Data Store...")
         c = cdsapi.Client()
         c.retrieve('reanalysis-era5-single-levels', {
             'product_type'  : 'reanalysis',
@@ -33,6 +33,12 @@ def fetch(wavevar=waveSources['swh'], time=datetime.now()):
             'day'           : time.strftime("%d"),
             'time'          : time.strftime("%H:%M")
         }, fetchfile)
+
+    return fetchfile
+
+def fetch_waveheight(time=datetime.now()):      return fetch_era5(waveSources['swh'], time)
+def fetch_wavedirection(time=datetime.now()):   return fetch_era5(waveSources['mwd'], time)
+def fetch_waveperiod(time=datetime.now()):      return fetch_era5(waveSources['mwp'], time)
 
 
 def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)

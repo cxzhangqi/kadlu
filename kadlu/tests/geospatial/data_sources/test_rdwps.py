@@ -3,20 +3,22 @@ from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import rdwps
 from kadlu.geospatial.data_sources import fetch_util
 
-def test_fetch_rdwps():
-    rdwps.fetch(wavevar=rdwps.waveSources['swh'], time=datetime.now()-timedelta(hours=3), region=rdwps.regions[0])
+def test_fetch_rdwps_waveswellheight():
+    rdwps.fetch_waveswellheight(south=-90, north=90, west=180, east=-180, time=datetime.now()-timedelta(hours=3))
 
 def test_plot_rdwps():
     storage_location = fetch_util.instantiate_storage_config()
 
-    # build the filename dynamically for today's data
+    # filename for today's wave height data in the gulf of st lawrence
     time=datetime.now()-timedelta(hours=3)
     region = 'gulf-st-lawrence'
     wavevar = 'HTSGW'
-    level_ref = 'SFC_0'
-    hour = f"{((time.hour % 24) // 6 * 6):02d}"
-    predictionhour = '000'
-    filename = f"CMC_rdwps_{region}_{wavevar}_{level_ref}_latlon0.05x0.05_{time.strftime('%Y%m%d')}{hour}_P{predictionhour}.grib2"
-    filepath = f"{storage_location}{filename}"
+    fname = rdwps.fetchname(wavevar, time, region)
+    filepath = f"{storage_location}{fname}"
 
     data = rdwps.load(filepath=filepath, plot=True)
+
+def test_fetch_rdwps_fetchall():
+    for output in rdwps.fetch:
+        datafiles = output(south=-90, north=90, west=180, east=-180, time=datetime.now()-timedelta(hours=3))
+

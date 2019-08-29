@@ -1,47 +1,69 @@
+"""
+https://weather.gc.ca/grib/grib2_RDWPS_e.html
+"""
+
 import numpy as np
 from datetime import datetime, timedelta
 import os
 import urllib.request
 import pygrib
-
 from kadlu.geospatial.data_sources import fetch_util
+from collections import defaultdict
 
-waveSources = {
-    'swh' : 'HTSGW',
-    'mwd' : 'WVDIR',
-    'mwp' : 'PKPER'
-}
-
-regions = [
-    # matt_s 2019-08
-    # this will probably change in the future to something other than a list...
-    'gulf-st-lawrence',
-    'superior',
-    'huron-michigan',
-    'erie',
-    'ontario'
-]
+# dictionary to obtain reference level as per RDWPS nomenclature
+# for more info see the following: https://weather.gc.ca/grib/grib2_RDWPS_e.html
+regions = ['gulf-st-lawrence', 'superior', 'huron-michigan', 'erie', 'ontario']
+default = defaultdict(lambda : 'SFC_0', key='default')
+level_ref = {key : default for key in regions}
+for reg in regions: 
+    level_ref[reg]['UGRD'] = 'TGL_10'
+    level_ref[reg]['VGRD'] = 'TGL_10'
+level_ref['gulf-st-lawrence']['PKPER'] = 'TGL_0'
+level_ref['gulf-st-lawrence']['PRMSL'] = 'MSL_0'
 
 
-def fetch(wavevar=waveSources['swh'], time=datetime.now(), region=regions[0]):
+def fetch_rdwps(wavevar, time, region, level_ref=level_ref):
     storage_location = fetch_util.instantiate_storage_config() 
-
-    level_ref = 'SFC_0'
-    if wavevar is 'WVDIR': level_ref = 'TGL_0'
-    hour = f"{((time.hour % 24) // 6 * 6):02d}"  # better option?
-    predictionhour = '000'  # any better than 0-hour?
-    fetchname = f"CMC_rdwps_{region}_{wavevar}_{level_ref}_latlon0.05x0.05_{time.strftime('%Y%m%d')}{hour}_P{predictionhour}.grib2"
-    fetchfile= f"{storage_location}{fetchname}"
+    fname = fetchname(wavevar, time, region, level_ref)
+    fetchfile= f"{storage_location}{fname}"
 
     if os.path.isfile(fetchfile):
-        print("File exists, skipping retrieval...")
-        # obsolete ???
-        #validate_wavesource(fetchfile, waveSources)
+        print(f"File {fname} exists, skipping retrieval...")
     else:
         print("Downloading file from the Regional Deterministic Wave Prediction System...")
-        fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/{hour}/{fetchname}"
+        fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/{((time.hour % 24) // 6 * 6):02d}/{fname}"
         urllib.request.urlretrieve(fetchurl, fetchfile)
+    return fetchfile
 
+
+def fetchname(wavevar, time, region, level_ref=level_ref):
+    hour = f"{((time.hour % 24) // 6 * 6):02d}"  # better option?
+    predictionhour = '000'  # any better than 0-hour?
+    return f"CMC_rdwps_{region}_{wavevar}_{level_ref[region][wavevar]}_latlon0.05x0.05_{time.strftime('%Y%m%d')}{hour}_P{predictionhour}.grib2"
+
+
+def region(south, north, east, west):
+    regions = [
+        # matt_s 2019-08
+        # this will probably change in the future to something other than a list...
+        'gulf-st-lawrence',
+        'superior',
+        'huron-michigan',
+        'erie',
+        'ontario'
+    ]
+    return 'gulf-st-lawrence'
+
+
+def fetch_waveswellheight   (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('HTSGW', time, region(south, north, east, west))
+def fetch_waveheight        (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVHGT', time, region(south, north, east, west))
+def fetch_wavedirection     (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVDIR', time, region(south, north, east, west))
+def fetch_waveperiod        (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVPER', time, region(south, north, east, west))
+def fetch_wind_u            (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('UGRD', time, region(south, north, east, west))
+def fetch_wind_v            (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('VGRD', time, region(south, north, east, west))
+def fetch_icecover          (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('ICEC', time, region(south, north, east, west))
+
+fetch = [fetch_waveheight, fetch_waveswellheight, fetch_wavedirection, fetch_waveperiod, fetch_wind_u, fetch_wind_v, fetch_icecover]
 
 def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)
 

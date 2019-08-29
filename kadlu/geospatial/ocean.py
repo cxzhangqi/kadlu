@@ -1,4 +1,4 @@
-""" Geospatial data provider module within the kadlu package
+""" Ocean module within the kadlu package
 
     Authors: Oliver Kirsebom
     contact: oliver.kirsebom@dal.ca
@@ -17,8 +17,8 @@ import kadlu.geospatial.data_sources.gebco as gebco
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D
 
 
-class DataProvider():
-    """ Class for handling geospatial data requests. 
+class Ocean():
+    """ Class for handling ocean data requests.
 
         TODO: Implement loading of temp, salinity and wave data.
 
@@ -35,7 +35,9 @@ class DataProvider():
     """
     def __init__(self, bathy=None, temp=None, salinity=None, wave=None, wave_var=None,\
                 south=-90, north=90, west=-180, east=180, time=None,\
-                lat_ref=None, lon_ref=None):
+                lat_ref=None, lon_ref=None, water_density=1.0):
+
+        self.water_density = water_density
 
         # origo of x-y coordinate system
         if lat_ref is None: lat_ref = 0.5 * (south + north)

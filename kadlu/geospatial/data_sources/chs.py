@@ -20,7 +20,8 @@ import requests
 from kadlu.geospatial.data_sources import fetch_util 
 
 
-def fetch(south=-90, north=90, west=-180, east=180):
+
+def fetch_bathymetry(south=-90, north=90, west=-180, east=180):
     """ Returns a list of filepaths for downloaded content """
 
     localfiles = verify_local_files(south, north, west, east) 
@@ -82,7 +83,7 @@ def load(south=-90, north=90, west=-180, east=180):
             lats
             lons
     """
-    files = fetch(south, north, west, east)
+    files = fetch_bathymetry(south, north, west, east)
     bathy, lats, lons = list(), list(), list()        
 
     for f in files:
@@ -265,3 +266,4 @@ def verify_local_files(south, north, west, east):
     print("Files exist, skipping retrieval...")
     return fnames 
 
+fetch = [fetch_bathymetry]

@@ -14,12 +14,14 @@ import pytest
 import numpy as np
 import os
 import kadlu.geospatial.data_sources.chs as chs
-from kadlu.utils import LatLon
+#from kadlu.utils import LatLon
+from datetime import datetime, timedelta
 
+# TODO: update the tests oliver wrote for the new fetch interface
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
 
 def test_fetch_returns_two_files():
-    paths = chs.fetch(south=42.1, north=44.6, west=-60.9, east=-59.1)
+    paths = chs.fetch_bathymetry(south=42.1, north=44.6, west=-60.9, east=-59.1)
     assert len(paths) == 6
     assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
 
@@ -68,3 +70,8 @@ def test_load_partial_chs_file():
     assert np.ma.max(bathy) == pytest.approx(-493.8, abs=0.1)
     assert bathy.shape[0] == lats.shape[0]
     assert bathy.shape[0] == lons.shape[0]
+
+def test_fetch_chs_fetchall():
+    for output in chs.fetch:
+        datafiles = output(south=43, north=44, west=-60, east=-59)
+

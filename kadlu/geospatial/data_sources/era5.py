@@ -6,21 +6,13 @@ import pygrib
 
 from kadlu.geospatial.data_sources import fetch_util
 
-waveSources = {
-    'swh' : 'significant_height_of_combined_wind_waves_and_swell',
-    'mwd' : 'mean_wave_direction',
-    'mwp' : 'mean_wave_period'
-}
-
-
 def fetch_era5(wavevar, time):
     storage_location = fetch_util.instantiate_storage_config() 
-    fetchfile = f"{storage_location}ERA5_reanalysis_{wavevar}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
+    fname = f"ERA5_reanalysis_{wavevar}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
+    fetchfile = f"{storage_location}{fname}"
 
     if os.path.isfile(fetchfile):
-        print("File exists, skipping retrieval...")
-        # obsolete ???
-        #validate_wavesource(fetchfile, waveSources)
+        print(f"File {fname} exists, skipping retrieval...")
     else:
         print(f"Downloading {wavevar} from Copernicus Climate Data Store...")
         c = cdsapi.Client()
@@ -36,9 +28,11 @@ def fetch_era5(wavevar, time):
 
     return fetchfile
 
-def fetch_waveheight(time=datetime.now()):      return fetch_era5(waveSources['swh'], time)
-def fetch_wavedirection(time=datetime.now()):   return fetch_era5(waveSources['mwd'], time)
-def fetch_waveperiod(time=datetime.now()):      return fetch_era5(waveSources['mwp'], time)
+def fetch_waveheight(time=datetime.now()):      return fetch_era5('significant_height_of_combined_wind_waves_and_swell', time)
+def fetch_wavedirection(time=datetime.now()):   return fetch_era5('mean_wave_direction', time)
+def fetch_waveperiod(time=datetime.now()):      return fetch_era5('mean_wave_period', time)
+
+fetch = [fetch_waveheight, fetch_wavedirection, fetch_waveperiod]
 
 
 def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)

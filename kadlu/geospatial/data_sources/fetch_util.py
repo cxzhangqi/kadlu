@@ -32,7 +32,7 @@ def instantiate_storage_config():
 
     return storage_location
 
-
+"""
 def validate_wavesource(filepath, sourceDict):
     # this may become obsolete...
     # seems kind of redundant
@@ -43,7 +43,7 @@ def validate_wavesource(filepath, sourceDict):
     except AssertionError as err:
         print("Specified source file is not a wave source")
         raise
-
+"""
 
 def loadgrib(filepath, plot=False):
     """

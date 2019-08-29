@@ -75,7 +75,7 @@ class Starter():
             >>>
             >>> # Create a regular azimuthal grid with depth and range of 1 km
             >>> # and grid spacing of 100 meters and 10 degrees
-            >>> grid = Grid(100., 1000., 10.*np.pi/180., 2.*np.pi, 100., 1000.)
+            >>> grid = Grid(100., 1000., 10.*np.pi/180., 2.*np.pi, 100., 500.)
             >>>
             >>> # Initialize a Thomson PE starter with an aperture of 86 degrees
             >>> starter = Starter(k0=0.04, grid=grid, aperture=86)

@@ -112,7 +112,7 @@ class Grid():
         N = int(round(rmax / dr))
         r = np.arange(N+1, dtype=float)
         r *= dr
-        return r, dr, N
+        return r, dr, len(r)
 
     def _azimuthal_coordinates(self, dq, qmax):
         N = int(np.ceil(qmax / dq))

@@ -156,7 +156,7 @@ class Propagator():
         dist = 0
         Nr = self.grid.Nr
         dr = self.grid.dr
-        for i in tqdm(range(0, Nr), disable = not self.progress_bar):
+        for i in tqdm(range(0, Nr-1), disable = not self.progress_bar):
 
             # (1) r --> r + dr/2 free propagation
             psi = U_fr * psi
@@ -391,12 +391,12 @@ class OutputCollector():
         self.counter = 0
 
         # vertical slices
-        self.field_vert = np.empty(shape=(int(Nz/2), Nr+1, Nq), dtype=complex)
+        self.field_vert = np.empty(shape=(int(Nz/2), Nr, Nq), dtype=complex)
 
         # horizontal slices
         self.depths = np.array(depths)
         self.depths = self.depths[:, np.newaxis]
-        self.field_horiz = np.empty(shape=(Nd, Nq, Nr+1), dtype=complex)  # sound intensity values
+        self.field_horiz = np.empty(shape=(Nd, Nq, Nr), dtype=complex)  # sound intensity values
 
         # ifft kernel
         kz = self.grid.kz

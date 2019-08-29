@@ -19,7 +19,7 @@ from kadlu.utils import LatLon
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
 
 def test_fetch_returns_two_files():
-    paths = chs.fetch(south=42.1, west=-60.9, north=44.6, east=-59.1)
+    paths = chs.fetch(south=42.1, north=44.6, west=-60.9, east=-59.1)
     assert len(paths) == 6
     assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
 

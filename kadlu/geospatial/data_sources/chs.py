@@ -23,6 +23,9 @@ from kadlu.geospatial.data_sources import fetch_util
 def fetch(south=-90, north=90, west=-180, east=180):
     """ Returns a list of filepaths for downloaded content """
 
+    proceed = verify_local_files(south, north, west, east) 
+    if proceed is not False: return proceed 
+
     # api call: get raster IDs within bounding box
     source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
     spatialRel = "esriSpatialRelIntersects"
@@ -245,4 +248,17 @@ def filename(south, west):
     """
     fname = "CA2_{0:04d}N{1:05d}W.tif".format(int(south * 100), -int(west * 100))
     return fname
+
+def verify_local_files(south, north, west, east):
+    # checks to see if local files exist before querying
+    storage = fetch_util.instantiate_storage_config()
+    fnames = []
+    for x in range(int(west), int(east) + 1):
+        for y in range(int(south), int(north) + 1):
+            #print(filename(y, x))
+            f = f"{storage}{filename(y, x)}"
+            fnames.append(f)
+            if not os.path.isfile(f): return False
+    print("Files exist, skipping retrieval...")
+    return fnames 
 

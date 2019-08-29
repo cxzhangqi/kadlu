@@ -33,29 +33,67 @@ class Ocean():
         Attributes: 
 
     """
-    def __init__(self, bathy=None, temp=None, salinity=None, wave=None, wave_var=None,\
-                south=-90, north=90, west=-180, east=180, time=None,\
-                lat_ref=None, lon_ref=None, water_density=1.0):
+    def __init__(self, bathy=None, temp=None, salinity=None, wave=None, wave_var=None, water_density=1.0):
 
         self.water_density = water_density
 
-        # origo of x-y coordinate system
-        if lat_ref is None: lat_ref = 0.5 * (south + north)
-        if lon_ref is None: lon_ref = 0.5 * (west + east)
-        self.origin = LatLon(lat_ref, lon_ref)
+        self.data_source = {'bathy': bathy, 'temp': temp, 'salinity': salinity, 'wave': wave}
 
-        # save south-west and north-east corners as class attributes
-        self.SW = LatLon(south, west)
-        self.NE = LatLon(north, east)
+        self.origin = None
+        self.bathy_data = None
+        self.bathy_interp = None
+        self.temp_data = None
+        self.temp_interp = None
+        self.salinity_data = None
+        self.salinity_interp = None
+        self.wave_data = None
+        self.wave_interp = None
+
+        if not isinstance(bathy, str):
+            self._load_bathy(bathy)
+
+        if not isinstance(temp, str):
+            self._load_temp(temp)
+
+        if not isinstance(salinity, str):
+            self._load_salinity(salinity)
+
+        if not isinstance(wave, str):
+            self._load_wave(wave)
+
+
+    def load(self, south=-90, north=90, west=-180, east=180, time=None):
+
+        # origo of x-y coordinate system
+        lat_ref = 0.5 * (south + north)
+        lon_ref = 0.5 * (west + east)
+        self.set_origin(lat_ref, lon_ref)
 
         # load data and initialize interpolation tables
-        self._init_bathy(bathy, south, north, west, east)
-        self._init_temp(temp, south, north, west, east, time)
-        self._init_salinity(salinity, south, north, west, east, time)
-        self._init_wave(wave, south, north, west, east, time)
+        self._load_bathy(self.data_source['bathy'], south, north, west, east)
+        self._load_temp(self.data_source['temp'], south, north, west, east, time)
+        self._load_salinity(self.data_source['salinity'], south, north, west, east, time)
+        self._load_wave(self.data_source['wave'], wave, south, north, west, east, time)
 
 
-    def _init_bathy(self, bathy, south, north, west, east):
+    def set_origin(self, lat_ref, lon_ref):
+
+        self.origin = LatLon(lat_ref, lon_ref)
+
+        if self.bathy_interp is not None:
+            self.bathy_interp.origin = self.origin
+
+        if self.temp_interp is not None:
+            self.temp_interp.origin = self.origin
+
+        if self.salinity_interp is not None:
+            self.salinity_interp.origin = self.origin
+
+        if self.wave_interp is not None:
+            self.wave_interp.origin = self.origin
+
+
+    def _load_bathy(self, bathy, south=None, north=None, west=None, east=None):
 
         if bathy is None:
             self.bathy_data = None
@@ -104,7 +142,7 @@ class Ocean():
             self.bathy_interp = Uniform2D(bathy)
 
 
-    def _init_temp(self, temp, south, north, west, east, time):
+    def _load_temp(self, temp, south=None, north=None, west=None, east=None, time=None):
 
         if temp is None:
             self.temp_data = None
@@ -130,7 +168,7 @@ class Ocean():
             self.temp_interp = Uniform3D(temp)
 
 
-    def _init_salinity(self, salinity, south, north, west, east, time):
+    def _load_salinity(self, salinity, south=None, north=None, west=None, east=None, time=None):
 
         if salinity is None:
             self.salinity_data = None
@@ -156,7 +194,7 @@ class Ocean():
             self.salinity_interp = Uniform3D(salinity)
 
 
-    def _init_wave(self, wave, south, north, west, east, time):
+    def _load_wave(self, wave, south=None, north=None, west=None, east=None, time=None):
 
         if wave is None:
             self.wave_data = None
@@ -222,6 +260,8 @@ class Ocean():
             Returns:
                 z: Interpolated bathymetry values
         """
+        assert self.bathy_data is not None, "Bathymetric data have not been loaded" 
+
         if x is None and y is None:
             z = self.bathy_data
         
@@ -266,6 +306,8 @@ class Ocean():
             Returns:
                 grad: Interpolated bathymetry gradient values
         """
+        assert self.bathy_data is not None, "Bathymetric data have not been loaded" 
+
         deriv_order = [(axis=='x'), (axis!='x')]
 
         if geometry == 'planar':                
@@ -313,6 +355,8 @@ class Ocean():
             Returns:
                 t: Interpolated temperature values
         """
+        assert self.temp_data is not None, "Temperature data have not been loaded" 
+
         if x is None and y is None and z is None:
             t = self.temp_data
 
@@ -362,6 +406,8 @@ class Ocean():
             Returns:
                 s: Interpolated salinity values
         """
+        assert self.salinity_data is not None, "Salinity data have not been loaded" 
+
         if x is None and y is None and z is None:
             s = self.salinity_data
 
@@ -409,6 +455,8 @@ class Ocean():
             Returns:
                 w: Interpolated wave data
         """
+        assert self.wave_data is not None, "Wave data have not been loaded" 
+
         if x is None and y is None:
             w = self.wave_data
 

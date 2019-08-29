@@ -215,8 +215,8 @@ class TLCalculator():
             self.c = SoundSpeed(sound_speed)
             self.steps_btw_c_updates = math.inf
 
-        self.bin_size = ['r':radial_bin, 'q':angular_bin, 'z':vertical_bin]
-        self.range = ['r':radial_range, 'q':angular_range, 'z':vertical_range]
+        self.bin_size = {'r':radial_bin, 'q':angular_bin, 'z':vertical_bin}
+        self.range = {'r':radial_range, 'q':angular_range, 'z':vertical_range}
 
         self.absorption_layer = absorption_layer
 

@@ -52,7 +52,7 @@ def region(south, north, east, west):
         'erie',
         'ontario'
     ]
-    return 'gulf-st-lawrence'
+    return
 
 
 def fetch_waveswellheight   (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('HTSGW', time, region(south, north, east, west))

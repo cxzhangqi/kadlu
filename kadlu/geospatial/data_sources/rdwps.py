@@ -22,18 +22,22 @@ level_ref['gulf-st-lawrence']['PKPER'] = 'TGL_0'
 level_ref['gulf-st-lawrence']['PRMSL'] = 'MSL_0'
 
 
-def fetch_rdwps(wavevar, time, region, level_ref=level_ref):
+def fetch_rdwps(wavevar, time, regions, level_ref=level_ref):
     storage_location = fetch_util.instantiate_storage_config() 
-    fname = fetchname(wavevar, time, region, level_ref)
-    fetchfile= f"{storage_location}{fname}"
+    fetchfiles = []
 
-    if os.path.isfile(fetchfile):
-        print(f"File {fname} exists, skipping retrieval...")
-    else:
-        print("Downloading file from the Regional Deterministic Wave Prediction System...")
-        fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/{((time.hour % 24) // 6 * 6):02d}/{fname}"
-        urllib.request.urlretrieve(fetchurl, fetchfile)
-    return fetchfile
+    for region in regions:
+        fname = fetchname(wavevar, time, region, level_ref)
+        fetchfile= f"{storage_location}{fname}"
+        if os.path.isfile(fetchfile):
+            print(f"File {fname} exists, skipping retrieval...")
+        else:
+            print("Downloading from the Regional Deterministic Wave Prediction System...")
+            fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/{((time.hour % 24) // 6 * 6):02d}/{fname}"
+            urllib.request.urlretrieve(fetchurl, fetchfile)
+        fetchfiles.append(fetchfile)
+
+    return fetchfiles
 
 
 def fetchname(wavevar, time, region, level_ref=level_ref):
@@ -42,10 +46,9 @@ def fetchname(wavevar, time, region, level_ref=level_ref):
     return f"CMC_rdwps_{region}_{wavevar}_{level_ref[region][wavevar]}_latlon0.05x0.05_{time.strftime('%Y%m%d')}{hour}_P{predictionhour}.grib2"
 
 
-def region(south, north, east, west):
+def abstract_region(south, north, east, west):
+    # this function will eventually return a list of regions determined by the input boundaries
     regions = [
-        # matt_s 2019-08
-        # this will probably change in the future to something other than a list...
         'gulf-st-lawrence',
         'superior',
         'huron-michigan',
@@ -55,15 +58,15 @@ def region(south, north, east, west):
     return
 
 
-def fetch_waveswellheight   (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('HTSGW', time, region(south, north, east, west))
-def fetch_waveheight        (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVHGT', time, region(south, north, east, west))
-def fetch_wavedirection     (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVDIR', time, region(south, north, east, west))
-def fetch_waveperiod        (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVPER', time, region(south, north, east, west))
-def fetch_wind_u            (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('UGRD', time, region(south, north, east, west))
-def fetch_wind_v            (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('VGRD', time, region(south, north, east, west))
-def fetch_icecover          (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('ICEC', time, region(south, north, east, west))
+def fetch_windwaveswellheight(south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('HTSGW', time, abstract_region(south, north, east, west))
+def fetch_windwaveheight    (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVHGT', time, abstract_region(south, north, east, west))
+def fetch_wavedirection     (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVDIR', time, abstract_region(south, north, east, west))
+def fetch_waveperiod        (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('WVPER', time, abstract_region(south, north, east, west))
+def fetch_wind_u            (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('UGRD', time, abstract_region(south, north, east, west))
+def fetch_wind_v            (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('VGRD', time, abstract_region(south, north, east, west))
+def fetch_icecover          (south=-90, north=90, east=-180, west=180, time=datetime.now()): return fetch_rdwps('ICEC', time, abstract_region(south, north, east, west))
 
-fetch = [fetch_waveheight, fetch_waveswellheight, fetch_wavedirection, fetch_waveperiod, fetch_wind_u, fetch_wind_v, fetch_icecover]
+fetch = [fetch_windwaveheight, fetch_windwaveswellheight, fetch_wavedirection, fetch_waveperiod, fetch_wind_u, fetch_wind_v, fetch_icecover]
 
 def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)
 

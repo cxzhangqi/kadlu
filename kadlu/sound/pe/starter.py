@@ -70,15 +70,15 @@ class Starter():
                 Aperture in degrees
 
         Example:
-            >>> from kadlu.transmission_loss.transmission_loss_calculator import PEGrid
-            >>> from kadlu.transmission_loss.pe_starter import Starter
+            >>> from kadlu.sound.pe.grid import Grid
+            >>> from kadlu.sound.pe.starter import Starter
             >>>
             >>> # Create a regular azimuthal grid with depth and range of 1 km
             >>> # and grid spacing of 100 meters and 10 degrees
-            >>> grid = PEGrid(100., 1000., 10.*np.pi/180., 2.*np.pi, 100., 1000.)
+            >>> grid = Grid(100., 1000., 10.*np.pi/180., 2.*np.pi, 100., 1000.)
             >>>
             >>> # Initialize a Thomson PE starter with an aperture of 86 degrees
-            >>> starter = Starter(ref_wavenumber=0.04, grid=grid, aperture=86)
+            >>> starter = Starter(k0=0.04, grid=grid, aperture=86)
             >>>
             >>> # Compute the initial field for a source depth of 9 meters
             >>> psi = starter.eval(zs=9)

@@ -11,7 +11,7 @@
 
 """
 import pytest
-import os
+import math
 import numpy as np
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.geospatial.ocean import Ocean
@@ -49,6 +49,7 @@ def test_initialize_tlcalculator_with_default_args():
     o = Ocean()
     tl = TLCalculator(ocean=o, seafloor=s)
     assert tl._compute_sound_speed == True
+    assert tl.steps_btw_c_updates == 1
 
 def test_initialize_tlcalculator_with_uniform_sound_speed():
     s = Seafloor()
@@ -56,6 +57,7 @@ def test_initialize_tlcalculator_with_uniform_sound_speed():
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1488)
     assert tl._compute_sound_speed == False
     assert tl.c.data == 1488
+    assert tl.steps_btw_c_updates == math.inf
 
 def test_initialize_tlcalculator_with_ssp():
     s = Seafloor()
@@ -67,3 +69,4 @@ def test_initialize_tlcalculator_with_ssp():
     assert isinstance(tl.c.data, tuple)
     assert np.all(tl.c.data[0] == c)
     assert np.all(tl.c.data[1] == z)
+    assert tl.steps_btw_c_updates == math.inf

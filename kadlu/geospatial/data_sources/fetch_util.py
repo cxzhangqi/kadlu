@@ -32,7 +32,7 @@ def storage_cfg():
 
     return storage_location
 
-def loadgrib(filepath, plot=False):
+def loadgrib(filenames, plot=False):
     """
     This needs to be updated to return the entire list of grib
     messages. This is because WWIII data source returns data for
@@ -44,9 +44,10 @@ def loadgrib(filepath, plot=False):
 
     matt_s 2019-08
     """
-    grib = pygrib.open(filepath)
-
-    if plot is not False: plot_sample_grib(grib[1], plot)
+    for fname in filenames:
+        print(f"fname: {fname}")
+        grib = pygrib.open(fname)
+        if plot is not False: plot_sample_grib(grib[1], plot)
 
     #data = [None for msg in range(grib.messages)]
     #for x in range(0, grib.messages):

@@ -324,7 +324,7 @@ class Propagator():
 
         # mirror sound-speed profile above/below sea surface
         indices2 = np.arange(start=1, step=1, stop=Nz/2, dtype=int)
-        self.n2_w[np.ix_(indices2, :)] = self.n2_w[np.ix_(indices[1:], :)]
+        self.n2_w[indices2, :] = self.n2_w[indices[1:], :]
 
 
     def _nsq(self, dist, z):

@@ -1,9 +1,18 @@
+"""
+    Data source:
+        https://www.hycom.org/data/glbv0pt08
+    Web interface for hycom data retrieval:
+        https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
+    Example of GET query for salinity (and associated output by following the link):
+        https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.ascii?salinity[0:1:2][0:1:3][800:1:830][900:1:940]
+"""
+
 import numpy as np
 import requests
 from kadlu.geospatial.data_sources import fetch_util
 
 
-def fetch(south=-90, north=90, west=-180, east=180):
+def fetch_hycom(south=-90, north=90, west=-180, east=180, fetchvar):
     """
         Fetches salinity for the given area.
 
@@ -25,26 +34,31 @@ def fetch(south=-90, north=90, west=-180, east=180):
     slx         = lambda tup, step=1: f"[{tup[0]}:{step}:{tup[1]}]"
     varslices   = lambda var, slxs  : f"{var}{''.join([slx(v) for v in slxs])}"
 
-    salinity_txt = requests.get(f"{source}{varslices('salinity', [t, d, x, y])}")
-    assert(salinity_txt.status_code == 200)
+    payload_txt = requests.get(f"{source}{varslices(fetchvar, [t, d, x, y])}")
+    assert(payload_txt.status_code == 200)
 
-    meta, data = salinity_txt.text.split("---------------------------------------------\n")
+    meta, data = payload_txt.text.split("---------------------------------------------\n")
     arrs = data.split("\n\n")[:-1]
 
     shape_str, payload = arrs[0].split("\n", 1)
     shape = tuple([int(x) for x in shape_str.split("[", 1)[1][:-1].split("][")])
-    salinity = np.ndarray(shape, dtype=np.int)
+    output = np.ndarray(shape, dtype=np.int)
     for arr in payload.split("\n"):
         ix_str, row_csv = arr.split(", ", 1)
         a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
-        salinity[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
+        output[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
     # not sure if we need the other values also
     #for arr in arrs[1:]:
     #    header, vals = arr.split("\n")
     #    print(f"{header}:\t{vals}")
 
-    return salinity, lat[y[0]:y[1]], lon[x[0]:x[1]]
+    return output, lat[y[0]:y[1]], lon[x[0]:x[1]]
+
+
+class Hycom():
+    def fetch_salinity(self, south=-90, north=90, west=-180, east=180): 
+        return fetch_hycom(south, north, west, east, 'salinity')
 
 
 def fetch_grid():
@@ -65,12 +79,12 @@ def fetch_grid():
 
 def load_grid():
     storage = fetch_util.instantiate_storage_config()
-    def loadLatLon(storage): return np.load(f"{storage}hycom_lats.npy"), np.load(f"{storage}hycom_lons.npy")
+    def _load_grid(storage): return np.load(f"{storage}hycom_lats.npy"), np.load(f"{storage}hycom_lons.npy")
     try:
-        return loadLatLon(storage)
+        return _load_grid(storage)
     except FileNotFoundError:
         fetch_grid()
-        return loadLatLon(storage)
+        return _load_grid(storage)
 
 
 def ll_2_xy(key, array): 

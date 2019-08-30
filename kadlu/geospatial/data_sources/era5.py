@@ -4,12 +4,13 @@ import os
 import cdsapi
 import pygrib
 
-from kadlu.geospatial.data_sources import fetch_util
+from kadlu.geospatial.data_sources.fetch_util import storage_cfg 
+
+def fetchname(wavevar, time)
+    return f"ERA5_reanalysis_{wavevar}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
 
 def fetch_era5(wavevar, time):
-    storage_location = fetch_util.instantiate_storage_config() 
-    fname = f"ERA5_reanalysis_{wavevar}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
-    fetchfile = f"{storage_location}{fname}"
+    fetchfile = f"{storage_cfg()}{fetchname(wavevar, time)}"
 
     if os.path.isfile(fetchfile):
         print(f"File {fname} exists, skipping retrieval...")

@@ -20,11 +20,14 @@ def test_plot_era5_waveheight():
 
 """
 mahone bay test area:
-Lat: north: 44.7; south: 44.4
-Long: west: -64.4; east: -63.8
+north =  44.7
+south =  44.4
+west  = -64.4
+east  = -63.8
 """
 
 def test_fetch_era5_fetchall():
-    for output in era5.fetch:
-        datafiles = output(time=datetime(2018, 1, 1, 0, 0, 0, 0))
+    # for fcn in era5.fetch:
+    #     datafiles = fcn(time=datetime(2018, 1, 1, 0, 0, 0, 0))
+    datafiles = map(lambda fcn : fcn(time=datetime(2018, 1, 1, 0, 0, 0, 0)), era5.fetch)
 

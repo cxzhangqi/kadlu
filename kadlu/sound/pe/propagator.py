@@ -34,6 +34,7 @@
         OutputCollector class
 """
 import numpy as np
+import math
 from tqdm import tqdm
 from numpy.lib import scimath
 from kadlu.transmission_loss.model_output import OutputCollector
@@ -70,7 +71,7 @@ class Propagator():
     """
     def __init__(self, ocean, seafloor, c, grid, k0,\
                 smooth_len_den, smooth_len_c,\
-                absorption_layer,\
+                absorption_layer, ignore_bathy_gradient,\
                 steps_btw_bathy_updates, steps_btw_c_updates,\
                 verbose=False, progress_bar=True):
 
@@ -89,6 +90,8 @@ class Propagator():
         self.smooth_len_den = smooth_len_den
         self.smooth_len_c = smooth_len_c
 
+        self.ignore_bathy_gradient = ignore_bathy_gradient
+
         self.update_bathy = self._create_boolean_array(self.grid.Nr, steps_btw_bathy_updates)
         self.update_c = self._create_boolean_array(self.grid.Nr, steps_btw_c_updates)
 
@@ -96,7 +99,7 @@ class Propagator():
         self.costheta = np.cos(grid.q)
         self.sintheta = np.sin(grid.q)
 
-        # refractive index squared
+        # refractive index squared of seafloor
         self.n2_b = seafloor.nsq() 
 
         # attenuation at lower and upper surface of computational domain
@@ -106,7 +109,7 @@ class Propagator():
         self.attenuation = 1j * absorp_coeff * np.exp(-(np.abs(grid.Z) - np.max(np.abs(grid.z)))**2 / D**2)
 
 
-    def _create_boolean_array(n, step=1):
+    def _create_boolean_array(self, n, step=1):
         arr = np.zeros(n, dtype=bool)
         if step == math.inf:
             arr[0] = True
@@ -264,6 +267,8 @@ class Propagator():
         if self.verbose:
             print('Updating bathymetry at {0:.2f} m'.format(dist))
 
+        Nz = self.grid.Nz
+
         x = self.costheta * dist
         y = self.sintheta * dist
 
@@ -271,7 +276,7 @@ class Propagator():
         depth *= (-1.)
 
         if self.ignore_bathy_gradient:
-            gradient = np.zeros(n)
+            gradient = np.zeros(x.shape)
 
         else:
             dfdx = self.ocean.bathy_gradient(x=x, y=y, axis='x')
@@ -303,31 +308,57 @@ class Propagator():
         if self.verbose:
             print('Updating sound speed at {0:.2f} m'.format(dist))
 
-        self.n2w_new = np.copy(self.n2w)
-
         # z-q grid points with negative z (i.e. below sea surface)
         below_sea_surf = np.nonzero(self.Z <= 0)
 
         # load refractive index squared
-        self.n2w_new[below_sea_surf] = self.__refractive_index__(dist, self.grid.z[self.grid.z <= 0])
+        self.n2_w[below_sea_surf] = self._nsq(dist, self.grid.z[self.grid.z <= 0])
 
         # number of vertical bins
         Nz = self.grid.Nz
 
-        # z indeces below sea surface
+        # z indices below sea surface
         one = np.array([0], dtype=int)
-        indeces = np.arange(start=Nz-1, step=-1, stop=Nz/2, dtype=int)
-        indeces = np.concatenate([one, indeces])
-
-        # which z-q grid points have changed refractive index?
-        new = np.any(self.n2w[indeces,:] - self.n2w_new[indeces,:] != 0, axis=0)
+        indices = np.arange(start=Nz-1, step=-1, stop=Nz/2, dtype=int)
+        indices = np.concatenate([one, indices])
 
         # mirror sound-speed profile above/below sea surface
-        indeces2 = np.arange(start=1, step=1, stop=Nz/2, dtype=int)
-        self.n2w_new[np.ix_(indeces2, new)] = self.n2w_new[np.ix_(indeces[1:], new)]
+        indices2 = np.arange(start=1, step=1, stop=Nz/2, dtype=int)
+        self.n2_w[np.ix_(indices2, :)] = self.n2_w[np.ix_(indices[1:], :)]
 
-        # update 'current' attribute
-        self.n2w[:,new] = self.n2w_new[:,new]       
+
+    def _nsq(self, dist, z):
+        """ Compute refractive index squared. 
+
+            The computation is performed at equally spaced points on a circle, 
+            at the specified distance from the source.
+
+            Args:
+                dist: float
+                    Distance from source in meters
+                z: numpy array
+                    Depths
+
+            Returns:
+                nsq: 2d numpy array
+                    Refractive index squared. Has shape (Nz,Nq) where Nz and Nq 
+                    are the number of vertical and angular bins, respectively.
+        """
+        x = self.costheta * dist
+        y = self.sintheta * dist
+
+        x, _ = np.meshgrid(x,z)
+        y, z = np.meshgrid(y,z) 
+
+        x = x.flatten()
+        y = y.flatten()
+        z = z.flatten()
+
+        c = self.eval(x=x, y=y, z=-z)        
+
+        nsq = (self.c0 / c)**2
+
+        return nsq
 
 
 class OutputCollector():

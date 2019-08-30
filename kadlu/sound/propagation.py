@@ -92,7 +92,7 @@ class Seafloor():
         ci = ci[np.imag(ci) == 0] 
         ci = ci[np.logical_and(ci >= 0, ci < self.c)]
         c = self.c - 1j * ci
-        n2 = (c0 / c)**2
+        n2 = (self.c0 / c)**2
         return n2
 
 class TLCalculator():
@@ -229,10 +229,10 @@ class TLCalculator():
         if self.verbose:
             print('\nTransmission loss calculator successfully initialized')
             print('Bathymetry will be updated every {0} steps'.format(self.steps_btw_bathy_updates))
-            if self.steps_btw_sound_speed_updates is math.inf:
+            if self.steps_btw_c_updates is math.inf:
                 print('Adopting range-independent sound-speed profile')
             else:
-                print('Sound speed will be updated every {0} steps'.format(self.steps_btw_sound_speed_updates))
+                print('Sound speed will be updated every {0} steps'.format(self.steps_btw_c_updates))
 
 
     def _update_source_location(self, lat, lon):
@@ -279,8 +279,8 @@ class TLCalculator():
         dq = self.bin_size['q'] / 180 * np.pi
 
         # automatic determination of vertical range
-        max_depth = -np.min(ocean.bathy())
-        zmax = (max_depth + seafloor_thick) * (1. + self.absorption_layer)
+        max_depth = -np.min(self.ocean.bathy())
+        zmax = (max_depth + self.seafloor.thickness) * (1. + self.absorption_layer)
 
         # create grid
         grid = Grid(dr=dr, rmax=rmax, dq=dq, qmax=qmax, dz=dz, zmax=zmax)
@@ -361,6 +361,7 @@ class TLCalculator():
             c=self.c, k0=k0, grid=grid,\
             smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
             absorption_layer=self.absorption_layer,\
+            ignore_bathy_gradient=ignore_bathy_gradient,\
             bathy_step=self.steps_btw_bathy_updates,\
             c_step=self.steps_btw_c_updates,\
             verbose=self.verbose, progress_bar=self.progress_bar)
@@ -389,7 +390,6 @@ class TLCalculator():
         self.TL = TL
         self.TL_vertical = TL_vertical
         self.receiver_depths = receiver_depths
-        self.env_input = env_input
 
 
     def plot(self, depth_index=0):

@@ -70,3 +70,5 @@ def test_initialize_tlcalculator_with_ssp():
     assert np.all(tl.c.data[0] == c)
     assert np.all(tl.c.data[1] == z)
     assert tl.steps_btw_c_updates == math.inf
+    c1 = tl.c.eval(x=0,y=0,z=z,grid=True)
+    assert np.all(c1 == c)

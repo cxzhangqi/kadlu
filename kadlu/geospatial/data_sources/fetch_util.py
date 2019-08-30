@@ -8,42 +8,29 @@ import pygrib
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 
-def init_default_storage_dir(msg):
-    storage_location = (path.abspath(dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
+def default_storage(msg):
+    storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
     if not os.path.isdir(storage_location):
         os.mkdir(storage_location)
     warnings.warn("%s storage location will be set to %s" % (msg, storage_location))
     return storage_location
 
 
-def instantiate_storage_config():
-    cfg = configparser.ConfigParser()
-    cfg.read(path.join(dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
+def storage_cfg():
+    cfg = configparser.ConfigParser()       # read .ini into dictionary object
+    cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
     try:
         storage_location = cfg["storage"]["StorageLocation"]
-    except KeyError:  # missing config.ini file
-        return init_default_storage_dir("missing kadlu/config.ini.")
+    except KeyError:                        # missing config.ini file
+        return default_storage("missing kadlu/config.ini.")
 
-    if storage_location is '':  # null value in config.ini
-        return init_default_storage_dir("null value in kadlu/config.ini.")
+    if storage_location is '':              # null value in config.ini
+        return default_storage("null value in kadlu/config.ini.")
 
-    if not path.isdir(storage_location):  # verify the location exists
-        return init_default_storage_dir("storage location doesn't exist.")
+    if not path.isdir(storage_location):    # verify the location exists
+        return default_storage("storage location doesn't exist.")
 
     return storage_location
-
-"""
-def validate_wavesource(filepath, sourceDict):
-    # this may become obsolete...
-    # seems kind of redundant
-    # matt_s 2019-08
-    gribdata = pygrib.fromstring(open(filepath, "rb").read())
-    try:
-        assert(gribdata['shortName'] in sourceDict.keys() or gribdata['shortName'] in sourceDict.values())
-    except AssertionError as err:
-        print("Specified source file is not a wave source")
-        raise
-"""
 
 def loadgrib(filepath, plot=False):
     """
@@ -59,7 +46,7 @@ def loadgrib(filepath, plot=False):
     """
     grib = pygrib.open(filepath)
 
-    if plot: plot_sample_grib(grib[1], "testing")
+    if plot is not False: plot_sample_grib(grib[1], plot)
 
     #data = [None for msg in range(grib.messages)]
     #for x in range(0, grib.messages):
@@ -104,4 +91,9 @@ def plot_sample_grib(grb, title_text="A sample plot"):
 
     # Show plot.
     plt.show()
+
+def print_fcn_names(source):
+    for fcn in source.fetch_functions:
+        print(f"{fcn.__name__}{source.header}")
+
 

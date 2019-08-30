@@ -6,6 +6,7 @@
 
     matt_s 2019-08
 """
+
 import numpy as np
 from datetime import datetime, timedelta
 import os
@@ -13,6 +14,7 @@ import cdsapi
 import pygrib
 from kadlu.geospatial.data_sources import fetch_util 
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg 
+
 
 def fetchname(wavevar, time):
     return f"ERA5_reanalysis_{wavevar}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
@@ -34,7 +36,7 @@ def fetch_era5(wavevar, time):
             'day'           : time.strftime("%d"),
             'time'          : time.strftime("%H:%M")
         }, fetchfile)
-    return fetchfile
+    return [fetchfile]
 
 
 class Era5():
@@ -59,4 +61,13 @@ class Era5():
     def print_fcns(self): 
         for fcn in [self.fetch_waveheight, self.fetch_wavedirection, self.fetch_waveperiod]:
             print(fcn.__name__ + self.header)
+
+"""
+Interactive mode test scripting
+
+time = datetime(2018, 1, 1)
+fnames = Era5().fetch_windwaveswellheight(time)
+wave, lat, lon = Era5().load(fnames)
+"""
+
 

@@ -1,5 +1,10 @@
 """
-https://weather.gc.ca/grib/grib2_RDWPS_e.html
+    API for Regional Deterministic Wave Prediction System (RDWPS) data provided by Govt. of Canada
+
+    Metadata regarding the dataset can be found here:
+        https://weather.gc.ca/grib/grib2_RDWPS_e.html
+
+    matt_s 2019-08
 """
 
 import numpy as np
@@ -78,47 +83,23 @@ class Rdwps():
     def fetch_icecover(self, south=-90, north=90, west=180, east=-180, time=datetime.now()): 
         return fetch_rdwps('ICEC', time, abstract_region(south, north, west, east))
 
-    fetch_functions = [fetch_windwaveswellheight, fetch_windwaveheight, fetch_wavedirection, fetch_waveperiod, fetch_wind_u, fetch_wind_v, fetch_icecover]
     header = "(south=-90, north=90, east=-180, west=180, time=datetime.now())"
+
+    def print_fcns(self):
+        for fcn in [self.fetch_windwaveswellheight, self.fetch_windwaveheight, 
+                    self.fetch_wavedirection, self.fetch_waveperiod, 
+                    self.fetch_wind_u, self.fetch_wind_v, self.fetch_icecover]:
+            print(fcn.__name__ + self.header)
 
     def fetchname(self, wavevar, time, region, level_ref=level_ref):
         return fetchname(wavevar, time, region, level_ref)
 
     def load(self, filepath, plot=False):
-        return fetch_util.loadgrib(filepath, plot)
-
-"""
-    # If no gribfile argument is provided, default to the fetched file.
-    if grib is None:
-        grib = self.fetch_filename
-
-    # If no date argument is provided, default to the module timestamp, truncated to nearest earlier 6-hour interval.
-    if target_date is None:
-
+        """
         rep_hour = ((self.fetch_datetimestamp.hour % 24) // 6) * 6
         target_date = self.fetch_datetimestamp.replace(minute=0, hour=rep_hour, second=0, microsecond=0)
-    else:
-### Should similar filtering on time be added here to enforce 6 hour intervals?
-        target_date = target_date
 
-    # load grib structure from target.
-    grbs=pygrib.open(grib)
+        grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
+        """
+        return fetch_util.loadgrib(filepath, plot)
 
-    # Fetch slice of data corresponding to selected target date and wave variable.
-        #swh	- significant height of combined wind waves and swell, metres (HTSGW)
-        #mwp	- primary wave mean period, seconds (PKPER)
-        #mwd	- primary wind wave direction, degrees true (i.e. 0 deg = North; proceeding clockwise) (WVDIR)
-    grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
-    
-    if(wavevar == RDWPSWavevar.HTSGW):
-        title_text = "CMC-RDWPS Sig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
-    elif(wavevar == RDWPSWavevar.PKPER):
-        title_text = "CMC-RDWPS Mean Wave Period from GRIB\n({}) ".format(target_date)
-    elif(wavevar == RDWPSWavevar.WVDIR):
-        title_text = "CMC-RDWPS Mean Wave Direction from GRIB\n({}) ".format(target_date)
-    else:
-        title_text = "CMC-RDWPS\nUnknown variable from GRIB\n({}) ".format(target_date)
-
-    return (grb, title_text)
-"""
-    

@@ -60,7 +60,22 @@ class Seafloor():
                 Thickness in meters
             loss: float
                 Attenuation in dB/lambda, where lambda is the reference 
-                wave length given by c0/f
+                wave length computed as c0 / frequency
+
+        Attributes:
+            c: float
+                Uniform and isotropic sound speed in m/s
+            density: float
+                Uniform density in g/cm^3
+            thickness: float
+                Thickness in meters
+            loss: float
+                Attenuation in dB/lambda, where lambda is the reference 
+                wave length computed as c0 / frequency
+            c0: float
+                Reference sound speed in m/s
+            frequency: float
+                Sound frequency in Hz
     """
     def __init__(self, c=1700, density=1.5, thickness=2000, loss=0.5):
 
@@ -73,13 +88,10 @@ class Seafloor():
         self.frequency = None
 
     def nsq(self):
-        """ Compute the refractive index squared
+        """ Compute the refractive index squared.
 
-            Args:
-                k0: float
-                    Reference wave number in inverse meters
-                c0: float
-                    Reference sound speed in m/s
+            Produces an AssertionError if the reference sound speed (c0)
+            and the sound frequency (frequency) have not been specified.
 
             Returns:
                 n2: complex
@@ -219,7 +231,7 @@ class TLCalculator():
             self.c = None
         else:
             self._compute_sound_speed = False
-            self.c = SoundSpeed(sound_speed)
+            self.c = SoundSpeed(ssp=sound_speed)
             self.steps_btw_c_updates = math.inf
 
         self.bin_size = {'r':radial_bin, 'q':angular_bin, 'z':vertical_bin}

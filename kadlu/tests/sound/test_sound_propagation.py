@@ -14,6 +14,8 @@ import pytest
 import os
 import numpy as np
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
+from kadlu.geospatial.ocean import Ocean
+
 
 def test_initialize_seafloor_with_default_args():
     s = Seafloor()
@@ -41,3 +43,27 @@ def test_compute_nsq():
     n = s.nsq()
     assert np.real(n) == pytest.approx(0.77835066, abs=1E-6)
     assert np.imag(n) == pytest.approx(0.01426442, abs=1E-6)
+
+def test_initialize_tlcalculator_with_default_args():
+    s = Seafloor()
+    o = Ocean()
+    tl = TLCalculator(ocean=o, seafloor=s)
+    assert tl._compute_sound_speed == True
+
+def test_initialize_tlcalculator_with_uniform_sound_speed():
+    s = Seafloor()
+    o = Ocean()
+    tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1488)
+    assert tl._compute_sound_speed == False
+    assert tl.c.data == 1488
+
+def test_initialize_tlcalculator_with_ssp():
+    s = Seafloor()
+    o = Ocean()
+    z = np.array([-10, -100, -250, -900])
+    c = np.array([1488, 1489, 1490, 1491])
+    tl = TLCalculator(ocean=o, seafloor=s, sound_speed=(c,z))
+    assert tl._compute_sound_speed == False
+    assert isinstance(tl.c.data, tuple)
+    assert np.all(tl.c.data[0] == c)
+    assert np.all(tl.c.data[1] == z)

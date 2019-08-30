@@ -18,7 +18,7 @@ from kadlu.sound.pe.grid import Grid
 def test_initialize_grid(grid):
     _ = Grid(100, 1000, 10*np.pi/180, 2*np.pi, 100, 500)
 
-def test_grid_has_expected_dimensions(grid):
+def test_grid_axes_are_as_expected(grid):
     g = Grid(100, 1000, 45*np.pi/180, 2*np.pi, 100, 500)
     # radial
     assert g.dr == 100
@@ -35,3 +35,11 @@ def test_grid_has_expected_dimensions(grid):
     assert g.Nz == 10
     answ = np.array([0., 100., 200., 300., 400., -500., -400., -300., -200., -100.])
     assert np.all(g.z == answ)
+    # below/above indices
+    answ = np.array([0, 9, 8, 7, 6, 5])
+    assert np.all(g.z_below == answ)
+    answ = np.array([1, 2, 3, 4])
+    assert np.all(g.z_above == answ)
+    answ = np.array([9, 8, 7, 6])
+    assert np.all(g.z_mirror == answ)
+    answ = np.meshgrid(np.arange(8), np.array([0, 9, 8, 7, 6, 5]))

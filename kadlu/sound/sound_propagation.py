@@ -63,11 +63,13 @@ class Seafloor():
                 wave length given by c0/f
     """
     def __init__(self, c=1700, density=1.5, thickness=2000, loss=0.5):
+
         self.c = c
         self.density = density
         self.thickness = thickness
         self.loss = loss
-        self.c0 = c0
+
+        self.c0 = None
         self.frequency = None
 
     def nsq(self):
@@ -83,7 +85,8 @@ class Seafloor():
                 n2: complex
                     Refractive index squared
         """
-        assert self.frequency is not None, 'Frequency must be set to allow calculation of the refractive index'
+        assert self.frequency is not None, 'Frequency must be specified to allow calculation of the refractive index'
+        assert self.c0 is not None, 'Reference sound speed must be specified to allow calculation of the refractive index'
 
         f = self.frequency
         ki = self.loss / (self.c / f) / 20. / np.log10(np.e) 
@@ -92,8 +95,10 @@ class Seafloor():
         ci = ci[np.imag(ci) == 0] 
         ci = ci[np.logical_and(ci >= 0, ci < self.c)]
         c = self.c - 1j * ci
-        n2 = (self.c0 / c)**2
+        n2 = (self.c0 / c[0])**2
+
         return n2
+
 
 class TLCalculator():
     """ Compute the reduction in intensity (transmission loss) of 
@@ -204,6 +209,8 @@ class TLCalculator():
         self.seafloor = seafloor
         self.c0 = ref_sound_speed
 
+        self.seafloor.c0 = self.c0
+
         self.steps_btw_bathy_updates = steps_btw_bathy_updates
         self.steps_btw_c_updates = steps_btw_sound_speed_updates
 
@@ -296,7 +303,8 @@ class TLCalculator():
         return grid
 
 
-    def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=False,\
+    def run(self, frequency, source_lat, source_lon, source_depth,\
+            receiver_depths=[.1], vertical_slice=False,\
             ignore_bathy_gradient=False):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
@@ -338,7 +346,7 @@ class TLCalculator():
         self.seafloor.frequency = frequency
 
         # load data and initialize grid
-        self._update_source_location()
+        self._update_source_location(lat=source_lat, lon=source_lon)
 
         # create grid
         grid = self._create_grid(frequency)
@@ -358,7 +366,7 @@ class TLCalculator():
  
         # Configure the PE propagator
         propagator = Propagator(ocean=self.ocean, seafloor=self.seafloor,\
-            c=self.c, k0=k0, grid=grid,\
+            c=self.c, c0=self.c0, k0=k0, grid=grid,\
             smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
             absorption_layer=self.absorption_layer,\
             ignore_bathy_gradient=ignore_bathy_gradient,\

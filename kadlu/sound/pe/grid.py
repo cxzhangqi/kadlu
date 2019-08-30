@@ -99,7 +99,7 @@ class Grid():
         self.q, self.dq, self.Nq = self._azimuthal_coordinates(dq, qmax)
 
         # vertical
-        self.z, self.dz, self.Nz = self._vertical_coordinates(dz, zmax)
+        self.z, self.dz, self.Nz, self.z_below, self.z_above, self.z_mirror = self._vertical_coordinates(dz, zmax)
 
         # wavenumber
         L = self.Nz * self.dz  
@@ -108,11 +108,16 @@ class Grid():
         # meshgrids
         self.Q, self.Z = np.meshgrid(self.q, self.z)
 
+        # z-q grid points with negative z (i.e. below sea surface)
+        self.Z_below = np.nonzero(self.Z <= 0)
+
+
     def _radial_coordinates(self, dr, rmax):
         N = int(round(rmax / dr))
         r = np.arange(N+1, dtype=float)
         r *= dr
         return r, dr, len(r)
+
 
     def _azimuthal_coordinates(self, dq, qmax):
         N = int(np.ceil(qmax / dq))
@@ -125,6 +130,7 @@ class Grid():
         q *= dq
         return q, dq, N
 
+
     def _vertical_coordinates(self, dz, zmax):
         N = 2 * zmax / dz
         N = int(round(N / 2) * 2)  # ensure even number of vertical bins
@@ -132,4 +138,10 @@ class Grid():
         z_neg = np.arange(start=-N/2, stop=0, step=1, dtype=float)
         z = np.concatenate((z_pos, z_neg))
         z *= dz
-        return z, dz, N
+        # z indices below and above surface
+        one = np.array([0], dtype=int)
+        below = np.arange(start=N-1, step=-1, stop=N/2-1, dtype=int)
+        below = np.concatenate([one, below])
+        above = np.arange(start=1, step=1, stop=N/2, dtype=int)
+        mirror = below[1:-1]
+        return z, dz, N, below, above, mirror

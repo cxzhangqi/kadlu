@@ -37,7 +37,6 @@ import numpy as np
 import math
 from tqdm import tqdm
 from numpy.lib import scimath
-from kadlu.transmission_loss.model_output import OutputCollector
 
 
 class Propagator():
@@ -53,8 +52,8 @@ class Propagator():
                 Computational grid
             k0: float
                 Reference wavenumber in inverse meters
-            steps_btw_bathy_updates: int
-                How often the bathymetry data is updated. If for example steps_btw_bathy_updates=3, the 
+            bathy_step: int
+                How often the bathymetry data is updated. If for example bathy_step=3, the 
                 bathymetry is updated at every 3rd step.
             steps_btw_sound_speed_updates: int
                 How often the sound-speed data is updated. If for example steps_btw_sound_speed_updates=3, 
@@ -69,15 +68,16 @@ class Propagator():
 
         Example:
     """
-    def __init__(self, ocean, seafloor, c, grid, k0,\
+    def __init__(self, ocean, seafloor, c, c0, grid, k0,\
                 smooth_len_den, smooth_len_c,\
                 absorption_layer, ignore_bathy_gradient,\
-                steps_btw_bathy_updates, steps_btw_c_updates,\
+                bathy_step, c_step,\
                 verbose=False, progress_bar=True):
 
         self.ocean = ocean
         self.seafloor = seafloor
         self.c = c
+        self.c0 = c0
         self.grid = grid
         self.k0 = k0
 
@@ -92,8 +92,8 @@ class Propagator():
 
         self.ignore_bathy_gradient = ignore_bathy_gradient
 
-        self.update_bathy = self._create_boolean_array(self.grid.Nr, steps_btw_bathy_updates)
-        self.update_c = self._create_boolean_array(self.grid.Nr, steps_btw_c_updates)
+        self.update_bathy = self._create_boolean_array(self.grid.Nr, bathy_step)
+        self.update_c = self._create_boolean_array(self.grid.Nr, c_step)
 
         # compute cos(theta) and sin(theta) for all angular bins
         self.costheta = np.cos(grid.q)
@@ -101,6 +101,7 @@ class Propagator():
 
         # refractive index squared of seafloor
         self.n2_b = seafloor.nsq() 
+        self.n2_w = np.zeros(self.grid.Z.shape)
 
         # attenuation at lower and upper surface of computational domain
         absorp_coeff =  1. / np.log10(np.e) / np.pi
@@ -290,7 +291,7 @@ class Propagator():
         self.depth = np.ones((Nz,1)) * depth
         self.gradient = np.ones((Nz,1)) * gradient
 
-        self.height_above_seafloor = np.abs(self.Z) - self.depth
+        self.height_above_seafloor = np.abs(self.grid.Z) - self.depth
 
 
     def _update_c(self, dist):
@@ -308,57 +309,22 @@ class Propagator():
         if self.verbose:
             print('Updating sound speed at {0:.2f} m'.format(dist))
 
-        # z-q grid points with negative z (i.e. below sea surface)
-        below_sea_surf = np.nonzero(self.Z <= 0)
-
-        # load refractive index squared
-        self.n2_w[below_sea_surf] = self._nsq(dist, self.grid.z[self.grid.z <= 0])
-
-        # number of vertical bins
-        Nz = self.grid.Nz
-
-        # z indices below sea surface
-        one = np.array([0], dtype=int)
-        indices = np.arange(start=Nz-1, step=-1, stop=Nz/2, dtype=int)
-        indices = np.concatenate([one, indices])
-
-        # mirror sound-speed profile above/below sea surface
-        indices2 = np.arange(start=1, step=1, stop=Nz/2, dtype=int)
-        self.n2_w[indices2, :] = self.n2_w[indices[1:], :]
-
-
-    def _nsq(self, dist, z):
-        """ Compute refractive index squared. 
-
-            The computation is performed at equally spaced points on a circle, 
-            at the specified distance from the source.
-
-            Args:
-                dist: float
-                    Distance from source in meters
-                z: numpy array
-                    Depths
-
-            Returns:
-                nsq: 2d numpy array
-                    Refractive index squared. Has shape (Nz,Nq) where Nz and Nq 
-                    are the number of vertical and angular bins, respectively.
-        """
+        # sound speed
         x = self.costheta * dist
         y = self.sintheta * dist
-
+        z = self.grid.z[self.grid.z <= 0]
         x, _ = np.meshgrid(x,z)
         y, z = np.meshgrid(y,z) 
-
         x = x.flatten()
         y = y.flatten()
         z = z.flatten()
+        c = self.c.eval(x=x, y=y, z=-z)        
 
-        c = self.eval(x=x, y=y, z=-z)        
+        # refractive index squared
+        self.n2_w[self.grid.Z_below] = (self.c0 / c)**2
 
-        nsq = (self.c0 / c)**2
-
-        return nsq
+        # mirror sound-speed profile above/below sea surface
+        self.n2_w[self.grid.z_above, :] = self.n2_w[self.grid.z_mirror, :]
 
 
 class OutputCollector():
@@ -434,7 +400,7 @@ class OutputCollector():
         self.ifft_kernel = np.exp(1j * np.matmul(self.depths, kz[np.newaxis,:])) / len(kz)
 
 
-    def collect(self, dist, psi, sqrt_den):
+    def collect(self, dist, psi, sqrt_den=None):
         """ Post-processe and collect output data at specified distance
             from the source.
             

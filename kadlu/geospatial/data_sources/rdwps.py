@@ -58,25 +58,25 @@ def abstract_region(south, north, west, east):
 
 class Rdwps(): 
     def fetch_windwaveswellheight(self, south=-90, north=90, west=180, east=-180, time=datetime.now()): 
-        return fetch_rdwps('HTSGW', time, abstract_region(south, north, east, west))
+        return fetch_rdwps('HTSGW', time, abstract_region(south, north, west, east))
 
     def fetch_windwaveheight(self, south=-90, north=90, west=180, east=-180, time=datetime.now()):
-        return fetch_rdwps('WVHGT', time, abstract_region(south, north, east, west))
+        return fetch_rdwps('WVHGT', time, abstract_region(south, north, west, east))
 
     def fetch_wavedirection(self, south=-90, north=90, west=180, east=-180, time=datetime.now()):
-        return fetch_rdwps('WVDIR', time, abstract_region(south, north, east, west))
+        return fetch_rdwps('WVDIR', time, abstract_region(south, north, west, east))
 
     def fetch_waveperiod(self, south=-90, north=90, west=180, east=-180, time=datetime.now()):
-        return fetch_rdwps('WVPER', time, abstract_region(south, north, east, west))
+        return fetch_rdwps('WVPER', time, abstract_region(south, north, west, east))
 
     def fetch_wind_u(self, south=-90, north=90, west=180, east=-180, time=datetime.now()):
-        return fetch_rdwps('UGRD', time, abstract_region(south, north, east, west))
+        return fetch_rdwps('UGRD', time, abstract_region(south, north, west, east))
 
     def fetch_wind_v(self, south=-90, north=90, west=180, east=-180, time=datetime.now()):
-        return fetch_rdwps('VGRD', time, abstract_region(south, north, east, west))
+        return fetch_rdwps('VGRD', time, abstract_region(south, north, west, east))
 
     def fetch_icecover(self, south=-90, north=90, west=180, east=-180, time=datetime.now()): 
-        return fetch_rdwps('ICEC', time, abstract_region(south, north, east, west))
+        return fetch_rdwps('ICEC', time, abstract_region(south, north, west, east))
 
     fetch_functions = [fetch_windwaveswellheight, fetch_windwaveheight, fetch_wavedirection, fetch_waveperiod, fetch_wind_u, fetch_wind_v, fetch_icecover]
     header = "(south=-90, north=90, east=-180, west=180, time=datetime.now())"

@@ -99,7 +99,7 @@ class Grid():
         self.q, self.dq, self.Nq = self._azimuthal_coordinates(dq, qmax)
 
         # vertical
-        self.z, self.dz, self.Nz, self.z_below, self.z_above, self.z_mirror = self._vertical_coordinates(dz, zmax)
+        self.z, self.dz, self.Nz, self._indices_below, self._indices_above, self._indices_mirror = self._vertical_coordinates(dz, zmax)
 
         # wavenumber
         L = self.Nz * self.dz  
@@ -145,3 +145,12 @@ class Grid():
         above = np.arange(start=1, step=1, stop=N/2, dtype=int)
         mirror = below[1:-1]
         return z, dz, N, below, above, mirror
+
+
+    def mirror(self, a, axis=0):
+
+        # TODO: implement for when axis is not 0!
+
+        a[self._indices_above] = a[self._indices_mirror]
+        return a
+

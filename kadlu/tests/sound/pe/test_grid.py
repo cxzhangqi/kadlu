@@ -37,9 +37,14 @@ def test_grid_axes_are_as_expected(grid):
     assert np.all(g.z == answ)
     # below/above indices
     answ = np.array([0, 9, 8, 7, 6, 5])
-    assert np.all(g.z_below == answ)
+    assert np.all(g._indices_below == answ)
     answ = np.array([1, 2, 3, 4])
-    assert np.all(g.z_above == answ)
+    assert np.all(g._indices_above == answ)
     answ = np.array([9, 8, 7, 6])
-    assert np.all(g.z_mirror == answ)
+    assert np.all(g._indices_mirror == answ)
     answ = np.meshgrid(np.arange(8), np.array([0, 9, 8, 7, 6, 5]))
+    # mirror method
+    a = np.array([6.0, np.nan, np.nan, np.nan, np.nan, 1.0, 2.0, 3.0, 4.0, 5.0])
+    answ = np.array([6.0, 5.0, 4.0, 3.0, 2.0, 1.0, 2.0, 3.0, 4.0, 5.0])
+    a = g.mirror(a)
+    assert np.all(a == answ)

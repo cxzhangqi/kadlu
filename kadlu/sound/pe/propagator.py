@@ -324,8 +324,7 @@ class Propagator():
         self.n2_w[self.grid.Z_below] = (self.c0 / c)**2
 
         # mirror sound-speed profile above/below sea surface
-        self.n2_w[self.grid.z_above, :] = self.n2_w[self.grid.z_mirror, :]
-
+        self.n2_w = self.grid.mirror(self.n2_w)
 
 class OutputCollector():
     """ Post-processes and collects output data from the 

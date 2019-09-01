@@ -37,7 +37,7 @@ def test_plot_era5_windwaveswellheight():
     fname = filenames[0]
     for fname in filenames:
         assert(isfile(fname))
-    wave, lat, lon = Era5().load(fname, plot="Sig. Height of Combined Wind, Wave, and Swell 2018-01-01")
-    #wave, lat, lon = Era5().load(filenames, plot=False)
+    wave, lat, lon = Era5().load_windwaveswellheight(time, plot="Sig. Height of Combined Wind, Wave, and Swell 2018-01-01")
+    #wave, lat, lon = Era5().load(time, plot=False)
     assert(len(wave) == len(lat) == len(lon))
 

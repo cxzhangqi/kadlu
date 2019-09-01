@@ -143,22 +143,6 @@ def load_from_file(path):
     return z,y,x
 
 
-#def read(path):
-#    """ Read bathymetry values from the data file.
-#
-#        Args: 
-#            path: str
-#                File name
-#
-#        Returns:
-#            val: 1d numpy array
-#                Data values
-#    """
-#    z = read_geotiff(path=path)
-#    z = np.flip(z, axis=0)
-#    return z
-
-
 def latlon(path, num_lat=1001, num_lon=1001):
     """ Create latitude and longitude arrays for a CHS bathymetry data file.
 

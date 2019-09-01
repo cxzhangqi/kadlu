@@ -1,4 +1,5 @@
-""" Module within the kadlu package for handling Non-Navigational NONNA-100 
+""" 
+    Module within the kadlu package for handling Non-Navigational NONNA-100 
     bathymetric data from the The Canadian Hydrographic Service (CHS). 
 
     Authors: Oliver Kirsebom
@@ -18,10 +19,10 @@ from kadlu.geospatial.geospatial import crop, read_geotiff
 import json
 import requests
 from kadlu.geospatial.data_sources import fetch_util 
+from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 
 
-
-def fetch_bathymetry(south=-90, north=90, west=-180, east=180):
+def fetch(south, north, west, east):
     """ Returns a list of filepaths for downloaded content """
 
     localfiles = verify_local_files(south, north, west, east) 
@@ -35,11 +36,13 @@ def fetch_bathymetry(south=-90, north=90, west=-180, east=180):
     geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})
     url1 = f"{source}ImageServer/query?geometry={geometry}&returnIdsOnly=true&geometryType=esriGeometryEnvelope&spatialRel={spatialRel}&f=json&outFields=*&inSR={spatialReference}"
     req = requests.get(url1)
+    assert(req.status_code == 200)
     rasterIdsCSV = ','.join([f"{x}" for x in json.loads(req.text)['objectIds']])
+    assert len(rasterIdsCSV) < 4482, "Can't fetch that many files at once!"
     try:
         assert(rasterIdsCSV is not '')
     except AssertionError as err:
-        print(f"Could not fetch: no records found for query")
+        print("Could not fetch: no records found for query")
         raise
 
     # api call: get resource location of rasters for each raster ID 
@@ -49,14 +52,12 @@ def fetch_bathymetry(south=-90, north=90, west=-180, east=180):
     jsondata = json.loads(req.text)
     assert("error" not in jsondata.keys())
 
-    filepaths = []
-    storage_location = fetch_util.instantiate_storage_config()
-
     # api call: for each resource location, download the rasters for each tiff file
+    filepaths = []
     for img in jsondata['rasterFiles']:
         fname = img['id'].split('\\')[-1]
         if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
-        fpath = f"{storage_location}{fname}"
+        fpath = f"{storage_cfg()}{fname}"
         filepaths.append(fpath)
         if os.path.isfile(fpath):
             print(f"File {fname} exists, skipping retrieval...")
@@ -73,7 +74,7 @@ def fetch_bathymetry(south=-90, north=90, west=-180, east=180):
     return filepaths
 
 
-def load(south=-90, north=90, west=-180, east=180):
+def load(south, north, west, east):
     """ 
         Load Non-Navigational NONNA-100 bathymetric data from the Canadian Hydrographic 
         Service (CHS) within specified geographical region.
@@ -83,11 +84,10 @@ def load(south=-90, north=90, west=-180, east=180):
             lats
             lons
     """
-    files = fetch_bathymetry(south, north, west, east)
+    files = fetch(south, north, west, east)
     bathy, lats, lons = list(), list(), list()        
 
     for f in files:
-
         # load data from a single file
         z,y,x = load_from_file(f) 
 
@@ -126,7 +126,8 @@ def load_from_file(path):
     """
 
     # read data from geotiff file
-    z = read(path)
+    #z = read(path)
+    z = np.flip(read_geotiff(path=path), axis=0)
 
     # create lat-lon arrays
     lat, lon = latlon(path)
@@ -142,20 +143,20 @@ def load_from_file(path):
     return z,y,x
 
 
-def read(path):
-    """ Read bathymetry values from the data file.
-
-        Args: 
-            path: str
-                File name
-
-        Returns:
-            val: 1d numpy array
-                Data values
-    """
-    z = read_geotiff(path=path)
-    z = np.flip(z, axis=0)
-    return z
+#def read(path):
+#    """ Read bathymetry values from the data file.
+#
+#        Args: 
+#            path: str
+#                File name
+#
+#        Returns:
+#            val: 1d numpy array
+#                Data values
+#    """
+#    z = read_geotiff(path=path)
+#    z = np.flip(z, axis=0)
+#    return z
 
 
 def latlon(path, num_lat=1001, num_lon=1001):
@@ -211,59 +212,48 @@ def latlon(path, num_lat=1001, num_lon=1001):
 
 
 def parse_sw_corner(path):
-    """ Parse latitude and longitude data from filename.
-
-        Args: 
-            path: str
-                Path to data file
-
-        Returns:
-            south: float
-                Southern boundary of map
-            west: float
-                Western boundary of map
-    """
     fname = os.path.basename(path)
-
     south = int(fname[4:8]) / 100
     west = -int(fname[9:14]) / 100
-
     assert west >= -180 and west <= 180, 'Invalid parsed longitude value'
     assert south >= -90 and south <= 90, 'Invalid parsed latitude value'
-
     return south, west
 
 
 def filename(south, west):
-    """ Construct filename from latitude and longitude of SW corner.
-
-        Args: 
-            south: float
-                Southern boundary of map
-            west: float
-                Western boundary of map
-
-        Returns:
-            fname: 
-                File name
-    """
     fname = "CA2_{0:04d}N{1:05d}W.tif".format(int(south * 100), -int(west * 100))
     return fname
+
 
 def verify_local_files(south, north, west, east):
     """ 
         Checks to see if local files exist before querying 
         Returns filenames if true, otherwise returns false.
     """
-
-    storage = fetch_util.instantiate_storage_config()
     fnames = []
     for x in range(int(west), int(east) + 1):
         for y in range(int(south), int(north) + 1):
-            f = f"{storage}{filename(y, x)}"
+            f = f"{storage_cfg()}{filename(y, x)}"
             if not os.path.isfile(f): return False
             fnames.append(f)
     print("Files exist, skipping retrieval...")
     return fnames 
 
-fetch = [fetch_bathymetry]
+
+class Chs():
+    def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
+        return fetch(south, north, west, east)
+    def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
+        return load(south, north, west, east)
+
+    def __str__(self):
+        info = "Non-Navigational 100m (NONNA-100) Dataset from Canadian Hydrographic Datastore. Available class functions: \n\t"
+        fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
+        args = "(south=-90, north=90, west=-180, east=180)"
+        return info + "\n\t".join(list(map(lambda f : f"{f}{args}", fcns )))
+
+
+"""
+bathy, lat, lon = Chs().load_bathymetry()
+"""
+

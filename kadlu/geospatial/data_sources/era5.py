@@ -7,11 +7,9 @@
     matt_s 2019-08
 """
 
-import numpy as np
-from datetime import datetime, timedelta
-import os
 import cdsapi
-import pygrib
+import os
+from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import fetch_util 
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg 
 
@@ -42,32 +40,29 @@ def fetch_era5(wavevar, time):
 class Era5():
     def fetch_windwaveswellheight(self, time=datetime.now()):      
         return fetch_era5('significant_height_of_combined_wind_waves_and_swell', time)
-    
     def fetch_wavedirection(self, time=datetime.now()):   
         return fetch_era5('mean_wave_direction', time)
-
     def fetch_waveperiod(self, time=datetime.now()):      
         return fetch_era5('mean_wave_period', time)
+    def load_windwaveswellheight(self, time=datetime.now(), plot=False):
+        #grbs=pygrib.open(grib)
+        #grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
+        return fetch_util.loadgrib(self.fetch_windwaveswellheight(time), plot)
 
-    def load(self, filepath, plot=False): 
-        """
-        grbs=pygrib.open(grib)
-        grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
-        """
-        return fetch_util.loadgrib(filepath, plot)
+    def __str__(self):
+        info = "Era5 Global Dataset from Copernicus Climate Datastore. Available class functions: \n\t"
+        fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
+        args = "(time=datetime)"
+        return info + "\n\t".join(list(map(lambda f : f"{f}{args}", fcns )))
 
-    header = "(time=datetime.now())"
-
-    def print_fcns(self): 
-        for fcn in [self.fetch_waveheight, self.fetch_wavedirection, self.fetch_waveperiod]:
-            print(fcn.__name__ + self.header)
 
 """
-Interactive mode test scripting
-
 time = datetime(2018, 1, 1)
 fnames = Era5().fetch_windwaveswellheight(time)
-wave, lat, lon = Era5().load(fnames)
-"""
+wave, lat, lon = Era5().load_windwaveswellheight(time)
 
+print(Era5())
+#wave, lat, lon = Era5().load_windwaveswellheight(time, "wind, wave, swell height")
+wave, lat, lon = Era5().load_windwaveswellheight(time, plot=False)
+"""
 

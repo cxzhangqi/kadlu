@@ -8,6 +8,7 @@ import pygrib
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 
+
 def default_storage(msg):
     storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
     if not os.path.isdir(storage_location):
@@ -32,6 +33,7 @@ def storage_cfg():
 
     return storage_location
 
+
 def loadgrib(filenames, plot=False):
     """
     This needs to be updated to return the entire list of grib
@@ -45,7 +47,6 @@ def loadgrib(filenames, plot=False):
     matt_s 2019-08
     """
     for fname in filenames:
-        print(f"fname: {fname}")
         grib = pygrib.open(fname)
         if plot is not False: plot_sample_grib(grib[1], plot)
 
@@ -92,9 +93,4 @@ def plot_sample_grib(grb, title_text="A sample plot"):
 
     # Show plot.
     plt.show()
-
-def print_fcn_names(source):
-    for fcn in source.fetch_functions:
-        print(f"{fcn.__name__}{source.header}")
-
 

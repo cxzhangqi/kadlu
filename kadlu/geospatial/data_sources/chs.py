@@ -35,41 +35,40 @@ def fetch(south, north, west, east):
     #spatialReference = "3857"  # used for the web map service
     geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})
     url1 = f"{source}ImageServer/query?geometry={geometry}&returnIdsOnly=true&geometryType=esriGeometryEnvelope&spatialRel={spatialRel}&f=json&outFields=*&inSR={spatialReference}"
-    req = requests.get(url1)
+    req1 = requests.get(url1)
     assert(req.status_code == 200)
-    rasterIdsCSV = ','.join([f"{x}" for x in json.loads(req.text)['objectIds']])
-    assert len(rasterIdsCSV) < 4482, "Can't fetch that many files at once!"
-    try:
-        assert(rasterIdsCSV is not '')
-    except AssertionError as err:
-        print("Could not fetch: no records found for query")
-        raise
 
-    # api call: get resource location of rasters for each raster ID 
-    url2 = f"{source}ImageServer/download?rasterIds={rasterIdsCSV}&geometry={geometry}&geometryType=esriGeometryPolygon&format=TIFF&f=json"
-    req = requests.get(url2)
-    assert(req.status_code == 200)
-    jsondata = json.loads(req.text)
-    assert("error" not in jsondata.keys())
-
-    # api call: for each resource location, download the rasters for each tiff file
     filepaths = []
-    for img in jsondata['rasterFiles']:
-        fname = img['id'].split('\\')[-1]
-        if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
-        fpath = f"{storage_cfg()}{fname}"
-        filepaths.append(fpath)
-        if os.path.isfile(fpath):
-            print(f"File {fname} exists, skipping retrieval...")
-            continue
+    rasterIds = json.loads(req1.text)['objectIds']
+    for chunk in range(0, int(len(rasterIds) / 20) + 1):
+        rasterIdChunk = rasterIdChunks[chunk*20:(chunk+1)*20]
+        rasterIdsCSV = ','.join([f"{x}" for x in rasterIdChunk])
+        #assert len(rasterIdsCSV) < 1000, "Can't fetch that many files at once!"
+        assert(rasterIdsCSV is not '')  # no records for query
 
-        print(f"Downloading {fname} from Canadian Hydrographic Service NONNA-100...")
-        assert(len(img['rasterIds']) == 1)  # we make an assumption that each file has only one associated raster
-        #rasterId = img['rasterIds'][0]
-        url3 = f"https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
-        tiff = requests.get(url3)
-        assert(tiff.status_code == 200)
-        with open(fpath, "wb") as f: f.write(tiff.content)
+        # api call: get resource location of rasters for each raster ID 
+        url2 = f"{source}ImageServer/download?geometry={geometry}&geometryType=esriGeometryPolygon&format=TIFF&f=json&rasterIds={rasterIdsCSV}"
+        req2 = requests.get(url2)
+        assert(req2.status_code == 200)
+        jsondata = json.loads(req2.text)
+        assert("error" not in jsondata.keys())
+
+        # api call: for each resource location, download the rasters for each tiff file
+        for img in jsondata['rasterFiles']:
+            fname = img['id'].split('\\')[-1]
+            if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
+            fpath = f"{storage_cfg()}{fname}"
+            filepaths.append(fpath)
+            if os.path.isfile(fpath):
+                print(f"File {fname} exists, skipping retrieval...")
+                continue
+
+            print(f"Downloading {fname} from Canadian Hydrographic Service NONNA-100...")
+            assert(len(img['rasterIds']) == 1)  # we make an assumption that each file has only one associated raster
+            url3 = f"https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
+            tiff = requests.get(url3)
+            assert(tiff.status_code == 200)
+            with open(fpath, "wb") as f: f.write(tiff.content)
         
     return filepaths
 
@@ -231,13 +230,14 @@ class Chs():
         return load(south, north, west, east)
 
     def __str__(self):
-        info = "Non-Navigational 100m (NONNA-100) Dataset from Canadian Hydrographic Datastore. Available class functions: \n\t"
+        info = "Non-Navigational 100m (NONNA-100) Dataset from Canadian Hydrographic Datastore.\nAvailable class functions: \n\t"
         fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
         args = "(south=-90, north=90, west=-180, east=180)"
-        return info + "\n\t".join(list(map(lambda f : f"{f}{args}", fcns )))
+        return info + "\n\t".join(list(map(lambda f : f"{f}{' '[len(f)-np.min(list(map(lambda f : len(f), fcns))):]}{args}", fcns )))
 
 
 """
+print(Chs())
 bathy, lat, lon = Chs().load_bathymetry()
 """
 

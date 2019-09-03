@@ -149,8 +149,6 @@ class Grid():
 
     def mirror(self, a, axis=0):
 
-        # TODO: implement unit tests for this method
-
         if axis != 0:
             a = np.swapaxes(a, 0, axis)
 

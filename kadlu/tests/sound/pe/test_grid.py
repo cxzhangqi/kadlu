@@ -43,8 +43,18 @@ def test_grid_axes_are_as_expected(grid):
     answ = np.array([9, 8, 7, 6])
     assert np.all(g._indices_mirror == answ)
     answ = np.meshgrid(np.arange(8), np.array([0, 9, 8, 7, 6, 5]))
-    # mirror method
+
+def test_grid_mirror(grid):
+    g = Grid(100, 1000, 45*np.pi/180, 2*np.pi, 100, 500)
+    # mirror 1d array
     a = np.array([6.0, np.nan, np.nan, np.nan, np.nan, 1.0, 2.0, 3.0, 4.0, 5.0])
     answ = np.array([6.0, 5.0, 4.0, 3.0, 2.0, 1.0, 2.0, 3.0, 4.0, 5.0])
     a = g.mirror(a)
+    assert np.all(a == answ)
+    # mirror 2d array
+    a = np.array([[6.0], [np.nan], [np.nan], [np.nan], [np.nan], [1.0], [2.0], [3.0], [4.0], [5.0]])
+    a = np.swapaxes(a, 0, 1)
+    answ = np.array([[6.0], [5.0], [4.0], [3.0], [2.0], [1.0], [2.0], [3.0], [4.0], [5.0]])
+    answ = np.swapaxes(answ, 0, 1)
+    a = g.mirror(a, axis=1)
     assert np.all(a == answ)

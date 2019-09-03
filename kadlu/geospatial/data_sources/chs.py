@@ -36,17 +36,15 @@ def fetch(south, north, west, east):
     geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})
     url1 = f"{source}ImageServer/query?geometry={geometry}&returnIdsOnly=true&geometryType=esriGeometryEnvelope&spatialRel={spatialRel}&f=json&outFields=*&inSR={spatialReference}"
     req1 = requests.get(url1)
-    assert(req.status_code == 200)
+    assert(req1.status_code == 200)
 
+    # break up the retrieved objectIds into chunks of size 20
     filepaths = []
     rasterIds = json.loads(req1.text)['objectIds']
+    assert(len(rasterIds) > 0)
     for chunk in range(0, int(len(rasterIds) / 20) + 1):
-        rasterIdChunk = rasterIdChunks[chunk*20:(chunk+1)*20]
-        rasterIdsCSV = ','.join([f"{x}" for x in rasterIdChunk])
-        #assert len(rasterIdsCSV) < 1000, "Can't fetch that many files at once!"
-        assert(rasterIdsCSV is not '')  # no records for query
-
         # api call: get resource location of rasters for each raster ID 
+        rasterIdsCSV = ','.join([f"{x}" for x in rasterIds[chunk * 20:(chunk+1) * 20]])
         url2 = f"{source}ImageServer/download?geometry={geometry}&geometryType=esriGeometryPolygon&format=TIFF&f=json&rasterIds={rasterIdsCSV}"
         req2 = requests.get(url2)
         assert(req2.status_code == 200)

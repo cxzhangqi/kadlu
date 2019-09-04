@@ -320,7 +320,7 @@ class TLCalculator():
 
     def run(self, frequency, source_lat, source_lon, source_depth,\
             receiver_depth=[.1], vertical_slice=False,\
-            ignore_bathy_gradient=False):
+            ignore_bathy_gradient=False, ignore_below_seafloor=True):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
             
@@ -347,8 +347,8 @@ class TLCalculator():
                     data if the depth only changes gradually, implying that the gradient 
                     can be ignored.
         """
-        source_depth = self._tolist(source_depth)
-        receiver_depth = self._tolist(receiver_depth)
+        source_depth = self._toarray(source_depth)
+        receiver_depth = self._toarray(receiver_depth)
 
         if self.verbose:
             import time
@@ -366,6 +366,8 @@ class TLCalculator():
         # load data and initialize grid
         self._update_source_location(lat=source_lat, lon=source_lon)
 
+        seafloor_depth = np.abs(self.ocean.bathy(x=0, y=0))
+
         # create grid
         grid = self._create_grid(frequency)
 
@@ -376,6 +378,11 @@ class TLCalculator():
         # loop over source depths
         # TODO: Vectorize the loop over source depths
         for zs in source_depth:
+
+            # only compute if source is above seafloor
+            if ignore_below_seafloor and (np.abs(zs) > seafloor_depth):
+                self.TL.append(None)
+                self.TLv.append(None)
 
             # compute initial field
             psi = starter.eval(zs=zs) * np.ones(shape=(1,grid.Nq))
@@ -549,8 +556,9 @@ class TLCalculator():
         return fig
 
 
-    def _tolist(self, v):
+    def _toarray(self, v):
         if isinstance(v, float) or isinstance(v, int):
             v = [v]
-
+        
+        v = np.array(v)
         return v

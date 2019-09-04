@@ -359,8 +359,7 @@ class Propagator():
 
         self.vertical_slice = vertical_slice
 
-        self.receiver_depth = np.array(receiver_depth)
-        self.receiver_depth = self.receiver_depth[:, np.newaxis]
+        self.receiver_depth = receiver_depth[:, np.newaxis]
 
         # ifft kernel
         kz = self.grid.kz

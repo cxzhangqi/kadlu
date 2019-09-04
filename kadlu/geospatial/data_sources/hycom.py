@@ -43,22 +43,12 @@ def fetch_grid():
     return
 
 
-def dt_2_t(time):
-    """ converts datetime to tuple: (year, (start_index, end_index)) """
-    """
-    units: hours since 2000-01-01 00:00:00
-    time_origin: 2000-01-01 00:00:00
-    calendar: gregorian
-    axis: T
-    NAVO_code: 13
-    """
-    warnings.warn("TODO: write the dt_2_t function")
-    # 2860 slices per year
-    #y = datetime(time.year, 1, 1)
-    #t = datetime(time.year, time.month, time.day, time.hour, time.minute)
-    #delta = t-y
-    #return time.strftime("%Y"), ()
-    return "2015", (0, 2)
+def dt_2_tslice(time):
+    """ converts datetime to hycom time slice """
+    warnings.warn("Hycom time conversion is only accurate within 3 hours. In the future, this should be mapped")
+    seconds_delta = (time - datetime(time.year, 1, 1)).total_seconds()
+    seconds_per_slice = 31536000.0 / 2860  # seconds per year / num of slices
+    return int(seconds_delta / seconds_per_slice)
 
 
 def load_grid():
@@ -107,14 +97,14 @@ def fetch_hycom(year, slices, fetchvar):
         a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
         output[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
-    np.save(f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy", output, allow_pickle=False)
-    return [f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy"]
+    np.save(f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy", output, allow_pickle=False)
+    return [f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy"]
 
 
 def load_hycom(year, slices, fetchvar, lat, lon):
-    fname = f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy"
+    fname = f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy"
     if not isfile(fname): fetch_hycom(year, slices, fetchvar)
-    data = np.load(f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy")
+    data = np.load(f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy")
     data[data <= -29999] = None
     return data, lat, lon
 
@@ -122,9 +112,11 @@ def load_hycom(year, slices, fetchvar, lat, lon):
 class Hycom():
     def fetch_salinity(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return fetch_hycom(
-                    year=dt_2_t(time)[0],   # year
+                    #year=dt_2_t(time)[0],   # year
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        #dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0, 3),             # depth range: 0 -> 3 out of 39 depth units ??
                         (ll_2_xy(west,  self.lon), ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat), ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
@@ -133,9 +125,11 @@ class Hycom():
                 )
     def fetch_temp(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return fetch_hycom(
-                    year=dt_2_t(time)[0],
+                    #year=dt_2_t(time)[0],
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],
+                        #dt_2_t(time)[1],
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0, 3),
                         (ll_2_xy(west,  self.lon), ll_2_xy(east,  self.lon)),
                         (ll_2_xy(south, self.lat), ll_2_xy(north, self.lat))
@@ -144,9 +138,11 @@ class Hycom():
                 )
     def fetch_water_u(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return fetch_hycom(
-                    year=dt_2_t(time)[0],
+                    #year=dt_2_t(time)[0],
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],
+                        #dt_2_t(time)[1],
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0, 3),
                         (ll_2_xy(west,  self.lon), ll_2_xy(east,  self.lon)),
                         (ll_2_xy(south, self.lat), ll_2_xy(north, self.lat))
@@ -155,9 +151,11 @@ class Hycom():
                 )
     def fetch_water_v(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return fetch_hycom(
-                    year=dt_2_t(time)[0],
+                    #year=dt_2_t(time)[0],
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],
+                        #dt_2_t(time)[1],
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0,3),
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))
@@ -166,9 +164,11 @@ class Hycom():
                 )
     def load_salinity(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return load_hycom(
-                    year=dt_2_t(time)[0],
+                    #year=dt_2_t(time)[0],
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        #dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0, 3),             # depth range: 0 -> 3 out of 39 depth units ??
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
@@ -179,9 +179,11 @@ class Hycom():
                 )
     def load_temp(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return load_hycom(
-                    year=dt_2_t(time)[0],
+                    #year=dt_2_t(time)[0],
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        #dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0, 3),             # depth range: 0 -> 3 out of 39 depth units ??
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
@@ -192,9 +194,11 @@ class Hycom():
                 )
     def load_water_u(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return load_hycom(
-                    year=dt_2_t(time)[0],
+                    #year=dt_2_t(time)[0],
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        #dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0, 3),             # depth range: 0 -> 3 out of 39 depth units ??
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
@@ -205,9 +209,11 @@ class Hycom():
                 )
     def load_water_v(self, south=-90, north=90, west=-180, east=180, time=datetime(2015, 1, 1)): 
         return load_hycom(
-                    year=dt_2_t(time)[0],
+                    #year=dt_2_t(time)[0],
+                    year=str(time.year),
                     slices=[
-                        dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        #dt_2_t(time)[1],    # time range: 0 -> 2 out of 2860 per year
+                        (dt_2_tslice(time), dt_2_tslice(time)),
                         (0, 3),             # depth range: 0 -> 3 out of 39 depth units ??
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
@@ -236,14 +242,12 @@ south =  44.4
 north =  44.7
 west  = -64.4
 east  = -63.8
-time  = datetime(2015, 1, 1)
+time  = datetime(2015, 1, 1, 0, 0)
 
 source = Hycom()
 salinity, lat, lon  = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=datetime) 
 temp, lat, lon      = source.load_temp(south=south, north=north, west=west, east=east, time=datetime) 
 water_u, lat, lon   = Hycom().load_water_u(south=south, north=north, west=west, east=east, time=datetime) 
 water_v, lat, lon   = Hycom().load_water_v(south=south, north=north, west=west, east=east, time=datetime) 
-
-fnames              = source.fetch_temp(south=south, north=north, west=west, east=east, time=datetime) 
 """
 

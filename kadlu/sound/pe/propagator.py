@@ -30,8 +30,7 @@
     for sound pressure.
 
     Contents:
-        Propagator class: 
-        OutputCollector class
+        Propagator class
 """
 import numpy as np
 import math
@@ -137,21 +136,20 @@ class Propagator():
                 output: OutputCollector
                     Result of the computation
         """
-        # output collector
-        output = OutputCollector(k0=self.k0, grid=self.grid,\
-            vertical_slice=vertical_slice, depths=depths)
+        # initialize output containers
+        self._init_output(depths, vertical_slice) 
 
-        # initial Nx2D free propagator
+        # free propagator
         U_fr = self._free_propagation_matrix()
 
-        # output field at 0
-        output.collect(dist=0, psi=psi)
+        # save output field at 0
+        self._save_output(step_no=0, dist=0, psi=psi)
 
         # PE marching starts here
         dist = 0
         Nr = self.grid.Nr
         dr = self.grid.dr
-        for i in tqdm(range(0, Nr-1), disable = not self.progress_bar):
+        for i in tqdm(range(Nr-1), disable = not self.progress_bar):
 
             # (1) r --> r + dr/2 free propagation
             psi = U_fr * psi
@@ -178,7 +176,7 @@ class Propagator():
             dist = dist + dr
 
             # collect output
-            output.collect(dist=dist, psi=psi, sqrt_den=self.sqrt_den)
+            self._save_output(step_no=i+1, dist=dist, psi=psi)
 
         return output
 
@@ -318,84 +316,13 @@ class Propagator():
         self.n2_w = self.grid.mirror(self.n2_w)
 
 
-class OutputCollector():
-    """ Post-processes and collects output data from the 
-        transmission loss calculation.
-        
-        Args:
-            k0: float
-                Reference wavenumber in inverse meters
-            grid: PEGrid
-                Computational grid
-            env_input: EnviromentInput
-                Environmental data
-            depths: list of floats
-                Depths at which horizontal slices of the sound pressure 
-                field are computed.
-            vertical_slice: bool
-                For all angular bins, compute the sound pressure on a
-                vertical plane intersecting the source position. 
-                Note: This will slow down the computation.
-
-        Attributes:
-            k0: float
-                Reference wavenumber in inverse meters
-            grid: Grid
-                Computational grid
-            vertical_slice: bool
-                For all angular bins, compute the sound pressure on a
-                vertical plane intersecting the source position. 
-                Note: This will slow down the computation.
-            counter: int
-                Counter that keeps track of the radial step number. 
-                Increments by 1 unit for every call to the collect method.
-            field_vert: 3d numpy array
-                Vertical slices of the sound pressure field. Has shape 
-                (int(Nz/2), Nr+1, Nq) where Nz,Nr,Nq are the number of 
-                grid points in the vertical, radial and azimuthal direction.
-            depths: numpy array
-                Receiver depths in meters
-            field_horiz: 3d numpy array
-                Horizontal slices of the sound pressure field at the specified 
-                depths. Has shape (Nd, Nq, Nr+1) where Nd is the number of depths, 
-                while Nq and Nr are the number of azimuthal and radial grid points, 
-                respectively.
-            ifft_kernel: numpy array
-                Matrix used to compute the horizontal field.
-
-        Example:
-    """
-    def __init__(self, k0, grid, depths=[.1], vertical_slice=True):
-
-        self.k0 = k0
-        self.grid = grid
-        self.vertical_slice = vertical_slice
-
-        Nr = self.grid.Nr
-        Nq = self.grid.Nq
-        Nz = self.grid.Nz
-        Nd = len(depths)
-
-        self.counter = 0
-
-        # vertical slices
-        self.field_vert = np.empty(shape=(int(Nz/2), Nr, Nq), dtype=complex)
-
-        # horizontal slices
-        self.depths = np.array(depths)
-        self.depths = self.depths[:, np.newaxis]
-        self.field_horiz = np.empty(shape=(Nd, Nq, Nr), dtype=complex)  # sound intensity values
-
-        # ifft kernel
-        kz = self.grid.kz
-        self.ifft_kernel = np.exp(1j * np.matmul(self.depths, kz[np.newaxis,:])) / len(kz)
-
-
-    def collect(self, dist, psi, sqrt_den=None):
+    def _save_output(self, step_no, dist, psi):
         """ Post-processe and collect output data at specified distance
             from the source.
             
             Args:
+                step_no: int
+                    Step number
                 dist: float
                     Radial distance from the source in meters
                 psi: 2d numpy array
@@ -403,21 +330,19 @@ class OutputCollector():
                     Has shape (Nz,Nq) where Nz and Nq are the number of 
                     vertical and angular grid points, respectively.
         """
-        self.counter += 1
-
-        if dist != 0:
+        if step_no > 0:
             dz = self.grid.dz
             idx = np.squeeze(np.round(self.depths/dz).astype(int))
             if np.ndim(idx) == 0:
                 idx = np.array([idx])
 
             A = np.matmul(self.ifft_kernel, psi)
-            B = sqrt_den[idx]
+            B = self.sqrt_den[idx]
 
-            self.field_horiz[:,:,self.counter-1] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
+            self.field_horiz[:,:,step_no] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
 
             if self.vertical_slice:
-                psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * sqrt_den
+                psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * self.sqrt_den
 
         else:
             if self.vertical_slice:
@@ -425,4 +350,25 @@ class OutputCollector():
 
         if self.vertical_slice:
             n = int(self.grid.Nz / 2)
-            self.field_vert[:, self.counter-1, :] = psi[:n, :]
+            self.field_vert[:, step_no, :] = psi[:n, :]
+
+
+    def _init_output(self, depths, vertical_slice):
+
+        Nr = self.grid.Nr
+        Nq = self.grid.Nq
+        Nz = self.grid.Nz
+        Nd = len(depths)
+
+        self.vertical_slice = vertical_slice
+
+        self.depths = np.array(depths)
+        self.depths = self.depths[:, np.newaxis]
+
+        # ifft kernel
+        kz = self.grid.kz
+        self.ifft_kernel = np.exp(1j * np.matmul(self.depths, kz[np.newaxis,:])) / len(kz)
+
+        # output arrays
+        self.field_vert = np.empty(shape=(int(Nz/2), Nr, Nq), dtype=complex)
+        self.field_horiz = np.empty(shape=(Nd, Nq, Nr), dtype=complex)  # sound intensity values

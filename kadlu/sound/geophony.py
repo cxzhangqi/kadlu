@@ -26,7 +26,7 @@
 """ Geophony module within the kadlu library
 """
 import numpy as np
-from kadlu.geospatial.ocean import Ocean, Seafloor
-from kadlu.sound.sound_propagation import TLCalculator
+from kadlu.geospatial.ocean import Ocean
+from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 
 

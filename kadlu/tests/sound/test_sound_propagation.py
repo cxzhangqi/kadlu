@@ -130,3 +130,23 @@ def test_run_with_flat_seafloor():
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535]])
     np.testing.assert_array_almost_equal(field, expected, decimal=3)
+
+def test_run_with_realistic_bathymetry():
+    s = Seafloor(thickness=2000)
+    o = Ocean(bathy="CHS")
+    # initialize calculator
+    tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
+        radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
+        verbose=True, progress_bar=False)
+    # run
+    tl.run(frequency=10, source_depth=60., source_lat=43.5, source_lon=-59.5)
+
+def test_run_with_uniform_temp_and_salinity():
+    s = Seafloor(thickness=2000)
+    o = Ocean(bathy="CHS", temp=4, salinity=35)
+    # initialize calculator
+    tl = TLCalculator(ocean=o, seafloor=s,\
+        radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
+        verbose=True, progress_bar=False)
+    # run
+    tl.run(frequency=10, source_depth=60., source_lat=43.5, source_lon=-59.5)

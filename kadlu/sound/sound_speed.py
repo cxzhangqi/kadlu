@@ -157,6 +157,11 @@ class SoundSpeed():
             y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
             lengths of x,y,z do not have to be the same.
 
+            If x,y,z are not specified, the method returns the underlying 
+            sound-speed data on which the interpolation is performed, either 
+            as a (c,lat,lon,z) tuple, or as a float if the sound speed is 
+            the same everywhere.
+
             Args: 
                 x: float or array
                     x-coordinate(s) or longitude(s)
@@ -186,7 +191,8 @@ class SoundSpeed():
 
 
     def _sound_speed(self, lats, lons, z, t, SP):
-        """ Compute sound speed.
+        """ Compute sound speed from temperature, salinity, and depth 
+            for a given latitude and longitude.
 
             Args:
                 lats: numpy array

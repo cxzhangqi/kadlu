@@ -15,6 +15,7 @@ import math
 import numpy as np
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.geospatial.ocean import Ocean
+from kadlu.utils import XYtoLL
 
 
 def test_initialize_seafloor_with_default_args():
@@ -72,3 +73,42 @@ def test_initialize_tlcalculator_with_ssp():
     assert tl.steps_btw_c_updates == math.inf
     c1 = tl.c.eval(x=0,y=0,z=z,grid=True)
     assert np.all(c1 == c)
+
+def test_update_source_location():
+    s = Seafloor()
+    o = Ocean()
+    tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1470)
+    tl._update_source_location(lat=45, lon=80)
+    tl.ocean.origin.latitude == 45
+    tl.ocean.origin.longitude == 80
+    lat_max, _ = XYtoLL(x=0, y=60e3, lat_ref=45, lon_ref=80)
+    assert lat_max == tl.ocean.NE.latitude
+    lat_min, _ = XYtoLL(x=0, y=-60e3, lat_ref=45, lon_ref=80)
+    assert lat_min == tl.ocean.SW.latitude
+    _, lon_max = XYtoLL(x=60e3, y=0, lat_ref=45, lon_ref=80)
+    assert lon_max == tl.ocean.NE.longitude
+    _, lon_min = XYtoLL(x=-60e3, y=0, lat_ref=45, lon_ref=80)
+    assert lon_min == tl.ocean.SW.longitude
+
+def test_bounding_box():
+    s = Seafloor()
+    o = Ocean()
+    tl = TLCalculator(ocean=o, seafloor=s)
+    s,n,w,e = tl._bounding_box(lat=45, lon=80, r=60e3)
+    lat_max, _ = XYtoLL(x=0, y=60e3, lat_ref=45, lon_ref=80)
+    assert lat_max == n
+    lat_min, _ = XYtoLL(x=0, y=-60e3, lat_ref=45, lon_ref=80)
+    assert lat_min == s
+    _, lon_max = XYtoLL(x=60e3, y=0, lat_ref=45, lon_ref=80)
+    assert lon_max == e
+    _, lon_min = XYtoLL(x=-60e3, y=0, lat_ref=45, lon_ref=80)
+    assert lon_min == w
+
+def test_create_grid():
+    s = Seafloor(thickness=800)
+    o = Ocean(bathy=-1000)
+    dz = 10
+    tl = TLCalculator(ocean=o, seafloor=s, absorption_layer=0.2, vertical_bin=dz)
+    g = tl._create_grid(frequency=10)
+    assert g.dr == 0.5 * 1500 / 10
+    assert np.max(-g.z) == pytest.approx((1000 + 800) * 1.2, abs=dz/2)

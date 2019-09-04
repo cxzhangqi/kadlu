@@ -35,6 +35,10 @@ from kadlu.geospatial.ocean import Ocean
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
 
 
+def test_ocean_or_ssp_must_be_specified():
+    with pytest.raises(AssertionError):
+        SoundSpeed(num_depths=50, rel_err=None)
+
 def test_sound_speed_from_uniform_data():
     # environment data provider
     o = Ocean(bathy=-1000, temp=4, salinity=3)

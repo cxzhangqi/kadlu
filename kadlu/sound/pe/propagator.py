@@ -326,6 +326,7 @@ class Propagator():
         # mirror sound-speed profile above/below sea surface
         self.n2_w = self.grid.mirror(self.n2_w)
 
+
 class OutputCollector():
     """ Post-processes and collects output data from the 
         transmission loss calculation.

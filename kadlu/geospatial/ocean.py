@@ -251,8 +251,8 @@ class Ocean():
 
             If x and y are not specified, the method returns the underlying 
             bathymetric data on which the interpolation is performed, either 
-            as a (bathy,lat,lon) tuple, or as a float if the depth is the same 
-            everywhere.
+            as a (bathy,lat,lon) tuple, or as a float if the bathymetry is 
+            the same everywhere.
 
             Args: 
                 x: float or array

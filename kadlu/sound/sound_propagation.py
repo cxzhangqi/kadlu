@@ -42,7 +42,7 @@ from kadlu.sound.pe.propagator import Propagator
 from kadlu.utils import XYtoLL
 
 from sys import platform as sys_pf
-if sys_pf == 'darwin':
+if sys_pf == 'darwin' or sys_pf == 'win32':
     import matplotlib
     matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
@@ -441,6 +441,7 @@ class TLCalculator():
 
         if np.ndim(self.TL) == 2:
             tl = self.TL
+
         elif np.ndim(self.TL) == 3:
             tl = self.TL[depth_index,:,:]
 
@@ -498,7 +499,11 @@ class TLCalculator():
         tl = np.squeeze(self.TL_vertical[:,:,idx])
 
         # bathy
-        bathy = self.env_input.seafloor_depth_transect(dist=self.grid.r, angle=angle)
+        angle_rad = angle * np.pi / 180.
+        x = np.cos(angle_rad) * self.grid.r
+        y = np.sin(angle_rad) * self.grid.r
+        bathy = self.ocean.bathy(x=x, y=y)
+        bathy *= (-1.)
 
         # min and max transmission loss (excluding sea surface bin)
         tl_min = np.min(tl[1:,:])

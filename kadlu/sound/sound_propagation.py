@@ -257,12 +257,12 @@ class TLCalculator():
                 print('Sound speed will be updated every {0} steps'.format(self.steps_btw_c_updates))
 
 
-    def _update_source_location(self, lat, lon):
+    def _update_source_location_and_time(self, lat, lon, time):
 
         r = self.range['r'] + 10e3
         S, N, W, E = self._bounding_box(lat=lat, lon=lon, r=r)
 
-        self.ocean.load(south=S, north=N, west=W, east=E)
+        self.ocean.load(south=S, north=N, west=W, east=E, time=time)
 
         if self._compute_sound_speed:
             self.c = SoundSpeed(self.ocean)
@@ -318,7 +318,7 @@ class TLCalculator():
         return grid
 
 
-    def run(self, frequency, source_lat, source_lon, source_depth,\
+    def run(self, frequency, source_lat, source_lon, source_depth, time=None,\
             receiver_depth=[.1], vertical_slice=False,\
             ignore_bathy_gradient=False, ignore_below_seafloor=True):
         """ Compute the transmission loss at the specified frequency, source depth, 
@@ -364,7 +364,7 @@ class TLCalculator():
         self.seafloor.frequency = frequency
 
         # load data and initialize grid
-        self._update_source_location(lat=source_lat, lon=source_lon)
+        self._update_source_location_and_time(lat=source_lat, lon=source_lon, time=time)
 
         seafloor_depth = np.abs(self.ocean.bathy(x=0, y=0))
 
@@ -434,6 +434,8 @@ class TLCalculator():
         self.grid = grid
         self.source_depth = source_depth
         self.receiver_depth = receiver_depth
+        self.TL = self._toarray(self.TL)
+        self.TLv = self._toarray(self.TLv)
 
 
     def plot(self, source_depth_index=0, receiver_depth_index=0):

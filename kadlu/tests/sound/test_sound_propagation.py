@@ -74,11 +74,11 @@ def test_initialize_tlcalculator_with_ssp():
     c1 = tl.c.eval(x=0,y=0,z=z,grid=True)
     assert np.all(c1 == c)
 
-def test_update_source_location():
+def test_update_source_location_and_time():
     s = Seafloor()
     o = Ocean()
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1470)
-    tl._update_source_location(lat=45, lon=80)
+    tl._update_source_location_and_time(lat=45, lon=80, time=None)
     tl.ocean.origin.latitude == 45
     tl.ocean.origin.longitude == 80
     lat_max, _ = XYtoLL(x=0, y=60e3, lat_ref=45, lon_ref=80)

@@ -53,6 +53,11 @@ def dt_2_t(time):
     NAVO_code: 13
     """
     warnings.warn("TODO: write the dt_2_t function")
+    # 2860 slices per year
+    #y = datetime(time.year, 1, 1)
+    #t = datetime(time.year, time.month, time.day, time.hour, time.minute)
+    #delta = t-y
+    #return time.strftime("%Y"), ()
     return "2015", (0, 2)
 
 
@@ -102,24 +107,15 @@ def fetch_hycom(year, slices, fetchvar):
         a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
         output[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
-    np.save(f"{storage_cfg()}{year}{fetchname(fetchvar, slices)}.npy", output, allow_pickle=False)
-    return [f"{storage_cfg()}{year}{fetchname(fetchvar, slices)}.npy"]
+    np.save(f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy", output, allow_pickle=False)
+    return [f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy"]
 
 
 def load_hycom(year, slices, fetchvar, lat, lon):
-    """
-    not sure yet how this will work, i think best way is to save the data in the shape
-    that was fetched, and let the shape destruction be done here.
-    fetch_hycom can then check a "query hash" against pathnames of saved data (storage is cheap :)
-    """
-    # check for local files
-    fname = f"{storage_cfg}{year}{fetchname(fetchvar, slices)}"
+    fname = f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy"
     if not isfile(fname): fetch_hycom(year, slices, fetchvar)
-
-    # replace missing values with Nonetype
-    lat[lat <= 2999] = None
-    lon[lon <= 2999] = None
-    data = np.load(f"{storage_cfg()}{year}{fetchname(fetchvar, slices)}.npy")
+    data = np.load(f"{storage_cfg()}hycom_{year}{fetchname(fetchvar, slices)}.npy")
+    data[data <= -29999] = None
     return data, lat, lon
 
 
@@ -177,7 +173,7 @@ class Hycom():
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
                     ],
-                    fetchvar='salinity', 
+                    fetchvar='salinity',
                     lat=self.lat,
                     lon=self.lon
                 )
@@ -190,7 +186,7 @@ class Hycom():
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
                     ],
-                    fetchvar='water_temp', 
+                    fetchvar='water_temp',
                     lat=self.lat,
                     lon=self.lon
                 )
@@ -216,7 +212,7 @@ class Hycom():
                         (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),  # tuple: (xmin, xmax)
                         (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))   # tuple: (ymin, ymax)
                     ],
-                    fetchvar='water_v', 
+                    fetchvar='water_v',
                     lat=self.lat,
                     lon=self.lon
                 )
@@ -242,9 +238,12 @@ west  = -64.4
 east  = -63.8
 time  = datetime(2015, 1, 1)
 
-salinity, lat, lon = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=datetime) 
-temp, lat, lon = Hycom().load_temp(south=south, north=north, west=west, east=east, time=datetime) 
-water_u, lat, lon = Hycom().load_water_u(south=south, north=north, west=west, east=east, time=datetime) 
-water_v, lat, lon = Hycom().load_water_v(south=south, north=north, west=west, east=east, time=datetime) 
+source = Hycom()
+salinity, lat, lon  = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=datetime) 
+temp, lat, lon      = source.load_temp(south=south, north=north, west=west, east=east, time=datetime) 
+water_u, lat, lon   = Hycom().load_water_u(south=south, north=north, west=west, east=east, time=datetime) 
+water_v, lat, lon   = Hycom().load_water_v(south=south, north=north, west=west, east=east, time=datetime) 
+
+fnames              = source.fetch_temp(south=south, north=north, west=west, east=east, time=datetime) 
 """
 

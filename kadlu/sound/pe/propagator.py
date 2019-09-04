@@ -37,6 +37,7 @@ import numpy as np
 import math
 from tqdm import tqdm
 from numpy.lib import scimath
+from kadlu.utils import create_boolean_array
 
 
 class Propagator():
@@ -92,8 +93,8 @@ class Propagator():
 
         self.ignore_bathy_gradient = ignore_bathy_gradient
 
-        self.update_bathy = self._create_boolean_array(self.grid.Nr, bathy_step)
-        self.update_c = self._create_boolean_array(self.grid.Nr, c_step)
+        self.update_bathy = create_boolean_array(self.grid.Nr, bathy_step)
+        self.update_c = create_boolean_array(self.grid.Nr, c_step)
 
         # compute cos(theta) and sin(theta) for all angular bins
         self.costheta = np.cos(grid.q)
@@ -108,16 +109,6 @@ class Propagator():
         absorp_thick = absorption_layer * np.max(np.abs(grid.z))
         D = absorp_thick / 3
         self.attenuation = 1j * absorp_coeff * np.exp(-(np.abs(grid.Z) - np.max(np.abs(grid.z)))**2 / D**2)
-
-
-    def _create_boolean_array(self, n, step=1):
-        arr = np.zeros(n, dtype=bool)
-        if step == math.inf:
-            arr[0] = True
-        else:
-            arr[::step] = True
-
-        return arr
 
 
     def run(self, psi, depths=[.1], vertical_slice=True):

@@ -304,12 +304,12 @@ class Ocean():
                    x-coordinate(s) or longitude(s)
                 y: float or array
                    y-coordinate(s) or latitude(s)
+                axis: str
+                    Axis along which gradient is computed. Can be either 'x' (default) or 'y'
                 grid: bool
                    Specify how to combine elements of x and y.
                 geometry: str
                     Can be either 'planar' (default) or 'spherical'
-                axis: str
-                    Axis along which gradient is computed. Can be either 'x' (default) or 'y'
 
             Returns:
                 grad: Interpolated bathymetry gradient values

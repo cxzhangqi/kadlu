@@ -178,8 +178,6 @@ class Propagator():
             # collect output
             self._save_output(step_no=i+1, dist=dist, psi=psi)
 
-        return output
-
 
     def _free_propagation_matrix(self):
         """ Compure matrices used to propagate the sound pressure field 
@@ -205,8 +203,6 @@ class Propagator():
 
 
     def _propagation_matrix(self):
-    
-        print('Computing U matrix at {0:.2f} m'.format(dist))
 
         h = self.height_above_seafloor
         lc = self.smooth_len_c
@@ -216,23 +212,24 @@ class Propagator():
 
         # smooth sound speed
         f = 0.5 * (1 + np.tanh(0.5 * h / lc))
-        n = self.n2_w + (self.n2_b - self.n2_w) * f
+        n2 = self.n2_w + (self.n2_b - self.n2_w) * f
         itmp = (self.depth[0,:] == 0) 
         if np.any(itmp):
-            n[0,itmp] = self.n2_b
+            n2[0,itmp] = self.n2_b
 
         # smooth density
-        f = 0.5 * (1 + np.tanh(0.5 * h / ld))
+        tanh = np.tanh(0.5 * h / ld)
+        f = 0.5 * (1 + tanh)
         den = den_w + (den_b - den_w) * f
         sech2 = 1. / np.cosh(0.5 * h / ld)
         sech2 = sech2**2
         dden =  0.5 * sech2 / ld * np.sqrt(1 + self.gradient**2)
         dden =  0.5 * (den_b - den_w) * dden
-        d2den = -0.5 * sech2 / ld * (f / ld * (1 + self.gradient**2))
+        d2den = -0.5 * sech2 / ld * (tanh / ld * (1 + self.gradient**2))
         d2den = 0.5 * (den_b - den_w) * d2den
 
         # calculate propagation matrix, U
-        U = np.exp(1j * self.grid.dr * self.k0 * (-1 + scimath.sqrt(n + self.attenuation +\
+        U = np.exp(1j * self.grid.dr * self.k0 * (-1 + scimath.sqrt(n2 + self.attenuation +\
             0.5 / self.k0**2 * (d2den / den - 1.5 * (dden / den)**2))))
 
         # square root of density matrix

@@ -387,16 +387,20 @@ class TLCalculator():
             verbose=self.verbose, progress_bar=self.progress_bar)
 
         # propagate
-        output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
+        propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
+
+        # output
+        fh = propagator.field_horiz
+        fv = propagator.field_vert
 
         # transmission loss in dB (horizontal plane)
-        TL = np.fft.fftshift(output.field_horiz[:,:,1:], axes=1)
+        TL = np.fft.fftshift(fh[:,:,1:], axes=1)
         TL = 20 * np.log10(np.abs(TL))
         TL = np.squeeze(TL)
 
         # transmission loss in dB (vertical plane)  
         if vertical_slice:
-            TL_vertical = 20 * np.ma.log10(np.abs(output.field_vert))  # OBS: this computation is rather slow
+            TL_vertical = 20 * np.ma.log10(np.abs(fv))  # OBS: this computation is rather slow
             TL_vertical = np.squeeze(TL_vertical)
         else:
             TL_vertical = None

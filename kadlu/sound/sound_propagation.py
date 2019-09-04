@@ -201,7 +201,7 @@ class TLCalculator():
                 Transmission loss in dB on a vertical plane for all angular bins. 
                 Has shape (Nz/2, Nr+1, Nq) where Nz is the number of vertical grid points, Nr is 
                 the number of radial steps, and Nq is number of angular bins. 
-            receiver_depths: list of floats
+            receiver_depth: list of floats
                 Depths of receivers. 
             env_input: EnvironmentInput
                 Module holding environment data
@@ -241,6 +241,9 @@ class TLCalculator():
 
         self.starter_method = starter_method
         self.starter_aperture = starter_aperture
+
+        self.TL = list()
+        self.TLv = list()
 
         self.verbose = verbose
         self.progress_bar = progress_bar
@@ -316,7 +319,7 @@ class TLCalculator():
 
 
     def run(self, frequency, source_lat, source_lon, source_depth,\
-            receiver_depths=[.1], vertical_slice=False,\
+            receiver_depth=[.1], vertical_slice=False,\
             ignore_bathy_gradient=False):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
@@ -330,9 +333,9 @@ class TLCalculator():
             Args:
                 frequency: float
                     Sound frequency in Hz
-                source_depth: float
+                source_depth: float or list
                     Source depth in meters
-                receiver_depths: list of floats
+                receiver_depth: list of floats
                     Depths of receivers. 
                 vertical_slice: bool
                     For all angular bins, compute the sound pressure on a
@@ -344,12 +347,15 @@ class TLCalculator():
                     data if the depth only changes gradually, implying that the gradient 
                     can be ignored.
         """
+        source_depth = self._tolist(source_depth)
+        receiver_depth = self._tolist(receiver_depth)
+
         if self.verbose:
             import time
             start = time.time()
             print('Begin transmission-loss calculation')
-            print('Source depth is: {0} m'.format(source_depth))
-            print('Computing the transmission loss at depths:', receiver_depths)
+            print('Source depths:', source_depth)
+            print('Receiver depths:', receiver_depth)
             if ignore_bathy_gradient:
                 print('Ignoring bathymetry gradient')
             if vertical_slice:
@@ -367,59 +373,66 @@ class TLCalculator():
         k0 = 2 * np.pi * frequency / self.c0
         starter = Starter(grid=grid, k0=k0, method=self.starter_method, aperture=self.starter_aperture)
 
-        # compute initial field
-        psi = starter.eval(zs=source_depth) * np.ones(shape=(1,grid.Nq))
-        if self.verbose:
-            print('Initial field computed')
+        # loop over source depths
+        # TODO: Vectorize the loop over source depths
+        for zs in source_depth:
 
-        # smoothing lengths
-        smooth_len_den = self.c0 / frequency / 4
-        smooth_len_c = np.finfo(float).eps
+            # compute initial field
+            psi = starter.eval(zs=zs) * np.ones(shape=(1,grid.Nq))
+            if self.verbose:
+                print('Initial field computed')
+
+            # smoothing lengths
+            smooth_len_den = self.c0 / frequency / 4
+            smooth_len_c = np.finfo(float).eps
  
-        # Configure the PE propagator
-        propagator = Propagator(ocean=self.ocean, seafloor=self.seafloor,\
-            c=self.c, c0=self.c0, k0=k0, grid=grid,\
-            smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
-            absorption_layer=self.absorption_layer,\
-            ignore_bathy_gradient=ignore_bathy_gradient,\
-            bathy_step=self.steps_btw_bathy_updates,\
-            c_step=self.steps_btw_c_updates,\
-            verbose=self.verbose, progress_bar=self.progress_bar)
+            # Configure the PE propagator
+            propagator = Propagator(ocean=self.ocean, seafloor=self.seafloor,\
+                c=self.c, c0=self.c0, k0=k0, grid=grid,\
+                smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
+                absorption_layer=self.absorption_layer,\
+                ignore_bathy_gradient=ignore_bathy_gradient,\
+                bathy_step=self.steps_btw_bathy_updates,\
+                c_step=self.steps_btw_c_updates,\
+                verbose=self.verbose, progress_bar=self.progress_bar)
 
-        # propagate
-        propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
+            # propagate
+            propagator.run(psi=psi, receiver_depth=receiver_depth, vertical_slice=vertical_slice)
 
-        # output
-        fh = propagator.field_horiz
-        fv = propagator.field_vert
+            # output
+            fh = propagator.field_horiz
+            fv = propagator.field_vert
 
-        # transmission loss in dB (horizontal plane)
-        TL = np.fft.fftshift(fh[:,:,1:], axes=1)
-        TL = 20 * np.log10(np.abs(TL))
-        TL = np.squeeze(TL)
+            # transmission loss in dB (horizontal plane)
+            TL = np.fft.fftshift(fh[:,:,1:], axes=1)
+            TL = 20 * np.log10(np.abs(TL))
+            TL = np.squeeze(TL)
 
-        # transmission loss in dB (vertical plane)  
-        if vertical_slice:
-            TL_vertical = 20 * np.ma.log10(np.abs(fv))  # OBS: this computation is rather slow
-            TL_vertical = np.squeeze(TL_vertical)
-        else:
-            TL_vertical = None
+            # transmission loss in dB (vertical plane)  
+            if vertical_slice:
+                TLv = 20 * np.ma.log10(np.abs(fv))  # OBS: this computation is rather slow
+                TLv = np.squeeze(TLv)
+            else:
+                TLv = None
+
+            self.TL.append(TL)
+            self.TLv.append(TLv)
+
 
         if self.verbose:
             end = time.time()
             print('Calculation completed in {0:.2f} seconds'.format(end - start))
 
-        # hang on to the relevant data
+        # store relevant data
         self.grid = grid
-        self.TL = TL
-        self.TL_vertical = TL_vertical
-        self.receiver_depths = receiver_depths
+        self.source_depth = source_depth
+        self.receiver_depth = receiver_depth
 
 
-    def plot(self, depth_index=0):
+    def plot(self, source_depth_index=0, receiver_depth_index=0):
         """ Plot the transmission loss on a horizontal plane at fixed depth.
 
-            The argument `depth_index` referes to the array `receiver_depths` 
+            The argument `depth_index` referes to the array `receiver_depth` 
             provided has input argument for the `run` method when the 
             transmission loss was calculated.
 
@@ -433,21 +446,22 @@ class TLCalculator():
                 fig: matplotlib.figure.Figure
                     A figure object.
         """
+        assert source_depth_index < len(self.source_depth), 'Invalid source depth index. The index must be < {0}'.format(len(self.source_depth))
+
+        assert receiver_depth_index < len(self.receiver_depth), 'Invalid receiver depth index. The index must be < {0}'.format(len(self.receiver_depth))
+
+        TL = self.TL[source_depth_index]
+
         # check that transmission loss has been calculated
         if self.TL is None:
             print("Use the run method to calculate the transmission loss before plotting")
             return None
 
-        # check that depth_index is valid
-        if depth_index >= len(self.receiver_depths):
-            print('ERROR: Invalid depth index. The depth index cannot be larger than {0}'.format(len(self.receiver_depths)))
-            exit(1)
-
         if np.ndim(self.TL) == 2:
             tl = self.TL
 
         elif np.ndim(self.TL) == 3:
-            tl = self.TL[depth_index,:,:]
+            tl = self.TL[receiver_depth_index,:,:]
 
         r = self.grid.r[1:]
         q = np.fft.fftshift(np.squeeze(self.grid.q))
@@ -461,14 +475,14 @@ class TLCalculator():
         ax = plt.gca()
         ax.set_xlabel('x(m)')
         ax.set_ylabel('y (m)')
-        plt.title('Transmission loss at {0:.1f} meters depth'.format(self.receiver_depths[depth_index]))
+        plt.title('Transmission loss, source at {0:.1f} m, receiver at {1:.1f} m'.format(self.receiver_depth[receiver_depth_index], self.source_depth[source_depth_index]))
 
         plt.colorbar(fig, format='%+2.0f dB')
 
         return fig
 
 
-    def plot_vertical(self, angle=0, show_bathy=False):
+    def plot_vertical(self, angle=0, source_depth_index=0, show_bathy=False):
         """ Plot the transmission loss on a vertical plane for a selected angular bin.
 
             Returns None if the transmission loss has not been computed.
@@ -483,8 +497,12 @@ class TLCalculator():
                 fig: matplotlib.figure.Figure
                     A figure object.
         """
+        assert source_depth_index < len(self.source_depth), 'Invalid source depth index. The index must be < {0}'.format(len(self.source_depth))
+
+        TLv = self.TLv[source_depth_index]
+
         # check that transmission loss has been calculated
-        if self.TL_vertical is None:
+        if self.TLv is None:
             print("Use the run method with option vertical_slice set to True to calculate the transmission loss before plotting")
             return None
 
@@ -531,3 +549,8 @@ class TLCalculator():
         return fig
 
 
+    def _tolist(self, v):
+        if isinstance(v, float) or isinstance(v, int):
+            v = [v]
+
+        return v

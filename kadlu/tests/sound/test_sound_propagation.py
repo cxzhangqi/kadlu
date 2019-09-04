@@ -119,8 +119,8 @@ def test_run_with_flat_seafloor():
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
-    tl.run(frequency=10, source_depth=9900, source_lat=45, source_lon=60)
-    field = tl.TL
+    tl.run(frequency=10, source_depth=-9900, source_lat=45, source_lon=60)
+    field = tl.TL[0]
     expected = np.array([[-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
@@ -139,7 +139,7 @@ def test_run_with_realistic_bathymetry():
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
     # run
-    tl.run(frequency=10, source_depth=60., source_lat=43.5, source_lon=-59.5)
+    tl.run(frequency=10, source_depth=-60., source_lat=43.5, source_lon=-59.5)
 
 def test_run_with_uniform_temp_and_salinity():
     s = Seafloor(thickness=2000)
@@ -149,4 +149,22 @@ def test_run_with_uniform_temp_and_salinity():
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
     # run
-    tl.run(frequency=10, source_depth=60., source_lat=43.5, source_lon=-59.5)
+    tl.run(frequency=10, source_depth=-60., source_lat=43.5, source_lon=-59.5)
+
+def test_run_at_same_depth_twice():
+    s = Seafloor(thickness=2000)
+    o = Ocean(bathy=-10000)
+    tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
+        radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
+        verbose=True, progress_bar=False)
+    tl.run(frequency=10, source_depth=[-9900, -9900], source_lat=45, source_lon=60)
+    for field in tl.TL:
+        expected = np.array([[-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+            [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+            [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+            [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+            [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+            [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+            [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
+            [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535]])
+        np.testing.assert_array_almost_equal(field, expected, decimal=3)

@@ -110,7 +110,7 @@ class Propagator():
         self.attenuation = 1j * absorp_coeff * np.exp(-(np.abs(grid.Z) - np.max(np.abs(grid.z)))**2 / D**2)
 
 
-    def run(self, psi, depths=[.1], vertical_slice=True):
+    def run(self, psi, receiver_depth=[.1], vertical_slice=True):
         """ Propagate the pressure field to the boundary of the computional domain.
 
             The sound pressure is computed at every grid point on 
@@ -124,7 +124,7 @@ class Propagator():
                     Starting sound pressure field computed with the PEStarter.
                     Has shape (Nz,Nq) where Nz and Nq are the number of 
                     vertical and angular grid points, respectively.
-                depths: list of floats
+                receiver_depth: list of floats
                     Depths at which horizontal slices of the sound pressure 
                     field are computed.
                 vertical_slice: bool
@@ -137,7 +137,7 @@ class Propagator():
                     Result of the computation
         """
         # initialize output containers
-        self._init_output(depths, vertical_slice) 
+        self._init_output(receiver_depth, vertical_slice) 
 
         # free propagator
         U_fr = self._free_propagation_matrix()
@@ -329,7 +329,7 @@ class Propagator():
         """
         if step_no > 0:
             dz = self.grid.dz
-            idx = np.squeeze(np.round(self.depths/dz).astype(int))
+            idx = np.squeeze(np.round(self.receiver_depth/dz).astype(int))
             if np.ndim(idx) == 0:
                 idx = np.array([idx])
 
@@ -350,21 +350,21 @@ class Propagator():
             self.field_vert[:, step_no, :] = psi[:n, :]
 
 
-    def _init_output(self, depths, vertical_slice):
+    def _init_output(self, receiver_depth, vertical_slice):
 
         Nr = self.grid.Nr
         Nq = self.grid.Nq
         Nz = self.grid.Nz
-        Nd = len(depths)
+        Nd = len(receiver_depth)
 
         self.vertical_slice = vertical_slice
 
-        self.depths = np.array(depths)
-        self.depths = self.depths[:, np.newaxis]
+        self.receiver_depth = np.array(receiver_depth)
+        self.receiver_depth = self.receiver_depth[:, np.newaxis]
 
         # ifft kernel
         kz = self.grid.kz
-        self.ifft_kernel = np.exp(1j * np.matmul(self.depths, kz[np.newaxis,:])) / len(kz)
+        self.ifft_kernel = np.exp(1j * np.matmul(self.receiver_depth, kz[np.newaxis,:])) / len(kz)
 
         # output arrays
         self.field_vert = np.empty(shape=(int(Nz/2), Nr, Nq), dtype=complex)

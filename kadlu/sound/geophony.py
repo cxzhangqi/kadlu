@@ -32,37 +32,34 @@ from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 
 class Geophony():
 
-    def __init__(self, tl_calculator, depth, xy_res=None):
+    def __init__(self, tl_calculator, depth, xy_res=None, time_dependent_tl=False):
 
         self.tl = tl_calculator
         self.depth = depth
+        self.time_dependent_tl = time_dependent_tl
 
         if xy_res is None:
-            self.xy_res = 2 * self.tl.range['r']
+            self.xy_res = np.sqrt(2) * self.tl.range['r']
         else:
             self.xy_res = xy_res
 
 
-    def model(self, frequency, south, north, west, east, time=None):
+    def model(self, frequency, south, north, west, east, start=None, stop=None):
 
         lats, lons = self._create_grid(south, north, west, east)
 
         for lat,lon in zip(lats, lons):
 
-            # transmission loss
+            # loop over times
+            # compute transmission loss once at the center time, or for ever time step
+            time = None
+
+            # load data and compute transmission loss
             self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon, source_depth=self.depth, time=time)          
             TL = self.tl.TL
 
-            # source levels
-            r = self.tl.grid.r[1:]
-            q = self.tl.grid.q
-            r, q = np.meshgrid(r, q)
-            x = r * np.cos(q)
-            y = r * np.sin(q)
-            x = x.flatten()
-            y = y.flatten()
-            SL = 200 * self.tl.ocean.wave(x=x, y=y)  # 200 dB times wave height
-            SL = np.reshape(SL, newshape=r.shape)
+            # source level
+            SL = self._source_level(lat, lon, time)
 
             # integrate SL-TL to obtain sound pressure level
             p = np.power(10, (SL + TL) / 20)
@@ -70,6 +67,26 @@ class Geophony():
             SPL = 20 * np.log10(p)
             
         return SPL
+
+
+    def _source_level(self, lat, lon, time):
+
+        # TODO: complete implementation of this method
+
+        # load wave data for the specified time step
+        # (if not already loaded via the TL calculation)
+
+        r = self.tl.grid.r[1:]
+        q = self.tl.grid.q
+        r, q = np.meshgrid(r, q)
+        x = r * np.cos(q)
+        y = r * np.sin(q)
+        x = x.flatten()
+        y = y.flatten()
+        SL = 200 * self.tl.ocean.wave(x=x, y=y)  # 200 dB times wave height
+        SL = np.reshape(SL, newshape=r.shape)
+
+        return SL
 
 
     def _create_grid(self, south, north, west, east):

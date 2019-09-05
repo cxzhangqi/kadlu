@@ -84,8 +84,8 @@ def test_fetch_correct_number_of_files():
     """
     south = 44
     north = 46
-    west = 58
-    east = 60
+    west = -58
+    east = -60
     filenames = Chs().fetch_bathymetry(south, north, west, east)
     assert(len(filenames) == 4)
     filenames_str = '\n'.join(filenames)

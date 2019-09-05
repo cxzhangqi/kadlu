@@ -13,8 +13,9 @@
 
 import pytest
 import os
+import math
 import numpy as np
-from kadlu.utils import LLtoXY, XYtoLL, interp_grid_1d
+from kadlu.utils import LLtoXY, XYtoLL, interp_grid_1d, create_boolean_array
 
 def test_can_convert_single_point_from_ll_to_xy():
     lat_ref = 45
@@ -99,3 +100,9 @@ def test_can_convert_grid_from_xy_to_ll_with_z_coordinate():
     assert np.all(np.abs(lat[1,0,:] - (lat_ref+1)) < 0.1)
     assert np.all(np.abs(lon[0,1,:] - (lon_ref+10)) < 0.1)
     assert np.all(np.abs(lat[0,1,:] - lat_ref) < 0.1)
+
+def test_create_boolean_array():
+    a = create_boolean_array(n=4, step=math.inf)
+    assert np.all(a == np.array([True, False, False, False]))
+    a = create_boolean_array(n=6, step=3)
+    assert np.all(a == np.array([True, False, False, True, False, False]))

@@ -23,49 +23,77 @@
 #       along with this program.  If not, see <https://www.gnu.org/licenses/>.     #
 # ================================================================================ #
 
-""" Unit tests for the sound speed module within the kadlu library
+""" Geophony module within the kadlu library
 """
-
-import pytest
-import os
 import numpy as np
-from kadlu.transmission_loss.sound_speed import SoundSpeed
 from kadlu.geospatial.ocean import Ocean
+from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 
-path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
+
+class Geophony():
+
+    def __init__(self, tl_calculator, depth, xy_res=None, time_dependent_tl=False):
+
+        self.tl = tl_calculator
+        self.depth = depth
+        self.time_dependent_tl = time_dependent_tl
+
+        if xy_res is None:
+            self.xy_res = np.sqrt(2) * self.tl.range['r']
+        else:
+            self.xy_res = xy_res
 
 
-def test_sound_speed_from_uniform_data():
-    # environment data provider
-    env = Ocean(bathy=-1000, temp=4, salinity=3)
-    env.load(south=44, north=45, west=60, east=61)
-    # instance of sound speed class 
-    _ = SoundSpeed(env, num_depths=50, rel_err=None)
+    def model(self, frequency, south, north, west, east, start=None, stop=None):
 
-def test_sound_speed_from_uniform_ssp():
-    # instance of sound speed class 
-    ss = SoundSpeed(ssp=1499, num_depths=50, rel_err=None)
-    # evaluate
-    c = ss.eval(x=0, y=0, z=0)
-    assert c == 1499
+        lats, lons = self._create_grid(south, north, west, east)
 
-def test_sound_speed_from_ssp():
-    # sound speed profile
-    z0 = np.array([0, 10, 20, 30, 60])
-    c0 = np.array([1500, 1510, 1512, 1599, 1489])
-    # instance of sound speed class 
-    ss = SoundSpeed(ssp=(c0,z0), num_depths=50, rel_err=None)
-    # evaluate
-    c = ss.eval(x=0, y=0, z=z0, grid=True)
-    assert np.all(np.abs(c-c0) < 1E-6)
+        for lat,lon in zip(lats, lons):
 
-def test_query_sound_speed_interpolation_data():
-    # sound speed profile
-    z0 = np.array([0, 10, 20, 30, 60])
-    c0 = np.array([1500, 1510, 1512, 1599, 1489])
-    # instance of sound speed class 
-    ss = SoundSpeed(ssp=(c0,z0), num_depths=50, rel_err=None)
-    # query underlying data
-    d = ss.eval()
-    assert np.all(np.abs(d[1]-z0) < 1E-6)
-    assert np.all(np.abs(d[0]-c0) < 1E-6)
+            # loop over times
+            # compute transmission loss once at the center time, or for ever time step
+            time = None
+
+            # load data and compute transmission loss
+            self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon, source_depth=self.depth, time=time)          
+            TL = self.tl.TL
+
+            # source level
+            SL = self._source_level(lat, lon, time)
+
+            # integrate SL-TL to obtain sound pressure level
+            p = np.power(10, (SL + TL) / 20)
+            p = np.squeeze(np.apply_over_axes(np.sum, p, range(1, p.ndim))) # sum over all but first axis
+            SPL = 20 * np.log10(p)
+            
+        return SPL
+
+
+    def _source_level(self, lat, lon, time):
+
+        # TODO: complete implementation of this method
+
+        # load wave data for the specified time step
+        # (if not already loaded via the TL calculation)
+
+        r = self.tl.grid.r[1:]
+        q = self.tl.grid.q
+        r, q = np.meshgrid(r, q)
+        x = r * np.cos(q)
+        y = r * np.sin(q)
+        x = x.flatten()
+        y = y.flatten()
+        SL = 200 * self.tl.ocean.wave(x=x, y=y)  # 200 dB times wave height
+        SL = np.reshape(SL, newshape=r.shape)
+
+        return SL
+
+
+    def _create_grid(self, south, north, west, east):
+
+        # TODO: implement this method
+
+        lats = np.array([45])
+        lons = np.array([45])
+
+        return lats, lons

@@ -395,3 +395,15 @@ def get_member(cls, member_name):
 
     s = ", ".join(name for name, _ in cls.__members__.items())
     raise ValueError("Unknown value \'{0}\'. Select between: {1}".format(member_name, s))
+
+
+def create_boolean_array(n, step=1):
+    arr = np.zeros(n, dtype=bool)
+    if step == math.inf:
+        arr[0] = True
+    else:
+        arr[::step] = True
+
+    return arr
+
+

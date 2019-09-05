@@ -48,20 +48,19 @@ class Era5():
         #grbs=pygrib.open(grib)
         #grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
         return fetch_util.loadgrib(self.fetch_windwaveswellheight(time), plot)
-
     def __str__(self):
-        info = "Era5 Global Dataset from Copernicus Climate Datastore. Available class functions: \n\t"
-        fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
+        info = "Era5 Global Dataset from Copernicus Climate Datastore"
         args = "(time=datetime)"
-        return info + "\n\t".join(list(map(lambda f : f"{f}{args}", fcns )))
+        return fetch_util.str_def(self, info, args)
 
 
 """
+print(Era5())
+
 time = datetime(2018, 1, 1)
 fnames = Era5().fetch_windwaveswellheight(time)
 wave, lat, lon = Era5().load_windwaveswellheight(time)
 
-print(Era5())
 #wave, lat, lon = Era5().load_windwaveswellheight(time, "wind, wave, swell height")
 wave, lat, lon = Era5().load_windwaveswellheight(time, plot=False)
 """

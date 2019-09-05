@@ -34,6 +34,14 @@ def storage_cfg():
     return storage_location
 
 
+def str_def(self, info, args):
+    """ builds string definition for data source class objects """
+    fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
+    strlen = list(map(lambda f : len(f), fcns))
+    whitespace = ''.join(map(lambda x : ' ', range(0, np.max(strlen) - np.min(strlen))))
+    return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
+
+
 def loadgrib(filenames, plot=False):
     """
     This needs to be updated to return the entire list of grib

@@ -15,6 +15,7 @@ import pygrib
 from kadlu.geospatial.data_sources import fetch_util 
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 from collections import defaultdict
+import warnings
 
 # dictionary to obtain reference level as per RDWPS nomenclature
 # for more info see the following: https://weather.gc.ca/grib/grib2_RDWPS_e.html
@@ -52,6 +53,7 @@ def fetchname(wavevar, time, region, level_ref=level_ref):
 
 def abstract_region(south, north, west, east):
     # this function will eventually return a list of regions determined by the input boundaries
+    warnings.warn("RDWPS region abstraction function is incomplete. Instead, you get the gulf of st lawrence")
     regions = [
         'gulf-st-lawrence',
         'superior',
@@ -85,12 +87,6 @@ class Rdwps():
 
     header = "(south=-90, north=90, east=-180, west=180, time=datetime.now())"
 
-    def print_fcns(self):
-        for fcn in [self.fetch_windwaveswellheight, self.fetch_windwaveheight, 
-                    self.fetch_wavedirection, self.fetch_waveperiod, 
-                    self.fetch_wind_u, self.fetch_wind_v, self.fetch_icecover]:
-            print(fcn.__name__ + self.header)
-
     def fetchname(self, wavevar, time, region, level_ref=level_ref):
         return fetchname(wavevar, time, region, level_ref)
 
@@ -103,3 +99,7 @@ class Rdwps():
         """
         return fetch_util.loadgrib(filepath, plot)
 
+    def __str__(self):
+        info = "RDWPS info goes here"
+        args = "(south=-90, north=90, west=180, east=-180, time=datetime.now())"
+        return fetch_util.str_def(self, info, args)

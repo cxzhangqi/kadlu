@@ -226,13 +226,10 @@ class Chs():
         return fetch(south, north, west, east)
     def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return load(south, north, west, east)
-
     def __str__(self):
-        info = "Non-Navigational 100m (NONNA-100) Dataset from Canadian Hydrographic Datastore.\nAvailable class functions: \n\t"
-        fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
+        info = "Non-Navigational 100m (NONNA-100) bathymetry dataset from Canadian Hydrographic Datastore"
         args = "(south=-90, north=90, west=-180, east=180)"
-        return info + "\n\t".join(list(map(lambda f : f"{f}{' '[len(f)-np.min(list(map(lambda f : len(f), fcns))):]}{args}", fcns )))
-
+        return fetch_util.str_def(self, info, args)
 
 """
 print(Chs())

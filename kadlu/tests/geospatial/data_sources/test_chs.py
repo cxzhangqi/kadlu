@@ -15,11 +15,15 @@ import numpy as np
 import os
 from kadlu.geospatial.data_sources import chs
 from kadlu.geospatial.data_sources.chs import Chs
-#from kadlu.utils import LatLon
+from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 from datetime import datetime, timedelta
 
-# TODO: update the tests oliver wrote for the new fetch interface
-#path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
+# remove fetched files to test fetching
+for f in os.listdir(storage_cfg()):
+    if "CA2_" in f:
+        print(f"Removing {f}")
+        os.remove(f"{storage_cfg()}{f}")
+
 
 def test_fetch_returns_two_files():
     paths = Chs().fetch_bathymetry(south=42.1, north=44.6, west=-60.9, east=-59.1)
@@ -71,5 +75,23 @@ def test_load_partial_chs_file():
     assert np.ma.max(bathy) == pytest.approx(-493.8, abs=0.1)
     assert bathy.shape[0] == lats.shape[0]
     assert bathy.shape[0] == lons.shape[0]
+
+
+def test_fetch_correct_number_of_files():
+    """
+    Correct file coords     44:58, 44:59, 45:58, 45:59
+    filename convention     CA2_4500N06100W.tif
+    """
+    south = 44
+    north = 46
+    west = 58
+    east = 60
+    filenames = Chs().fetch_bathymetry(south, north, west, east)
+    assert(len(filenames) == 4)
+    filenames_str = '\n'.join(filenames)
+    assert("4400N05800W.tif" in filenames_str)
+    assert("4400N05900W.tif" in filenames_str)
+    assert("4500N05800W.tif" in filenames_str)
+    assert("4500N05900W.tif" in filenames_str)
 
 

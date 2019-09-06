@@ -19,13 +19,16 @@ from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 from datetime import datetime, timedelta
 
 # remove fetched files to test fetching
-for f in os.listdir(storage_cfg()):
-    if "CA2_" in f:
-        print(f"Removing {f}")
-        os.remove(f"{storage_cfg()}{f}")
+def unfetch():
+    for f in os.listdir(storage_cfg()):
+        if "CA2_" in f:
+            print(f"Removing {f}")
+            os.remove(f"{storage_cfg()}{f}")
+    return
 
 
 def test_fetch_returns_two_files():
+    unfetch()
     paths = Chs().fetch_bathymetry(south=42.1, north=44.6, west=-60.9, east=-59.1)
     assert len(paths) == 6
     assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
@@ -35,19 +38,20 @@ def test_filename():
     assert fname == "CA2_5000N06200W.tif"
 
 def test_parse_sw_corner():
-    s,w = chs.parse_sw_corner("CA2_5000N06200W.tif")
+    s,w = chs.parse_sw_corner(f"{storage_cfg()}CA2_5000N06200W.tif")
     assert s == 50
     assert w == -62
 
 def test_latlon():
-    lats, lons = chs.latlon(path="CA2_5000N06200W.tif")
+    Chs().fetch_bathymetry(south=49, north=51, west=-63, east=-61)
+    lats, lons = chs.latlon(f"{storage_cfg()}CA2_5000N06200W.tif")
     assert lats.shape[0] == 1001
     assert lons.shape[0] == 1001
     assert lats[0] == 50
     assert lats[1] == 50.001
     assert lons[0] == -62
     assert lons[1] == -61.999
-    lats, lons = chs.latlon(path="CA2_5000N06200W.tif", num_lat=501)
+    lats, lons = chs.latlon(f"{storage_cfg()}CA2_5000N06200W.tif")
     assert lats.shape[0] == 501
     assert lats[0] == 50
     assert lats[1] == 50.001
@@ -78,14 +82,11 @@ def test_load_partial_chs_file():
 
 
 def test_fetch_correct_number_of_files():
-    """
-    Correct file coords     44:58, 44:59, 45:58, 45:59
-    filename convention     CA2_4500N06100W.tif
-    """
-    south = 44
-    north = 46
-    west = -58
-    east = -60
+    unfetch()
+    south = 44.006
+    north = 45.994
+    west= -59.994
+    east= -58.006
     filenames = Chs().fetch_bathymetry(south, north, west, east)
     assert(len(filenames) == 4)
     filenames_str = '\n'.join(filenames)
@@ -93,5 +94,4 @@ def test_fetch_correct_number_of_files():
     assert("4400N05900W.tif" in filenames_str)
     assert("4500N05800W.tif" in filenames_str)
     assert("4500N05900W.tif" in filenames_str)
-
 

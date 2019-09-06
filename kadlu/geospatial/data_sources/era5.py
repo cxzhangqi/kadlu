@@ -48,6 +48,11 @@ class Era5():
         #grbs=pygrib.open(grib)
         #grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
         return fetch_util.loadgrib(self.fetch_windwaveswellheight(time), plot)
+    def load_wavedirection(self, time=datetime.now()):
+        return fetch_util.loadgrib(self.fetch_wavedirection(time), plot)
+    def load_waveperiod(self, time=datetime.now()):
+        return fetch_util.loadgrib(self.fetch_waveperiod(time), plot)
+
     def __str__(self):
         info = "Era5 Global Dataset from Copernicus Climate Datastore"
         args = "(time=datetime)"

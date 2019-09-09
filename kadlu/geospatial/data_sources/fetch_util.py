@@ -74,6 +74,7 @@ def loadgrib(filenames, plot=False):
         break
     """
 
+    warnings.warn("This function is deprecated. Instead, use module function")
     return grib[1].data()
 
 

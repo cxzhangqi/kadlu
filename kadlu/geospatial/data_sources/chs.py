@@ -233,6 +233,6 @@ class Chs():
 
 """
 print(Chs())
-bathy, lat, lon = Chs().load_bathymetry()
+bathy, lat, lon = Chs().load_bathymetry(self, 1, 1, 1, 1, plot)
 """
 

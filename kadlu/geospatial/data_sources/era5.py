@@ -4,7 +4,9 @@
     Metadata regarding the dataset can be found here:
         https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview
 
-    matt_s 2019-08
+    Oliver Kirsebom
+    Casey Hilliard
+    Matthew Smith
 """
 
 import cdsapi
@@ -55,7 +57,7 @@ class Era5():
 
     def __str__(self):
         info = "Era5 Global Dataset from Copernicus Climate Datastore"
-        args = "(time=datetime)"
+        args = "(time=datetime(), plot=False)"
         return fetch_util.str_def(self, info, args)
 
 

@@ -11,7 +11,6 @@
     Oliver Kirsebom
     Casey Hilliard
     Matthew Smith 
-    2019-09
 """
 
 import numpy as np

@@ -18,6 +18,7 @@ from kadlu.geospatial.data_sources import fetch_util
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 import warnings
 
+
 # dictionary to obtain reference level as per RDWPS nomenclature
 # for more info see the following: https://weather.gc.ca/grib/grib2_RDWPS_e.html
 from collections import defaultdict
@@ -31,7 +32,6 @@ level_ref['gulf-st-lawrence']['PKPER'] = 'TGL_0'
 level_ref['gulf-st-lawrence']['PRMSL'] = 'MSL_0'
 
 
-""" helper classes for region conversion """
 class Boundary():
     def __init__(self, south, north, west, east):
         self.south = south
@@ -47,6 +47,8 @@ class Boundary():
                     self.west > other.east or 
                     self.north < other.south or 
                     self.south > other.north)
+
+
 class Region():
     def __init__(self, ymin, xmin, nx, ny, ystep, xstep, name):
         self.south = ymin
@@ -69,7 +71,7 @@ regions = [
 
 
 def ll_2_regionstr(south, north, west, east):
-    """ convert input bounds to region string """
+    """ convert input bounds to region string using the separating axis theorem """
     bounds = Boundary(south, north, west, east)
     return [str(reg) for reg in regions if bounds == reg]
 
@@ -178,6 +180,7 @@ class Rdwps():
         return load_rdwps('VGRD', time, ll_2_regionstr(south, north, west, east), plot=plot)
     def load_icecover(self, south=-90, north=90, west=-180, east=180, time=datetime.now(), plot=False):
         return load_rdwps('ICEC', time, ll_2_regionstr(south, north, west, east), plot=plot)
+
     def __str__(self):
         info = "RDWPS info goes here"
         args = "(south=-90, north=90, west=-180, east=180, time=datetime.now())"

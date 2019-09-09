@@ -5,7 +5,6 @@ from kadlu.geospatial.data_sources.hycom import Hycom
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 import os
 from os.path import isfile
-from os import remove
 
 # run pytest with '--capture=no' arg to print class function info 
 print(Hycom())
@@ -21,7 +20,7 @@ time  = datetime(2015, 1, 1)
 for f in os.listdir(storage_cfg()):
     if "hycom" in f:
         print(f"Removing {f}")
-        remove(f"{storage_cfg()}{f}")
+        os.remove(f"{storage_cfg()}{f}")
 
 
 def test_fetch_salinity():

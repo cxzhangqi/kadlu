@@ -45,8 +45,8 @@ def load_era5(wavevar, time, plot):
     fetchfiles = [f"{storage_cfg()}{fetchname(wavevar, time)}"]
 
     for fname in fetchfiles:
-        if not os.path.isfile(fname):
-            fetch_era5(wavevar, time)
+        if not os.path.isfile(fname): fetch_era5(wavevar, time)
+
         grib = pygrib.open(fname)
         for msg in grib:
             z, y, x = msg.data()
@@ -54,8 +54,8 @@ def load_era5(wavevar, time, plot):
             lat = np.append(lat, y[~z.mask])
             lon = np.append(lon, x[~z.mask])
 
-    if plot is not False: fetch_util.plot_sample_grib(fetchfiles)
-    return val, lat, lon
+    if plot is not False: fetch_util.plot_sample_grib(fetchfiles, plot)
+    return val, lat, (lon - 180)
 
 
 class Era5():

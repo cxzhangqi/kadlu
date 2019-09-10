@@ -38,9 +38,9 @@ class Boundary():
         self.north = north
         self.west = west
         self.east = east
-    def __eq__(self, other):
+    def __and__(self, other):
         """
-        separating axis theorem to quickly check for intersecting regions
+        define '&' operator to separating axis theorem: quickly check for intersecting regions
             https://en.wikipedia.org/wiki/Hyperplane_separation_theorem#Use_in_collision_detection
         """
         return not (self.east < other.west or 
@@ -59,7 +59,7 @@ class Region():
     def __str__(self): return self.name
 
 
-regions = [
+rdwps_regions = [
         # region parameters as defined in RDWPS docs
         #   https://weather.gc.ca/grib/grib2_RDWPS_e.html
         Region(46.2590, -92.3116, 658, 318, 0.0090, 0.0124, 'superior'),
@@ -71,9 +71,8 @@ regions = [
 
 
 def ll_2_regionstr(south, north, west, east):
-    """ convert input bounds to region string using the separating axis theorem """
-    bounds = Boundary(south, north, west, east)
-    return [str(reg) for reg in regions if bounds == reg]
+    """ convert input bounds to region strings using the separating axis theorem """
+    return [str(reg) for reg in rdwps_regions if Boundary(south, north, west, east) & reg]
 
 
 def fetchname(wavevar, time, region):
@@ -89,16 +88,6 @@ def fetchname(wavevar, time, region):
 
 
 def fetch_rdwps(wavevar, time, regions):
-    """
-    fetchfiles = []
-    for region in regions:
-        fname = fetchname(wavevar, time, region)
-        fetchfile = f"{storage_cfg()}{fname}"
-        fetchfiles.append(fetchfile)
-        if os.path.isfile(fetchfile):
-            print(f"File {fname} exists, skipping retrieval...")
-        else:
-   """
     filenames = []
     for region in regions:
         fname = fetchname(wavevar, time, region)
@@ -120,34 +109,22 @@ def load_rdwps(wavevar, time, regions, plot):
     val = np.array([])
     lat = np.array([])
     lon = np.array([])
+
     for region in regions:
         fname = fetchname(wavevar, time, region)
         fetchfile = f"{storage_cfg()}{fname}"
         filenames.append(fetchfile)
-        if not os.path.isfile(fetchfile):
-            fetch_rdwps(wavevar, time, region)
+        if not os.path.isfile(fetchfile): fetch_rdwps(wavevar, time, regions)
 
         grib = pygrib.open(fetchfile)
-        if plot is not False: fetch_util.plot_sample_grib(grib[1], plot)
-
         for msg in grib:
-            val = np.append(val, msg.data()[0])
-            lat = np.append(lat, msg.data()[1])
-            lon = np.append(lon, msg.data()[2])
-    """
-    for msg in grib:
-        lat, lon = np.array(msg.latlons())
-        vals, lat, lon = msg.data()
-        mask = vals.mask
-        data = vals.data
-        print(lat.shape)
-        break
-    """
+            z, y, x = msg.data()
+            val = np.append(val, z)
+            lat = np.append(lat, y)
+            lon = np.append(lon, x)
 
-    #grib[1].data()
-
-
-    return val, lat, lon
+    if plot is not False: fetch_util.plot_sample_grib(filenames, plot)
+    return val, lat, (lon - 180)
 
 
 class Rdwps(): 
@@ -193,6 +170,14 @@ class Rdwps():
     north =  44.7
     west  = -64.4
     east  = -63.8
+
+# global
+    south = -90
+    north = 90
+    west = -180
+    east = 180
+
+ll_2_regionstr(south, north, west, east)
 
 time = datetime.now() - timedelta(hours=3)
 """

@@ -54,9 +54,11 @@ def loadgrib(filenames, plot=False):
 
     matt_s 2019-08
     """
+    if plot is not False:
+        plot_sample_grib(filenames, plot)
+
     for fname in filenames:
         grib = pygrib.open(fname)
-        if plot is not False: plot_sample_grib(grib[1], plot)
 
     #data = [None for msg in range(grib.messages)]
     #for x in range(0, grib.messages):
@@ -64,42 +66,52 @@ def loadgrib(filenames, plot=False):
 
     #return np.array(data)
 
-    """
-    for msg in grib:
-        lat, lon = np.array(msg.latlons())
-        vals, lat, lon = msg.data()
-        mask = vals.mask
-        data = vals.data
-        print(lat.shape)
-        break
-    """
+        for msg in grib:
+            lat, lon = np.array(msg.latlons())
+            vals, lat, lon = msg.data()
+            mask = vals.mask
+            data = vals.data
+            break
 
     warnings.warn("This function is deprecated. Instead, use module function")
     return grib[1].data()
 
 
-def plot_sample_grib(grb, title_text="A sample plot"):
-    data = grb.values
-    lat, lon = grb.latlons()
+def plot_sample_grib(gribfiles, title_text="A sample plot"):
 
-    plt.figure()
-    m=Basemap(projection='mill',lat_ts=10,llcrnrlon=lon.min(), urcrnrlon=lon.max(),llcrnrlat=lat.min(),urcrnrlat=lat.max(), resolution='l')
-    x, y = m(lon,lat)
+    #fig, axs = plt.subplots(2, int(len(gribfiles)/2))
+    #
+    #for x in range(0, len(gribfiles)):
+    #    grb = pygrib.open(gribfiles[x])[1]
+    #    ax = axs[x] if len(axs.shape) == 1 else axs
+    #    if len(axs.shape) >= 2: ax = axs[int(x/axs.shape[0])][x%axs.shape[0]]
 
-    # Paint map with parameter values under projected coordinates.
-    cs = m.pcolormesh(x,y,data,shading='flat',cmap=plt.cm.jet)
+    for f in gribfiles:
+        fig, ax = plt.subplots(1, 1)
+        grb = pygrib.open(f)[1]
 
-    # map filigree
-    m.drawcoastlines()
-    m.fillcontinents()
-    m.drawmapboundary()
-    m.drawparallels(np.arange(-90.,120.,5.),labels=[1,0,0,0])
-    m.drawmeridians(np.arange(-180.,180.,10.),labels=[0,0,0,1])
+        data = grb.values
+        lat, lon = grb.latlons()
+        m=Basemap(projection='mill',lat_ts=10,llcrnrlon=lon.min(), urcrnrlon=lon.max(),llcrnrlat=lat.min(),urcrnrlat=lat.max(), resolution='l', ax=ax)
+        x, y = m(lon,lat)
 
-    # Plot legend, title.
-    plt.colorbar(cs,orientation='vertical')
-    plt.title(title_text)
+        # Paint map with parameter values under projected coordinates.
+        #cs = ax.pcolormesh(x,y,data,shading='flat',cmap=plt.cm.jet)
+        cs = ax.contourf(x, y, data, cmap=plt.cm.jet)
 
-    # Show plot.
-    plt.show()
+        # map filigree
+        m.drawcoastlines()
+        m.fillcontinents()
+        m.drawmapboundary()
+        m.drawparallels(np.arange(-90.,120.,5.),labels=[1,0,0,0])
+        m.drawmeridians(np.arange(-180.,180.,10.),labels=[0,0,0,1])
+
+        # Plot legend, title.
+        fig.colorbar(cs,orientation='vertical', ax=ax)
+        #ax.set_title(title_text)
+        plt.title(title_text)
+
+        # Show plot.
+        fig.tight_layout()
+        plt.show()
 

@@ -242,9 +242,6 @@ class TLCalculator():
         self.starter_method = starter_method
         self.starter_aperture = starter_aperture
 
-        self.TL = list()
-        self.TLv = list()
-
         self.verbose = verbose
         self.progress_bar = progress_bar
 
@@ -347,6 +344,9 @@ class TLCalculator():
                     data if the depth only changes gradually, implying that the gradient 
                     can be ignored.
         """
+        self.TL = list()
+        self.TLv = list()
+
         source_depth = self._toarray(source_depth)
         receiver_depth = self._toarray(receiver_depth)
 

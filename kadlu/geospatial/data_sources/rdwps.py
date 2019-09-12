@@ -75,16 +75,12 @@ rdwps_regions = [
 
 def ll_2_regionstr(south, north, west, east):
     """ convert input bounds to region strings using the separating axis theorem """
-    return [str(region) for region in rdwps_regions if Boundary(south, north, west, east).intersects(region)]
+    return [str(reg) for reg in rdwps_regions if Boundary(south, north, west, east).intersects(reg)]
 
 
 def fetchname(wavevar, time, region):
-    #hour = f"{((time.hour % 24) // 6 * 6):02d}"  # better option?
-    #predictionhour = f"{(time.hour // 3 * 3):03d}"
-    #predictionhour = '000'  # any better than 0-hour?
-    
     timestr = datetime.now().strftime('%Y%m%d')
-    hour = f"{(datetime.now().hour // 6) * 6:02d}"
+    hour = f"{((datetime.now()-timedelta(hours=3)).hour // 6) * 6:02d}"
     predictionhour = f"{(time.hour // 3) * 3:03d}"
 
     if 'gulf' not in region: 
@@ -100,23 +96,22 @@ def fetchname(wavevar, time, region):
 def fetch_rdwps(wavevar, start, end, regions):
     filenames = []
     time = datetime(start.year, start.month, start.day, (start.hour // 3 * 3))
+
+    # RDWPS is a prediction service - requested times must be in the 
+    # following 48 hours from the current time
     assert(time >= datetime.now() - timedelta(hours=6))
     assert(end <= datetime.now() + timedelta(hours=48))
     assert(time <= end)
     
     while time <= end:
-        for region in regions:
-            fname = fetchname(wavevar, time, region)
+        for reg in regions:
+            fname = fetchname(wavevar, time, reg)
             fetchfile = f"{storage_cfg()}{fname}"
-            directory = 'great_lakes'
-            directory = 'ocean' if "gulf-st-lawrence" in fname else 'great_lakes'
-           # : directory = 'ocean'
-                #fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/{region}/grib2/{((end.hour % 24) // 6 * 6):02d}/{fname}"
-            #else:
-                #fetchurl = f"http://dd.weather.gc.ca/model_wave/great_lakes/{region}/grib2/{((end.hour % 24) // 6 * 6):02d}/{fname}"
-            fetchurl = f"http://dd.weather.gc.ca/model_wave/{directory}/{region}/grib2/{((end.hour % 24) // 6 * 6):02d}/{fname}"
+            directory = 'ocean' if 'gulf-st-lawrence' in fname else 'great_lakes'
+            hour = f"{(((datetime.now()-timedelta(hours=3)).hour) // 6 * 6):02d}"
+            fetchurl = f"http://dd.weather.gc.ca/model_wave/{directory}/{reg}/grib2/{hour}/{fname}"
             print(f"Downloading {fname} from the Regional Deterministic Wave Prediction System...")
-            print(fetchurl)
+            #print(fetchurl)
             urllib.request.urlretrieve(fetchurl, fetchfile)
             filenames.append(fetchfile)
 
@@ -126,6 +121,16 @@ def fetch_rdwps(wavevar, start, end, regions):
 
 
 def load_rdwps(wavevar, start, end, south, north, west, east, plot):
+    """
+    wavevar = 'HTSGW'
+    start = datetime.now()
+    end = start + timedelta(hours=6)
+    south =  44.4
+    north =  44.7
+    west  = -64.4
+    east  = -63.8
+    plot = False
+    """
     filenames = []
     val = np.array([])
     lat = np.array([])
@@ -133,6 +138,9 @@ def load_rdwps(wavevar, start, end, south, north, west, east, plot):
     timestamps = np.array([])
     time = datetime(start.year, start.month, start.day, (start.hour // 3 * 3))
     regions = ll_2_regionstr(south, north, west, east)
+
+    # RDWPS is a prediction service - requested times must be in the 
+    # following 48 hours from the current time
     assert(time >= datetime.now() - timedelta(hours=6))
     assert(end <= datetime.now() + timedelta(hours=48))
     assert(time <= end)
@@ -149,25 +157,30 @@ def load_rdwps(wavevar, start, end, south, north, west, east, plot):
             grib = pygrib.open(fetchfile)
             assert(grib.messages == 1)
             msg = grib[1]
-            z, y, x = msg.data()
-            x -= 360  # normalize longitudes
+            z_grid, y_grid, x_grid = msg.data()
 
-            # build index to collect points in area of interest
-            latix = np.array([l >= south and l <= north for l in y])
-            lonix = np.array([l >= west and l <= east for l in x])
-            ix = latix & lonix
+            for dim in range(len(z_grid.shape)):
+                z = z_grid[dim]
+                y = y_grid[dim]
+                x = x_grid[dim]
+                x -= 360  # normalize longitudes
 
-            # append points within AoI to return arrays
-            val = np.append(val, z[ix])
-            lat = np.append(lat, y[ix])
-            lon = np.append(lon, x[ix])
-            timestamps = np.append(timestamps, [time for x in range(sum(ix))])
+                # build index to collect points in area of interest
+                latix = np.array([l >= south and l <= north for l in y])
+                lonix = np.array([l >= west and l <= east for l in x])
+                ix = latix & lonix
+
+                # append points within AoI to return arrays
+                val = np.append(val, z[ix])
+                lat = np.append(lat, y[ix])
+                lon = np.append(lon, x[ix])
+                timestamps = np.append(timestamps, [time for x in range(sum(ix))])
 
         time += timedelta(hours=3)
 
     if plot is not False: fetch_util.plot_sample_grib(filenames, plot)
     
-    return val, lat, lon
+    return val, lat, lon, timestamps
 
 
 class Rdwps(): 

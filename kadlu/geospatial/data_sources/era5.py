@@ -58,10 +58,9 @@ def load_era5(wavevar, start, end, south, north, west, east, plot):
     lat = np.array([])
     lon = np.array([])
     timestamps = np.array([])
-
-    # adjust temporal resolution to hourly
     time = datetime(start.year, start.month, start.day, start.hour)
     assert(time <= end)
+
     print(f"Loading {wavevar} from {int((end-start).total_seconds() /60 /60)+1} hourly global data files")
 
     while time <= end:

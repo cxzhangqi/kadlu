@@ -159,10 +159,10 @@ def load_rdwps(wavevar, start, end, south, north, west, east, plot):
             msg = grib[1]
             z_grid, y_grid, x_grid = msg.data()
 
-            for dim in range(len(z_grid.shape)):
-                z = z_grid[dim]
-                y = y_grid[dim]
-                x = x_grid[dim]
+            for slx in range(z_grid.shape[0]):
+                z = z_grid[slx]
+                y = y_grid[slx]
+                x = x_grid[slx]
                 x -= 360  # normalize longitudes
 
                 # build index to collect points in area of interest

@@ -79,6 +79,9 @@ class Geophony():
             p = np.power(10, (SL + TL) / 20)
             p = np.squeeze(np.apply_over_axes(np.sum, p, range(1, p.ndim))) # sum over all but first axis
             dB = 20 * np.log10(p)
+            if np.ndim(dB) == 0:
+                dB = np.array([dB])
+
             dB = dB[np.newaxis, :]
 
             if SPL is None:

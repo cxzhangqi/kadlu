@@ -58,5 +58,8 @@ def test_wind_source_level_per_area():
     geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
     SL_f10 = geo._wind_source_level_per_area(freq=10, x=0, y=0, time=None)
     SL_f20 = geo._wind_source_level_per_area(freq=10, x=0, y=0, time=None)
+    SL_arr = geo._wind_source_level_per_area(freq=10, x=[0,1,2], y=[0,1,2], time=None)
     assert SL_f10 == SL_f20
     assert SL_f10 == 39.0
+    assert len(SL_arr) == 3
+    assert np.all(SL_arr == 39.0)

@@ -19,7 +19,7 @@ end   = datetime(2015, 1, 2)
 
 # disable automated testing of fetching to avoid slamming the API with
 # requests in the automated development pipeline
-test_fetch = True
+test_fetch = False
 
 # remove fetched files to test fetching
 def unfetch():

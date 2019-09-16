@@ -14,50 +14,64 @@ south =  44.4
 north =  44.7
 west  = -64.4
 east  = -63.8
-time  = datetime(2015, 1, 1)
+start = datetime(2015, 1, 1)
+end   = datetime(2015, 1, 1, 2)
+
+test_fetch = True
 
 # remove fetched files to test fetching
-for f in os.listdir(storage_cfg()):
-    if "hycom" in f:
-        print(f"Removing {f}")
-        os.remove(f"{storage_cfg()}{f}")
+def unfetch():
+    return 
+    for f in os.listdir(storage_cfg()):
+        if "hycom" in f:
+            print(f"Removing {f}")
+            os.remove(f"{storage_cfg()}{f}")
 
 
 def test_fetch_salinity():
-    fnames = Hycom().fetch_salinity(south=south, north=north, west=west, east=east, time=time)
+    if not test_fetch: return
+    unfetch()
+    fnames = Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end)
     for f in fnames: assert(isfile(f))
 
 def test_load_salinity():
-    salinity, lat, lon = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=time)
+    salinity, lat, lon = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end)
 
 def test_fetch_temp():
-    fnames = Hycom().fetch_temp(south=south, north=north, west=west, east=east, time=time)
+    if not test_fetch: return
+    unfetch()
+    fnames = Hycom().fetch_temp(south=south, north=north, west=west, east=east, start=start, end=end)
     for f in fnames: assert(isfile(f))
 
 def test_load_temp():
-    salinity, lat, lon = Hycom().load_temp(south=south, north=north, west=west, east=east, time=time)
+    salinity, lat, lon = Hycom().load_temp(south=south, north=north, west=west, east=east, start=start, end=end)
 
 def test_fetch_water_u():
-    fnames = Hycom().fetch_water_u(south=south, north=north, west=west, east=east, time=time)
+    if not test_fetch: return
+    unfetch()
+    fnames = Hycom().fetch_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
     for f in fnames: assert(isfile(f))
 
 def test_load_water_u():
-    salinity, lat, lon = Hycom().load_water_u(south=south, north=north, west=west, east=east, time=time)
+    salinity, lat, lon = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
 
 def test_fetch_water_v():
-    fnames = Hycom().fetch_water_v(south=south, north=north, west=west, east=east, time=time)
+    if not test_fetch: return
+    unfetch()
+    fnames = Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end)
     for f in fnames: assert(isfile(f))
 
 def test_load_water_v():
-    salinity, lat, lon = Hycom().load_water_u(south=south, north=north, west=west, east=east, time=time)
+    salinity, lat, lon = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
 
 def test_hycom_dt_2_tslice():
-    time = datetime(2015, 1, 1)
-    dateslice = hycom.dt_2_tslice(time)
-    assert(dateslice == 0)
-    time = datetime(2015, 12, 31, 23, 59)
-    dateslice = hycom.dt_2_tslice(time)
-    assert(2859 <= dateslice <= 2860)
+    start = datetime(2015, 1, 1)
+    end = datetime(2015, 1, 7)
+    dateslice = hycom.dt_2_tslice(start, end)
+    assert(dateslice[0] == 0)
+    end = datetime(2015, 12, 31, 23, 59)
+    dateslice = hycom.dt_2_tslice(start, end)
+    assert(2859 <= dateslice[1] <= 2860)
 
     # known issue: hycom time conversion is only accurate within 3 hours
 

@@ -50,3 +50,13 @@ def test_model_geophony():
     assert spl.shape[2] == 2
     assert np.all(np.diff(x) == np.sqrt(2) * 50e3)
     assert np.all(np.diff(y) == np.sqrt(2) * 50e3)
+
+def test_wind_source_level_per_area():
+    s = Seafloor()
+    o = Ocean(wave=5.14)
+    tl = TLCalculator(ocean=o, seafloor=s)
+    geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
+    SL_f10 = geo._wind_source_level_per_area(freq=10, x=0, y=0, time=None)
+    SL_f20 = geo._wind_source_level_per_area(freq=10, x=0, y=0, time=None)
+    assert SL_f10 == SL_f20
+    assert SL_f10 == 39.0

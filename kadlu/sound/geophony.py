@@ -30,6 +30,7 @@ from kadlu.geospatial.ocean import Ocean
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.utils import xdist, ydist, XYtoLL
 from tqdm import tqdm
+from scipy.interpolate import interp1d
 
 
 class Geophony():
@@ -48,8 +49,11 @@ class Geophony():
         else:
             self.xy_res = xy_res
 
+        # wind source level interpolation table
+        self._kewley1990 = interp1d(x=[2.57, 5.14, 10.29, 15.23, 20.58], y=[34, 39, 48, 53, 58], kind='linear', fill_value="extrapolate")
 
-    def model(self, frequency, south, north, west, east, start=None, stop=None):
+
+    def model(self, frequency, south, north, west, east, time=None):
 
         lats, lons, x, y = self._create_grid(south, north, west, east)
 
@@ -61,16 +65,15 @@ class Geophony():
             lat = lats[i]
             lon = lons[i]
 
-            # loop over times
-            # compute transmission loss once at the center time, or for ever time step
-            time = None
+            # set receiver depth to 1/4 of the characteristic wave length
+            receiver_depth = 0.25 * self.tl.c0 / frequency
 
             # load data and compute transmission loss
-            self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon, source_depth=self.depth, time=time)          
+            self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon, source_depth=self.depth, receiver_depth=receiver_depth, time=time)          
             TL = self.tl.TL
 
             # source level
-            SL = self._source_level(lat, lon, time)
+            SL = self._source_level(freq=frequency, grid=self.tl.grid, time=time)
 
             # integrate SL-TL to obtain sound pressure level
             p = np.power(10, (SL + TL) / 20)
@@ -88,24 +91,45 @@ class Geophony():
         return SPL, x, y
 
 
-    def _source_level(self, lat, lon, time):
+    def _source_level(self, freq, grid, time, method='wind'):
 
-        # TODO: complete implementation of this method
-
-        # load wave data for the specified time step
-        # (if not already loaded via the TL calculation)
-
-        r = self.tl.grid.r[1:]
-        q = self.tl.grid.q
+        # x,y coordinates
+        r = grid.r[1:]
+        q = grid.q
         r, q = np.meshgrid(r, q)
         x = r * np.cos(q)
         y = r * np.sin(q)
+
+        # area elements (m^2)
+        a = grid.dr * grid.dq * grid.r
+
+        # flatten arrays
         x = x.flatten()
         y = y.flatten()
-        SL = 200 * self.tl.ocean.wave(x=x, y=y)  # 200 dB times wave height
+        a = a.flatten()
+
+        # wind source level impirical parametrization
+        assert method == 'wind', 'The only allowed method is wind'
+
+        if method == 'wind':
+            SL = self._wind_source_level_per_area(freq=freq, x=x, y=y, time=time)
+            SL *= a
+
         SL = np.reshape(SL, newshape=r.shape)
 
         return SL
+
+
+    def _wind_source_level_per_area(self, freq, x, y, time):
+
+        # interpolate wind speed
+        wind_speed = self.tl.ocean.wave(x=x, y=y) 
+
+        # use parametrization of Kewley 1990
+        # (Ocean Ambient Noise p. 114)
+        WSL = self._kewley1990(x=wind_speed)
+
+        return WSL
 
 
     def _create_grid(self, south, north, west, east):

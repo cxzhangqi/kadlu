@@ -9,14 +9,16 @@ from os.path import isfile
 # run pytest with '--capture=no' arg to print class function info 
 print(Hycom())
 
-# mahone bay test area:
-south =  44.4
-north =  44.7
-west  = -64.4
-east  = -63.8
+# gulf st lawrence test area:
+south =  46
+north =  52
+west  = -70
+east  = -56
 start = datetime(2015, 1, 1)
-end   = datetime(2015, 1, 1, 2)
+end   = datetime(2015, 1, 2)
 
+# disable automated testing of fetching to avoid slamming the API with
+# requests in the automated development pipeline
 test_fetch = True
 
 # remove fetched files to test fetching

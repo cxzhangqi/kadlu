@@ -101,7 +101,7 @@ class Geophony():
         y = r * np.sin(q)
 
         # area elements (m^2)
-        a = grid.dr * grid.dq * grid.r
+        a = grid.dr * grid.dq * r
 
         # flatten arrays
         x = x.flatten()

@@ -63,3 +63,12 @@ def test_wind_source_level_per_area():
     assert SL_f10 == 39.0
     assert len(SL_arr) == 3
     assert np.all(SL_arr == 39.0)
+
+def test_source_level(grid):
+    s = Seafloor()
+    o = Ocean(wave=5.14)
+    tl = TLCalculator(ocean=o, seafloor=s)
+    geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
+    SL = geo._source_level(freq=10, grid=grid, time=None, method='wind')
+    assert SL.shape[0] == len(grid.q)
+    assert SL.shape[1] == len(grid.r) - 1

@@ -37,7 +37,10 @@ def test_fetch_salinity():
     for f in fnames: assert(isfile(f))
 
 def test_load_salinity():
-    salinity, lat, lon = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end)
+    val, lat, lon, time = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end)
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_fetch_temp():
     if not test_fetch: return
@@ -46,7 +49,10 @@ def test_fetch_temp():
     for f in fnames: assert(isfile(f))
 
 def test_load_temp():
-    salinity, lat, lon = Hycom().load_temp(south=south, north=north, west=west, east=east, start=start, end=end)
+    val, lat, lon, time = Hycom().load_temp(south=south, north=north, west=west, east=east, start=start, end=end)
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_fetch_water_u():
     if not test_fetch: return
@@ -55,7 +61,10 @@ def test_fetch_water_u():
     for f in fnames: assert(isfile(f))
 
 def test_load_water_u():
-    salinity, lat, lon = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
+    val, lat, lon, time = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_fetch_water_v():
     if not test_fetch: return
@@ -64,7 +73,10 @@ def test_fetch_water_v():
     for f in fnames: assert(isfile(f))
 
 def test_load_water_v():
-    salinity, lat, lon = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
+    val, lat, lon, time = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_hycom_dt_2_tslice():
     start = datetime(2015, 1, 1)
@@ -74,9 +86,3 @@ def test_hycom_dt_2_tslice():
     end = datetime(2015, 12, 31, 23, 59)
     dateslice = hycom.dt_2_tslice(start, end)
     assert(2859 <= dateslice[1] <= 2860)
-
-    # known issue: hycom time conversion is only accurate within 3 hours
-
-    # more test cases for time conversion here
-
-

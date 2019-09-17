@@ -18,7 +18,8 @@ import requests
 from os.path import isfile
 from kadlu.geospatial.data_sources import fetch_util
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 import warnings
 
 
@@ -28,25 +29,27 @@ def fetchname(fetchvar, slices):
     return f"{fetchvar}{''.join(map(slicer, slices))}"
 
 
-def ll_2_xy(val, arr):
-    """ converts lat/lon values to grid index (next nearest corner southwest of point) """
+def index(val, arr):
+    """ converts lat/lon/time values to grid index (next nearest index >= value) """
     if val > arr[-1]: return len(arr) - 1
-    return np.max([0, np.nonzero(arr >= val)[0][0] - 1])
+    return np.nonzero(arr >= val)[0][0]
 
 
-def dt_2_tslice(start, end):
+def dt_2_tslice(start, end, timestamps):
     """ converts datetime to hycom time slice """
     assert(start >= datetime(1994, 1, 1))
     assert(end < datetime(2016, 1, 1))
     assert(start.year == end.year)
     warnings.warn("Hycom time conversion has a 3-hour margin of error. In the future, this should be mapped")
     
+    """
     def dt_2_t(time):
         seconds_delta = (time - datetime(time.year, 1, 1)).total_seconds()
         seconds_per_slice = 31536000.0 / 2860  # seconds per year / num of slices
         return int(seconds_delta / seconds_per_slice)
+    """
         
-    return (dt_2_t(start), dt_2_t(end))
+    return (index(start, timestamps[str(start.year)]), index(end, timestamps[str(end.year)]))
 
 
 def fetch_grid():
@@ -67,13 +70,32 @@ def fetch_grid():
 
 def load_grid():
     """ put downloaded grid into memory """
-    def _load_grid(storage_cfg): 
-        return np.load(f"{storage_cfg}hycom_lats.npy"), np.load(f"{storage_cfg}hycom_lons.npy")
-    try:
-        return _load_grid(storage_cfg())
-    except FileNotFoundError:
-        fetch_grid()
-        return _load_grid(storage_cfg())
+    if not isfile(f"{storage_cfg()}hycom_lats.npy"): fetch_grid()
+    return np.load(f"{storage_cfg()}hycom_lats.npy"), np.load(f"{storage_cfg()}hycom_lons.npy")
+
+
+def fetch_times():
+    """ fetches timestamps from server """
+    timestamps = {}
+    for year in map(lambda y: f"{y}", range(1994, 2016)):
+        url = f"https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/{year}.ascii?time"
+        time_ascii = requests.get(url)
+        assert(time_ascii.status_code == 200)
+        meta, data = time_ascii.text.split("---------------------------------------------\n")
+        time_csv = data.split("\n\n")[:-1][0]
+        basetime = datetime(2000, 1, 1)
+        tdelta = np.array(time_csv.split("\n")[1].split(", "), dtype=float)
+        timestamps[year] = np.array([basetime + timedelta(hours=x) for x in tdelta])
+        time.sleep(0.1)
+
+    np.save(f"{storage_cfg()}hycom_timestamps_dict.npy", timestamps)
+    return
+
+
+def load_times():
+    """ put timestamps into memory """
+    if not isfile(f"{storage_cfg()}hycom_timestamps_dict.npy"): fetch_times()
+    return np.load(f"{storage_cfg()}hycom_timestamps_dict.npy", allow_pickle=True).item()
 
 
 def fetch_hycom(year, slices, fetchvar):
@@ -114,24 +136,34 @@ def fetch_hycom(year, slices, fetchvar):
     return [f"{storage_cfg()}{fname}"]
 
 
-def load_hycom(year, slices, fetchvar, lat, lon):
+def load_hycom(year, slices, fetchvar, lat, lon, time):
     """ load local data into memory as np arrays """
     fname = f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy"
     if not isfile(fname): fetch_hycom(year, slices, fetchvar)
     data = np.load(fname)
     data[data <= -29999] = None  # Convert missing values to NaN
-    return data, lat, lon
+
+    # TODO: flatten the return values
+
+    return (data, 
+            lat         [slices[3][0] : slices[3][1] +1], 
+            lon         [slices[2][0] : slices[2][1] +1], 
+            time[year]  [slices[0][0] : slices[0][1] +1])
 
 
 class Hycom():
+    def __init__(self):
+        self.lat, self.lon = load_grid()
+        self.time = load_times()
+
     def fetch_salinity(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return fetch_hycom(
-                    year=str(start.year),                                       # each calendar year requires separate query
+                    year=str(start.year),                                   # each calendar year requires separate query
                     slices=[
-                        dt_2_tslice(start, end),                                # time range (must be same year)
-                        (0, 39),                                                # depth range: get entire water column
-                        (ll_2_xy(west,  self.lon), ll_2_xy(east,  self.lon)),   # tuple: (xmin, xmax)
-                        (ll_2_xy(south, self.lat), ll_2_xy(north, self.lat))    # tuple: (ymin, ymax)
+                        dt_2_tslice(start, end, self.time),                 # time range (must be same year)
+                        (0, 39),                                            # depth range: get entire water column
+                        (index(west,  self.lon), index(east,  self.lon)),   # tuple: (xmin, xmax)
+                        (index(south, self.lat), index(north, self.lat))    # tuple: (ymin, ymax)
                     ],
                     fetchvar='salinity'
                 )
@@ -139,10 +171,10 @@ class Hycom():
         return fetch_hycom(
                     year=str(start.year),
                     slices=[
-                        dt_2_tslice(start, end),
+                        dt_2_tslice(start, end, self.time),
                         (0, 39),
-                        (ll_2_xy(west,  self.lon), ll_2_xy(east,  self.lon)),
-                        (ll_2_xy(south, self.lat), ll_2_xy(north, self.lat))
+                        (index(west,  self.lon), index(east,  self.lon)),
+                        (index(south, self.lat), index(north, self.lat))
                     ],
                     fetchvar='water_temp'
                 )
@@ -150,10 +182,10 @@ class Hycom():
         return fetch_hycom(
                     year=str(start.year),
                     slices=[
-                        dt_2_tslice(start, end),
+                        dt_2_tslice(start, end, self.time),
                         (0, 39),
-                        (ll_2_xy(west,  self.lon), ll_2_xy(east,  self.lon)),
-                        (ll_2_xy(south, self.lat), ll_2_xy(north, self.lat))
+                        (index(west,  self.lon), index(east,  self.lon)),
+                        (index(south, self.lat), index(north, self.lat))
                     ],
                     fetchvar='water_u'
                 )
@@ -161,10 +193,10 @@ class Hycom():
         return fetch_hycom(
                     year=str(start.year),
                     slices=[
-                        dt_2_tslice(start, end),
+                        dt_2_tslice(start, end, self.time),
                         (0,39),
-                        (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),
-                        (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))
+                        (index(west,  self.lon),  index(east,  self.lon)),
+                        (index(south, self.lat),  index(north, self.lat))
                     ],
                     fetchvar='water_v'
                 )
@@ -173,53 +205,57 @@ class Hycom():
         return load_hycom(
                     year=str(start.year),
                     slices=[
-                        dt_2_tslice(start, end),
+                        dt_2_tslice(start, end, self.time),
                         (0, 39),
-                        (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),
-                        (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))
+                        (index(west,  self.lon),  index(east,  self.lon)),
+                        (index(south, self.lat),  index(north, self.lat))
                     ],
                     fetchvar='salinity',
                     lat=self.lat,
-                    lon=self.lon
+                    lon=self.lon,
+                    time=self.time
                 )
     def load_temp(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return load_hycom(
                     year=str(start.year),
                     slices=[
-                        dt_2_tslice(start, end),
+                        dt_2_tslice(start, end, self.time),
                         (0, 39),
-                        (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),
-                        (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))
+                        (index(west,  self.lon),  index(east,  self.lon)),
+                        (index(south, self.lat),  index(north, self.lat))
                     ],
                     fetchvar='water_temp',
                     lat=self.lat,
-                    lon=self.lon
+                    lon=self.lon,
+                    time=self.time
                 )
     def load_water_u(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return load_hycom(
                     year=str(start.year),
                     slices=[
-                        dt_2_tslice(start, end),
+                        dt_2_tslice(start, end, self.time),
                         (0, 39),
-                        (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),
-                        (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))
+                        (index(west,  self.lon),  index(east,  self.lon)),
+                        (index(south, self.lat),  index(north, self.lat))
                     ],
                     fetchvar='water_u',
                     lat=self.lat,
-                    lon=self.lon
+                    lon=self.lon,
+                    time=self.time
                 )
     def load_water_v(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return load_hycom(
                     year=str(start.year),
                     slices=[
-                        dt_2_tslice(start, end),
+                        dt_2_tslice(start, end, self.time),
                         (0, 39),
-                        (ll_2_xy(west,  self.lon),  ll_2_xy(east,  self.lon)),
-                        (ll_2_xy(south, self.lat),  ll_2_xy(north, self.lat))
+                        (index(west,  self.lon),  index(east,  self.lon)),
+                        (index(south, self.lat),  index(north, self.lat))
                     ],
                     fetchvar='water_v',
                     lat=self.lat,
-                    lon=self.lon
+                    lon=self.lon,
+                    time=self.time
                 )
 
     def __str__(self):
@@ -227,12 +263,11 @@ class Hycom():
                 "Native hycom .[ab] data converted to NetCDF at the Naval Research Laboratory,",
                 "interpolated to a uniform 0.08° between 40°S-40°N (0.04° poleward of these latitudes),",
                 "and interpolated to 40 standard z-levels.",
+                "Historical data available from 1994 to 2015 (inclusive).",
                 "\thttps://www.hycom.org/data/glbv0pt08"
             ])
         args = "(south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31))"
         return fetch_util.str_def(self, info, args)
-    def __init__(self):
-        self.lat, self.lon = load_grid()
 
 
 """
@@ -243,7 +278,8 @@ south =  44.4
 north =  44.7
 west  = -64.4
 east  = -63.8
-time  = datetime(2015, 1, 1, 0, 0)
+start = datetime(2015, 1, 1, 0, 0)
+end   = datetime(2015, 1, 2, 0, 0)
 
 source = Hycom()
 salinity, lat, lon  = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=datetime) 

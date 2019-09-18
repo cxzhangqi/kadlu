@@ -115,3 +115,26 @@ def plot_sample_grib(gribfiles, title_text="A sample plot"):
         fig.tight_layout()
         plt.show()
 
+
+def plot_coverage(lat, lon):
+    fig = plt.figure()
+    #m=Basemap(projection='mill',lat_ts=10,llcrnrlon=lon.min(), urcrnrlon=lon.max(),llcrnrlat=lat.min(),urcrnrlat=lat.max(), resolution='c')
+    m=Basemap(projection='mill',lat_ts=10,
+            llcrnrlon=-180, urcrnrlon=180,
+            llcrnrlat=-90,urcrnrlat=90, 
+            resolution='c')
+    x, y = m(lon,lat)
+    m.drawcoastlines()
+    m.fillcontinents()
+    m.drawmapboundary()
+    m.drawparallels(np.arange(-90.,120.,5.),labels=[1,0,0,0])
+    m.drawmeridians(np.arange(-180.,180.,10.),labels=[0,0,0,1])
+    plt.scatter(x, y, 1, marker='.', color='xkcd:ocean blue', zorder=10)
+    fig.tight_layout()
+    plt.show()
+
+"""
+print(f"Range: lat {min(lat)}->{max(lat)}\tlon {min(lon)}->{max(lon)}")
+plot_coverage(lat, lon)
+"""
+

@@ -13,7 +13,6 @@
 import gsw
 import numpy as np
 from kadlu.utils import LatLon, DLDL_over_DXDY, interp_grid_1d, deg2rad
-from kadlu.geospatial.ocean import Ocean
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform3D, DepthInterpolator3D
 
 
@@ -22,7 +21,7 @@ class SoundSpeed():
 
         The sound speed can be specified via the argument ssp (sound speed 
         profile) or computed from bathymetry, temperature and salinity data 
-        passed via the env_data argument.
+        passed via the ocean argument.
 
         ssp can be either a single value, in which case the sound speed is 
         the same everywhere, or a tuple (c,z) where c is an array of sound 
@@ -32,7 +31,7 @@ class SoundSpeed():
         any 3D point(s) in space.
 
         Args:
-            env_data: DataProvider
+            ocean: DataProvider
                 Provider of environmental data, including bathymetry, 
                 temperature and salinity.
             ssp: float or tuple
@@ -58,9 +57,9 @@ class SoundSpeed():
                 Origin of the x-y planar coordinate system.
                 None, if ssp is specified.
     """
-    def __init__(self, env_data=None, ssp=None, xy_res=1000, num_depths=50, rel_err=1E-3):
+    def __init__(self, ocean=None, ssp=None, xy_res=1000, num_depths=50, rel_err=1E-3):
 
-        assert env_data is not None or ssp is not None, "env_data or ssp must be specified"
+        assert ocean is not None or ssp is not None, "ocean or ssp must be specified"
 
         if ssp is not None:
             self.origin = None           
@@ -73,17 +72,17 @@ class SoundSpeed():
                 self.interp = Uniform3D(value=ssp)
 
         else:
-            self.origin = env_data.origin
+            self.origin = ocean.origin
 
             # convert from meters to degrees
             lat_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=1, lon_deriv_order=0)
             lon_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=0, lon_deriv_order=1)
 
             # geographic boundaries
-            S = env_data.SW.latitude
-            N = env_data.NE.latitude
-            W = env_data.SW.longitude
-            E = env_data.NE.longitude
+            S = ocean.SW.latitude
+            N = ocean.NE.latitude
+            W = ocean.SW.longitude
+            E = ocean.NE.longitude
 
             # lat and lon coordinates
             num_lats = int(np.ceil((N - S) / lat_res)) + 1
@@ -92,11 +91,11 @@ class SoundSpeed():
             lons = np.linspace(W, E, num=num_lons)
 
             # generate depth coordinates
-            depths = self._depth_coordinates(env_data, lats, lons, num_depths=num_depths, rel_err=rel_err)
+            depths = self._depth_coordinates(ocean, lats, lons, num_depths=num_depths, rel_err=rel_err)
 
             # temperature and salinity
-            t = env_data.temp(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
-            s = env_data.salinity(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
+            t = ocean.temp(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
+            s = ocean.salinity(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
 
             # sound speed
             grid_shape = t.shape
@@ -117,9 +116,9 @@ class SoundSpeed():
             self.data = (c, lats, lons, depths)
 
 
-    def _depth_coordinates(self, env_data, lats, lons, num_depths, rel_err):
+    def _depth_coordinates(self, ocean, lats, lons, num_depths, rel_err):
 
-        seafloor_depth = -env_data.bathy(x=lons, y=lats, grid=True, geometry='spherical')
+        seafloor_depth = -ocean.bathy(x=lons, y=lats, grid=True, geometry='spherical')
 
         # find deepest point
         deepest_point = np.unravel_index(np.argmax(seafloor_depth), seafloor_depth.shape)
@@ -131,8 +130,8 @@ class SoundSpeed():
 
         # compute temperature, salinity and sound speed for every 1 meter
         z = -np.arange(0, int(np.ceil(max_depth))+1)
-        t = env_data.temp(x=lon, y=lat, z=z, geometry='spherical', grid=True)
-        s = env_data.salinity(x=lon, y=lat, z=z, geometry='spherical', grid=True)        
+        t = ocean.temp(x=lon, y=lat, z=z, geometry='spherical', grid=True)
+        s = ocean.salinity(x=lon, y=lat, z=z, geometry='spherical', grid=True)        
         c = self._sound_speed(lats=lat, lons=lon, z=z, t=t, SP=s)
 
         # determine grid
@@ -157,6 +156,11 @@ class SoundSpeed():
             all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
             y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
             lengths of x,y,z do not have to be the same.
+
+            If x,y,z are not specified, the method returns the underlying 
+            sound-speed data on which the interpolation is performed, either 
+            as a (c,lat,lon,z) tuple, or as a float if the sound speed is 
+            the same everywhere.
 
             Args: 
                 x: float or array
@@ -187,7 +191,8 @@ class SoundSpeed():
 
 
     def _sound_speed(self, lats, lons, z, t, SP):
-        """ Compute sound speed.
+        """ Compute sound speed from temperature, salinity, and depth 
+            for a given latitude and longitude.
 
             Args:
                 lats: numpy array

@@ -208,6 +208,18 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     else:
         return lat, lon, z
 
+
+def xdist(lon1, lon2, lat):
+    R2 = R1_IUGG * np.cos(lat * deg2rad)
+    d = np.abs(lon2 - lon1) * deg2rad * R2
+    return d
+
+
+def ydist(lat1, lat2):
+    d = np.abs(lat2 - lat1) * deg2rad * R1_IUGG 
+    return d
+
+
 def torad(lat, lon):
     """ Convert latitute and longitude values from degrees to radians.
 
@@ -395,3 +407,15 @@ def get_member(cls, member_name):
 
     s = ", ".join(name for name, _ in cls.__members__.items())
     raise ValueError("Unknown value \'{0}\'. Select between: {1}".format(member_name, s))
+
+
+def create_boolean_array(n, step=1):
+    arr = np.zeros(n, dtype=bool)
+    if step == math.inf:
+        arr[0] = True
+    else:
+        arr[::step] = True
+
+    return arr
+
+

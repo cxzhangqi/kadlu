@@ -5,7 +5,8 @@ from kadlu.geospatial.data_sources.rdwps import Rdwps
 from kadlu.geospatial.data_sources import fetch_util
 from os.path import isfile
 
-time = datetime.now() - timedelta(hours=6)
+start = datetime.now()
+end = datetime.now() + timedelta(hours=12)
 
 # mahone bay test area:
 south =  44.4
@@ -15,47 +16,47 @@ east  = -63.8
 
 
 # disable fetch testing when not necessary to avoid slamming the API with automated requests
-test_fetch = True 
+test_fetch = False
 
 def test_rdwps_fetch_windwaveswellheight():
     if not test_fetch: return
-    filenames = Rdwps().fetch_windwaveswellheight(south=-90, north=90, west=-180, east=180, time=time)
+    filenames = Rdwps().fetch_windwaveswellheight(south=-90, north=90, west=-180, east=180, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_windwaveheight():
     if not test_fetch: return
-    filenames = Rdwps().fetch_windwaveheight(south=-90, north=90, west=-180, east=180, time=time)
+    filenames = Rdwps().fetch_windwaveheight(south=-90, north=90, west=-180, east=180, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_wavedirection():
     if not test_fetch: return
-    filenames = Rdwps().fetch_wavedirection(south=-90, north=90, west=-180, east=180, time=time)
+    filenames = Rdwps().fetch_wavedirection(south=-90, north=90, west=-180, east=180, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_waveperiod():
     if not test_fetch: return
-    filenames = Rdwps().fetch_waveperiod(south=-90, north=90, west=-180, east=180, time=time)
+    filenames = Rdwps().fetch_waveperiod(south=-90, north=90, west=-180, east=180, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_wind_u():
     if not test_fetch: return
-    filenames = Rdwps().fetch_wind_u(south=-90, north=90, west=-180, east=180, time=time)
+    filenames = Rdwps().fetch_wind_u(south=-90, north=90, west=-180, east=180, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_wind_v():
     if not test_fetch: return
-    filenames = Rdwps().fetch_wind_v(south=-90, north=90, west=-180, east=180, time=time)
+    filenames = Rdwps().fetch_wind_v(south=-90, north=90, west=-180, east=180, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_icecover():
     if not test_fetch: return
-    filenames = Rdwps().fetch_icecover(south=-90, north=90, west=-180, east=180, time=time)
+    filenames = Rdwps().fetch_icecover(south=-90, north=90, west=-180, east=180, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
@@ -71,8 +72,8 @@ def test_rdwps_region_abstraction():
     #       gulf-st-lawrence, erie, ontario, huron-michigan, superior
 
 def test_rdwps_load_icecover():
-    ice, lat, lon = Rdwps().load_icecover(south, north, west, east, time=time)
+    ice, lat, lon, time = Rdwps().load_icecover(south, north, west, east, start=start, end=end)
 
 def test_rdwps_load_windwaveswellheight():
-    height, lat, lon = Rdwps().load_windwaveswellheight(south, north, west, east, time=datetime(2019, 9, 9, 0, 0, 0, 0)-timedelta(hours=6))
+    height, lat, lon, time = Rdwps().load_windwaveswellheight(south, north, west, east, start=start, end=end)
 

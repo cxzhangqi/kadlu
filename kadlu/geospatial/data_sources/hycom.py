@@ -29,31 +29,23 @@ def fetchname(fetchvar, slices):
     return f"{fetchvar}{''.join(map(slicer, slices))}"
 
 
-def index(val, arr):
+def index(val, sorted_arr):
     """ converts lat/lon/time values to grid index (next nearest index >= value) """
-    if val > arr[-1]: return len(arr) - 1
-    return np.nonzero(arr >= val)[0][0]
+    if val > sorted_arr[-1]: return len(sorted_arr) - 1
+    return np.nonzero(sorted_arr >= val)[0][0]
 
 
-def dt_2_tslice(start, end, timestamps):
+def dt_2_tslice(start, end, times_dict):
     """ converts datetime to hycom time slice """
     assert(start >= datetime(1994, 1, 1))
     assert(end < datetime(2016, 1, 1))
     assert(start.year == end.year)
-    warnings.warn("Hycom time conversion has a 3-hour margin of error. In the future, this should be mapped")
-    
-    """
-    def dt_2_t(time):
-        seconds_delta = (time - datetime(time.year, 1, 1)).total_seconds()
-        seconds_per_slice = 31536000.0 / 2860  # seconds per year / num of slices
-        return int(seconds_delta / seconds_per_slice)
-    """
-        
-    return (index(start, timestamps[str(start.year)]), index(end, timestamps[str(end.year)]))
+    return (index(start, times_dict[str(start.year)]), index(end, times_dict[str(end.year)]))
 
 
 def fetch_grid():
     """ download the lat/lon arrays for grid indexing """
+    print("Fetching Hycom lat/lon grid arrays...")
     url = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.ascii?lat%5B0:1:3250%5D,lon%5B0:1:4499%5D"
     grid_ascii = requests.get(url)
     assert(grid_ascii.status_code == 200)
@@ -76,6 +68,7 @@ def load_grid():
 
 def fetch_times():
     """ fetches timestamps from server """
+    print("Fetching Hycom timestamp arrays...")
     timestamps = {}
     for year in map(lambda y: f"{y}", range(1994, 2016)):
         url = f"https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/{year}.ascii?time"
@@ -96,6 +89,10 @@ def load_times():
     """ put timestamps into memory """
     if not isfile(f"{storage_cfg()}hycom_timestamps_dict.npy"): fetch_times()
     return np.load(f"{storage_cfg()}hycom_timestamps_dict.npy", allow_pickle=True).item()
+
+
+def load_depth():
+    return np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 125.0, 150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
 
 
 def fetch_hycom(year, slices, fetchvar):
@@ -136,25 +133,25 @@ def fetch_hycom(year, slices, fetchvar):
     return [f"{storage_cfg()}{fname}"]
 
 
-def load_hycom(year, slices, fetchvar, lat, lon, time):
+def load_hycom(year, slices, fetchvar, lat, lon, time, depth):
     """ load local data into memory as np arrays """
     fname = f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy"
     if not isfile(fname): fetch_hycom(year, slices, fetchvar)
     data = np.load(fname)
     data[data <= -29999] = None  # Convert missing values to NaN
 
-    # TODO: flatten the return values
-
-    return (data, 
+    return (data,       # 4 dimensional array 
             lat         [slices[3][0] : slices[3][1] +1], 
             lon         [slices[2][0] : slices[2][1] +1], 
-            time[year]  [slices[0][0] : slices[0][1] +1])
+            time[year]  [slices[0][0] : slices[0][1] +1],
+            depth       [slices[1][0] : slices[1][1] +1])
 
 
 class Hycom():
     def __init__(self):
         self.lat, self.lon = load_grid()
         self.time = load_times()
+        self.depth = load_depth()
 
     def fetch_salinity(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return fetch_hycom(
@@ -213,7 +210,8 @@ class Hycom():
                     fetchvar='salinity',
                     lat=self.lat,
                     lon=self.lon,
-                    time=self.time
+                    time=self.time,
+                    depth=self.depth
                 )
     def load_temp(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return load_hycom(
@@ -227,7 +225,8 @@ class Hycom():
                     fetchvar='water_temp',
                     lat=self.lat,
                     lon=self.lon,
-                    time=self.time
+                    time=self.time,
+                    depth=self.depth
                 )
     def load_water_u(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return load_hycom(
@@ -241,7 +240,8 @@ class Hycom():
                     fetchvar='water_u',
                     lat=self.lat,
                     lon=self.lon,
-                    time=self.time
+                    time=self.time,
+                    depth=self.depth
                 )
     def load_water_v(self, south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31)): 
         return load_hycom(
@@ -255,7 +255,8 @@ class Hycom():
                     fetchvar='water_v',
                     lat=self.lat,
                     lon=self.lon,
-                    time=self.time
+                    time=self.time,
+                    depth=self.depth
                 )
 
     def __str__(self):
@@ -268,23 +269,4 @@ class Hycom():
             ])
         args = "(south=-90, north=90, west=-180, east=180, start=datetime(1994, 1, 1), end=datetime(2015, 12, 31))"
         return fetch_util.str_def(self, info, args)
-
-
-"""
-print(Hycom())
-
-mahone bay test area:
-south =  44.4
-north =  44.7
-west  = -64.4
-east  = -63.8
-start = datetime(2015, 1, 1, 0, 0)
-end   = datetime(2015, 1, 2, 0, 0)
-
-source = Hycom()
-salinity, lat, lon  = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=datetime) 
-temp, lat, lon      = source.load_temp(south=south, north=north, west=west, east=east, time=datetime) 
-water_u, lat, lon   = Hycom().load_water_u(south=south, north=north, west=west, east=east, time=datetime) 
-water_v, lat, lon   = Hycom().load_water_v(south=south, north=north, west=west, east=east, time=datetime) 
-"""
 

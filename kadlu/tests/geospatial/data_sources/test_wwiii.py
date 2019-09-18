@@ -23,7 +23,7 @@ def test_wwiii_ll2regionstr():
     east=180
     regions = wwiii.ll_2_regionstr(south, north, west, east)
     assert(regions[0] == 'glo_30m')
-    assert(len(regions) == 0)
+    assert(len(regions) == 1)
 
 
 def test_wwiii_fetch_windwaveheight():

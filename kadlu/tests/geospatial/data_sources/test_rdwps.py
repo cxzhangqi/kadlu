@@ -71,9 +71,17 @@ def test_rdwps_region_abstraction():
     # TODO: add more assertions testing a single region boundary for each: 
     #       gulf-st-lawrence, erie, ontario, huron-michigan, superior
 
-def test_rdwps_load_icecover():
-    ice, lat, lon, time = Rdwps().load_icecover(south, north, west, east, start=start, end=end)
+def test_rdwps_load_wind_u():
+    wind, lat, lon, time = Rdwps().load_wind_u(south, north, west, east, start=start, end=end)
 
 def test_rdwps_load_windwaveswellheight():
     height, lat, lon, time = Rdwps().load_windwaveswellheight(south, north, west, east, start=start, end=end)
+
+
+def test_rdwps_load_wind_v():
+    wind, lat, lon, time = Rdwps().load_wind_v(south, north, west, east, start=start, end=end)
+
+def test_rdwps_load_wavedirection():
+    height, lat, lon, time = Rdwps().load_wavedirection(south, north, west, east, start=start, end=end)
+
 

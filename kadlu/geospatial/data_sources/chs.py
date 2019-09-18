@@ -2,15 +2,12 @@
     Module within the kadlu package for handling Non-Navigational NONNA-100 
     bathymetric data from the The Canadian Hydrographic Service (CHS). 
 
-    Authors: Oliver Kirsebom
+    Authors: Oliver Kirsebom, Casey Hilliard, Matthew Smith
     contact: oliver.kirsebom@dal.ca
     Organization: MERIDIAN-Intitute for Big Data Analytics
     Team: Acoustic data Analytics, Dalhousie University
     Project: packages/kadlu
              Project goal: Tools for underwater soundscape modeling
-     
-    License:
-
 """
 
 import os

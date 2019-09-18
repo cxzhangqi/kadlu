@@ -19,7 +19,7 @@ end   = datetime(2015, 1, 1, 6)
 
 # disable automated testing of fetching to avoid slamming the API with
 # requests in the automated development pipeline
-test_fetch = False
+test_fetch = True
 
 # remove fetched files to test fetching
 def unfetch():
@@ -98,3 +98,4 @@ def test_hycom_dt_2_tslice():
     end = datetime(2015, 12, 31, 23, 59)
     dateslice = hycom.dt_2_tslice(start, end, Hycom().time)
     assert(2859 <= dateslice[1] <= 2860)
+

@@ -1,13 +1,53 @@
 import pytest
+import numpy as np
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import era5
-from kadlu.geospatial.data_sources import fetch_util
+from kadlu.geospatial.data_sources.era5 import Era5
+from kadlu.geospatial.data_sources.fetch_util import storage_cfg
+from os.path import isfile
 
-def test_fetch_era5():
-    era5.fetch(wavevar=era5.waveSources['swh'], time=datetime(2018, 1, 1, 0, 0, 0, 0))
+# time used for testing
+start = datetime(2018, 1, 1, 0, 0, 0, 0)
+end = datetime(2018, 1, 1, 6, 0, 0, 0)
 
-def test_plot_era5():
-    storage_location = fetch_util.instantiate_storage_config()
-    filename = "ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2018-01-01_00h.grb2"
-    filepath = f"{storage_location}{filename}"
-    data = era5.load(filepath=filepath, plot=True)
+# disable fetch testing when not necessary to avoid slamming the API with automated requests
+test_fetch = False
+
+def test_era5_fetch_windwaveswellheight():
+    if not test_fetch: return
+    filenames = Era5().fetch_windwaveswellheight(start=start, end=end)
+    for fname in filenames:
+        assert(isfile(fname))
+
+def test_era5_fetch_wavedirection():
+    if not test_fetch: return
+    filenames = Era5().fetch_wavedirection(start=start, end=end)
+    for fname in filenames:
+        assert(isfile(fname))
+
+def test_era5_fetch_waveperiod():
+    if not test_fetch: return
+    filenames = Era5().fetch_waveperiod(start=start, end=end)
+    for fname in filenames:
+        assert(isfile(fname))
+
+def test_era5_load_windwaveswellheight():
+    height, lat, lon, time = Era5().load_windwaveswellheight(start=start, end=end)
+    assert(len(height)==len(lat)==len(lon))
+
+def test_era5_load_wavedirection():
+    wave, lat, lon, time = Era5().load_wavedirection(start=start, end=end)
+    assert(len(wave)==len(lat)==len(lon))
+
+def test_era5_load_waveperiod():
+    wave, lat, lon, time = Era5().load_waveperiod(start=start, end=end)
+    assert(len(wave)==len(lat)==len(lon))
+
+def test_plot_era5_windwaveswellheight():
+    #filenames = Era5().fetch_windwaveswellheight(start=start, end=end)
+    #fname = filenames[0]
+    #for fname in filenames:
+    #    assert(isfile(fname))
+    wave, lat, lon, time = Era5().load_windwaveswellheight(start=start, end=start, plot="Sig. Height of Combined Wind, Wave, and Swell 2018-01-01")
+    assert(len(wave) == len(lat) == len(lon))
+

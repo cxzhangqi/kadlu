@@ -1,82 +1,248 @@
+"""
+    API for Regional Deterministic Wave Prediction System (RDWPS)
+    Data provided by Govt. of Canada
+
+    Metadata regarding the dataset can be found here:
+        https://weather.gc.ca/grib/grib2_RDWPS_e.html
+
+    Oliver Kirsebom
+    Casey Hilliard
+    Matthew Smith
+"""
+
 import numpy as np
 from datetime import datetime, timedelta
 import os
 import urllib.request
 import pygrib
-
-from kadlu.geospatial.data_sources import fetch_util
-
-waveSources = {
-    'swh' : 'HTSGW',
-    'mwd' : 'WVDIR',
-    'mwp' : 'PKPER'
-}
-
-regions = [
-    # matt_s 2019-08
-    # this will probably change in the future to something other than a list...
-    'gulf-st-lawrence',
-    'superior',
-    'huron-michigan',
-    'erie',
-    'ontario'
-]
+from kadlu.geospatial.data_sources import fetch_util 
+from kadlu.geospatial.data_sources.fetch_util import storage_cfg
+import warnings
 
 
-def fetch(wavevar=waveSources['swh'], time=datetime.now(), region=regions[0]):
-    storage_location = fetch_util.instantiate_storage_config() 
+# dictionary to obtain reference level as per RDWPS nomenclature
+# for more info see the following: https://weather.gc.ca/grib/grib2_RDWPS_e.html
+from collections import defaultdict
+region_strs = ['gulf-st-lawrence', 'superior', 'huron-michigan', 'erie', 'ontario']
+default = defaultdict(lambda : 'SFC_0')
+level_ref = {key : default for key in region_strs}
+for reg in region_strs: 
+    level_ref[reg]['UGRD'] = 'TGL_10'
+    level_ref[reg]['VGRD'] = 'TGL_10'
+level_ref['gulf-st-lawrence']['PKPER'] = 'TGL_0'
+level_ref['gulf-st-lawrence']['PRMSL'] = 'MSL_0'
 
-    level_ref = 'SFC_0'
-    if wavevar is 'WVDIR': level_ref = 'TGL_0'
-    hour = f"{((time.hour % 24) // 6 * 6):02d}"  # better option?
-    predictionhour = '000'  # any better than 0-hour?
-    fetchname = f"CMC_rdwps_{region}_{wavevar}_{level_ref}_latlon0.05x0.05_{time.strftime('%Y%m%d')}{hour}_P{predictionhour}.grib2"
-    fetchfile= f"{storage_location}{fetchname}"
 
-    if os.path.isfile(fetchfile):
-        print("File exists, skipping retrieval...")
-        # obsolete ???
-        #validate_wavesource(fetchfile, waveSources)
+class Boundary():
+    def __init__(self, south, north, west, east):
+        self.south = south
+        self.north = north
+        self.west = west
+        self.east = east
+
+    def intersects(self, other):
+        """
+        separating axis theorem: quickly check for intersecting regions
+            https://en.wikipedia.org/wiki/Hyperplane_separation_theorem#Use_in_collision_detection
+        """
+        return not (self.east < other.west or 
+                    self.west > other.east or 
+                    self.north < other.south or 
+                    self.south > other.north)
+
+
+class Region():
+    def __init__(self, ymin, xmin, nx, ny, ystep, xstep, name):
+        self.south = ymin
+        self.north = ymin + (ny * ystep)
+        self.west = xmin
+        self.east = xmin + (nx * xstep)
+        self.name = name
+
+    def __str__(self): return self.name
+
+
+rdwps_regions = [
+        # region parameters as defined in RDWPS docs
+        #   https://weather.gc.ca/grib/grib2_RDWPS_e.html
+        Region(46.2590, -92.3116, 658, 318, 0.0090, 0.0124, 'superior'),
+        Region(41.4260, -88.1452, 698, 573, 0.0090, 0.0124, 'huron-michigan'),
+        Region(41.2190, -83.6068, 398, 210, 0.0090, 0.0124, 'erie'),
+        Region(43.0640, -79.9736, 348, 158, 0.0090, 0.0124, 'ontario'),
+        Region(44.0750, -70.9250, 331, 160, 0.0500, 0.0500, 'gulf-st-lawrence')
+    ]
+
+
+def ll_2_regionstr(south, north, west, east):
+    """ convert input bounds to region strings using the separating axis theorem """
+    return [str(reg) for reg in rdwps_regions if Boundary(south, north, west, east).intersects(reg)]
+
+
+def fetchname(wavevar, time, region):
+    timestr = datetime.now().strftime('%Y%m%d')
+    hour = f"{((datetime.now()-timedelta(hours=3)).hour // 6) * 6:02d}"
+    predictionhour = f"{(time.hour // 3) * 3:03d}"
+
+    if 'gulf' not in region: 
+        regionstr = 'lake-' + region
+        grid = 'latlon0.0090x0.0124'
     else:
-        print("Downloading file from the Regional Deterministic Wave Prediction System...")
-        fetchurl = f"http://dd.weather.gc.ca/model_wave/ocean/gulf-st-lawrence/grib2/{hour}/{fetchname}"
-        urllib.request.urlretrieve(fetchurl, fetchfile)
+        regionstr = region
+        grid = 'latlon0.05x0.05'
+    return (f"CMC_rdwps_{regionstr}_{wavevar}_{level_ref[region][wavevar]}"
+            f"_{grid}_{timestr}{hour}_P{predictionhour}.grib2")
 
 
-def load(filepath, plot=False): return fetch_util.loadgrib(filepath, plot)
+def fetch_rdwps(wavevar, start, end, regions):
+    filenames = []
+    time = datetime(start.year, start.month, start.day, (start.hour // 3 * 3))
+
+    # RDWPS is a prediction service - requested times must be in the 
+    # following 48 hours from the current time
+    assert(time >= datetime.now() - timedelta(hours=6))
+    assert(end <= datetime.now() + timedelta(hours=48))
+    assert(time <= end)
+    
+    while time <= end:
+        for reg in regions:
+            fname = fetchname(wavevar, time, reg)
+            fetchfile = f"{storage_cfg()}{fname}"
+            directory = 'ocean' if 'gulf-st-lawrence' in fname else 'great_lakes'
+            hour = f"{(((datetime.now()-timedelta(hours=3)).hour) // 6 * 6):02d}"
+            fetchurl = f"http://dd.weather.gc.ca/model_wave/{directory}/{reg}/grib2/{hour}/{fname}"
+            print(f"Downloading {fname} from the Regional Deterministic Wave Prediction System...")
+            #print(fetchurl)
+            urllib.request.urlretrieve(fetchurl, fetchfile)
+            filenames.append(fetchfile)
+
+        time += timedelta(hours=3)
+
+    return filenames
+
+
+def load_rdwps(wavevar, start, end, south, north, west, east, plot):
+    """
+    wavevar = 'HTSGW'
+    start = datetime.now()
+    end = start + timedelta(hours=6)
+    south =  44.4
+    north =  44.7
+    west  = -64.4
+    east  = -63.8
+    plot = False
+    """
+    filenames = []
+    val = np.array([])
+    lat = np.array([])
+    lon = np.array([])
+    timestamps = np.array([])
+    time = datetime(start.year, start.month, start.day, (start.hour // 3 * 3))
+    regions = ll_2_regionstr(south, north, west, east)
+
+    # RDWPS is a prediction service - requested times must be in the 
+    # following 48 hours from the current time
+    assert(time >= datetime.now() - timedelta(hours=6))
+    assert(end <= datetime.now() + timedelta(hours=48))
+    assert(time <= end)
+
+    while time <= end:
+        for reg in regions:
+            # get the filename
+            fname = fetchname(wavevar, time, reg)
+            fetchfile = f"{storage_cfg()}{fname}"
+            filenames.append(fetchfile)
+            if not os.path.isfile(fetchfile): fetch_rdwps(wavevar, start, end, regions)
+
+            # open the file and get the raw data
+            grib = pygrib.open(fetchfile)
+            assert(grib.messages == 1)
+            msg = grib[1]
+            z_grid, y_grid, x_grid = msg.data()
+
+            for slx in range(z_grid.shape[0]):
+                z = z_grid[slx]
+                y = y_grid[slx]
+                x = x_grid[slx]
+                x -= 360  # normalize longitudes
+
+                # build index to collect points in area of interest
+                latix = np.array([l >= south and l <= north for l in y])
+                lonix = np.array([l >= west and l <= east for l in x])
+                ix = latix & lonix
+
+                # append points within AoI to return arrays
+                val = np.append(val, z[ix])
+                lat = np.append(lat, y[ix])
+                lon = np.append(lon, x[ix])
+                timestamps = np.append(timestamps, [time for x in range(sum(ix))])
+
+        time += timedelta(hours=3)
+
+    if plot is not False: fetch_util.plot_sample_grib(filenames, plot)
+    
+    return val, lat, lon, timestamps
+
+
+class Rdwps(): 
+    def fetch_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
+        return fetch_rdwps('HTSGW', start, end, ll_2_regionstr(south, north, west, east))
+    def fetch_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
+        return fetch_rdwps('WVHGT', start, end, ll_2_regionstr(south, north, west, east))
+    def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
+        return fetch_rdwps('WVDIR', start, end, ll_2_regionstr(south, north, west, east))
+    def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
+        return fetch_rdwps('WVPER', start, end, ll_2_regionstr(south, north, west, east))
+    def fetch_wind_u(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
+        return fetch_rdwps('UGRD', start, end, ll_2_regionstr(south, north, west, east))
+    def fetch_wind_v(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
+        return fetch_rdwps('VGRD', start, end, ll_2_regionstr(south, north, west, east))
+    def fetch_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
+        return fetch_rdwps('ICEC', start, end, ll_2_regionstr(south, north, west, east))
+
+    def load_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+        return load_rdwps('HTSGW', start, end, south, north, west, east, plot=plot)
+    def load_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+        return load_rdwps('WVHGT', start, end, south, north, west, east, plot=plot)
+    def load_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+        return load_rdwps('WVDIR', start, end, south, north, west, east, plot=plot)
+    def load_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+        return load_rdwps('WVPER', start, end, south, north, west, east, plot=plot)
+    def load_wind_u(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+        return load_rdwps('UGRD', start, end, south, north, west, east, plot=plot)
+    def load_wind_v(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+        return load_rdwps('VGRD', start, end, south, north, west, east, plot=plot)
+    def load_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+        return load_rdwps('ICEC', start, end, south, north, west, east, plot=plot)
+
+    def __str__(self):
+        info = '\n'.join([
+                "API for Regional Deterministic Wave Prediction System (RDWPS)",
+                "Data provided by Govt. of Canada.",
+                "This dataset provides a prediction service - it is necessary to use start",
+                "and end times within the next 48 hours to return RDWPS predictions.",
+                "Metadata regarding the dataset can be found here:",
+                "\thttps://weather.gc.ca/grib/grib2_RDWPS_e.html"
+            ])
+        args = "(south=-90, north=90, west=-180, east=180, start=datetime(), end=datetime())"
+        return fetch_util.str_def(self, info, args)
+
 
 """
-    # If no gribfile argument is provided, default to the fetched file.
-    if grib is None:
-        grib = self.fetch_filename
+# mahone bay test area:
+    south =  44.4
+    north =  44.7
+    west  = -64.4
+    east  = -63.8
 
-    # If no date argument is provided, default to the module timestamp, truncated to nearest earlier 6-hour interval.
-    if target_date is None:
+# global
+    south = -90
+    north = 90
+    west = -180
+    east = 180
 
-        rep_hour = ((self.fetch_datetimestamp.hour % 24) // 6) * 6
-        target_date = self.fetch_datetimestamp.replace(minute=0, hour=rep_hour, second=0, microsecond=0)
-    else:
-### Should similar filtering on time be added here to enforce 6 hour intervals?
-        target_date = target_date
+ll_2_regionstr(south, north, west, east)
 
-    # load grib structure from target.
-    grbs=pygrib.open(grib)
-
-    # Fetch slice of data corresponding to selected target date and wave variable.
-        #swh	- significant height of combined wind waves and swell, metres (HTSGW)
-        #mwp	- primary wave mean period, seconds (PKPER)
-        #mwd	- primary wind wave direction, degrees true (i.e. 0 deg = North; proceeding clockwise) (WVDIR)
-    grb = grbs.select(validDate=target_date,shortNameECMF=wavevar.value)[0]
-    
-    if(wavevar == RDWPSWavevar.HTSGW):
-        title_text = "CMC-RDWPS Sig. Wave + Swell Height from GRIB\n({}) ".format(target_date)
-    elif(wavevar == RDWPSWavevar.PKPER):
-        title_text = "CMC-RDWPS Mean Wave Period from GRIB\n({}) ".format(target_date)
-    elif(wavevar == RDWPSWavevar.WVDIR):
-        title_text = "CMC-RDWPS Mean Wave Direction from GRIB\n({}) ".format(target_date)
-    else:
-        title_text = "CMC-RDWPS\nUnknown variable from GRIB\n({}) ".format(target_date)
-
-    return (grb, title_text)
+time = datetime.now() - timedelta(hours=3)
 """
-    
+
+

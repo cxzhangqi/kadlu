@@ -19,7 +19,8 @@ path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "asset
 
 def test_load_bathymetry_from_a_single_chs_file():
     o = Ocean(bathy="CHS")
-    o.load(south=43, west=-60, north=44, east=-59)
+    storage = os.path.join(path_to_assets, 'tif')
+    o.load_bathy(south=43, west=-60, north=44, east=-59, storage=storage)
     bathy_data = o.bathy_data
     bathy = bathy_data[0]
     lats = bathy_data[1]
@@ -31,7 +32,8 @@ def test_load_bathymetry_from_a_single_chs_file():
 
 def test_interpolate_chs_bathymetry():
     o = Ocean(bathy="CHS")
-    o.load(south=43, west=-60, north=44, east=-59)
+    storage = os.path.join(path_to_assets, 'tif')
+    o.load_bathy(south=43, west=-60, north=44, east=-59, storage=storage)
     N = 10
     x = y = np.arange(N) + 1
     o.bathy(x,y)

@@ -12,7 +12,7 @@
 """
 import numpy as np
 from kadlu.utils import LatLon
-import kadlu.geospatial.data_sources.chs as chs
+from kadlu.geospatial.data_sources.chs import Chs
 import kadlu.geospatial.data_sources.gebco as gebco 
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D
 
@@ -54,16 +54,16 @@ class Ocean():
         self.NE = LatLon(90, 180)
 
         if not isinstance(bathy, str):
-            self._load_bathy(bathy)
+            self.load_bathy()
 
         if not isinstance(temp, str):
-            self._load_temp(temp)
+            self.load_temp()
 
         if not isinstance(salinity, str):
-            self._load_salinity(salinity)
+            self.load_salinity()
 
         if not isinstance(wave, str):
-            self._load_wave(wave)
+            self.load_wave()
 
 
     def load(self, south=-90, north=90, west=-180, east=180, time=None):
@@ -78,10 +78,10 @@ class Ocean():
         self.set_origin(lat_ref, lon_ref)
 
         # load data and initialize interpolation tables
-        self._load_bathy(self.data_source['bathy'], south, north, west, east)
-        self._load_temp(self.data_source['temp'], south, north, west, east, time)
-        self._load_salinity(self.data_source['salinity'], south, north, west, east, time)
-        self._load_wave(self.data_source['wave'], south, north, west, east, time)
+        self.load_bathy(south, north, west, east)
+        self.load_temp(south, north, west, east, time)
+        self.load_salinity(south, north, west, east, time)
+        self.load_wave(south, north, west, east, time)
 
 
     def set_origin(self, lat_ref, lon_ref):
@@ -101,7 +101,9 @@ class Ocean():
             self.wave_interp.origin = self.origin
 
 
-    def _load_bathy(self, bathy, south=None, north=None, west=None, east=None):
+    def load_bathy(self, south=None, north=None, west=None, east=None, storage=None):
+
+        bathy = self.data_source['bathy']
 
         if bathy is None:
             self.bathy_data = None
@@ -112,7 +114,7 @@ class Ocean():
             if bathy == "CHS":
 
                 # load data
-                self.bathy_data = chs.load(south, north, west, east)
+                self.bathy_data = Chs().load_bathymetry(south, north, west, east, storage=storage)
 
                 # lat coordinates
                 num_lats = int(np.ceil((north - south) / 0.001)) + 1
@@ -150,7 +152,9 @@ class Ocean():
             self.bathy_interp = Uniform2D(bathy)
 
 
-    def _load_temp(self, temp, south=None, north=None, west=None, east=None, time=None):
+    def load_temp(self, south=None, north=None, west=None, east=None, time=None):
+
+        temp = self.data_source['temp']
 
         if temp is None:
             self.temp_data = None
@@ -176,7 +180,9 @@ class Ocean():
             self.temp_interp = Uniform3D(temp)
 
 
-    def _load_salinity(self, salinity, south=None, north=None, west=None, east=None, time=None):
+    def load_salinity(self, south=None, north=None, west=None, east=None, time=None):
+
+        salinity = self.data_source['salinity']
 
         if salinity is None:
             self.salinity_data = None
@@ -202,7 +208,9 @@ class Ocean():
             self.salinity_interp = Uniform3D(salinity)
 
 
-    def _load_wave(self, wave, south=None, north=None, west=None, east=None, time=None):
+    def load_wave(self, south=None, north=None, west=None, east=None, time=None):
+
+        wave = self.data_source['wave']
 
         if wave is None:
             self.wave_data = None

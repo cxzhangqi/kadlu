@@ -121,28 +121,35 @@ def load_chs(south, north, west, east, band_id=1):
     lat_out = np.array([])
     lon_out = np.array([])
     for filepath in fnames:
-        data_set = gdal.Open(filepath)
-        band = data_set.GetRasterBand(band_id)
-        values = data_set.ReadAsArray()
-
-        # replace missing values with nan
-        nodata = band.GetNoDataValue()
-        values[values == nodata] = np.nan
-        bathy = np.ma.masked_invalid(values)
-
-        # select non-masked entries
-        z = np.flip(bathy, axis=0)
-        lat, lon = latlon(filepath)
-        x, y = np.meshgrid(lon, lat)
-        #x = x[~z.mask]
-        #y = y[~z.mask]
-        #z = z[~z.mask]
-        #return z, x, y
-        bathy_out = np.append(bathy_out, z[~z.mask])
-        lat_out = np.append(lat_out, y[~z.mask])
-        lon_out = np.append(lon_out, x[~z.mask])
+        z,x,y = self.load_chs_file(filepath, band_id)
+        bathy_out = np.append(bathy_out, z)
+        lat_out = np.append(lat_out, y)
+        lon_out = np.append(lon_out, x)
 
     return bathy_out, lat_out, lon_out
+
+def load_chs_file(filepath, band_id=1):
+
+    # open file
+    data_set = gdal.Open(filepath)
+    band = data_set.GetRasterBand(band_id)
+    values = data_set.ReadAsArray()
+
+    # replace missing values with nan
+    nodata = band.GetNoDataValue()
+    values[values == nodata] = np.nan
+    bathy = np.ma.masked_invalid(values)
+
+    # select non-masked entries
+    z = np.flip(bathy, axis=0)
+    lat, lon = latlon(filepath)
+    x, y = np.meshgrid(lon, lat)
+    x = x[~z.mask]
+    y = y[~z.mask]
+    z = z[~z.mask]
+
+    return z,x,y
+
 
 class Chs():
     def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):

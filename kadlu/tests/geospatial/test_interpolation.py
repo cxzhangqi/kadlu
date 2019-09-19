@@ -321,10 +321,6 @@ def test_can_interpolate_geotiff_data():
     # load data and initialize interpolator
     path = path_to_assets + '/tif/CA2_4300N06000W.tif'
     bathy, lat, lon = chs.load_chs_file(path)
-    print(bathy.shape, lat.shape, lon.shape)
-    print(np.min(bathy), np.max(bathy))
-    print(np.min(lat), np.max(lat))
-    print(np.min(lon), np.max(lon))
     ip = Interpolator2D(bathy, lat, lon, method_irreg='nearest')
     # --- 4 latitudes ---
     lats = [43.3, 43.2, 43.7, 43.5]
@@ -332,7 +328,6 @@ def test_can_interpolate_geotiff_data():
     lons = [-59.6, -59.8, -59.2, -59.3]
     # interpolate
     depths = ip.eval_ll(lat=lats, lon=lons)
-    print(depths)
     zi = list()
     for lat, lon in zip(lats, lons):
         zi.append(ip.eval_ll(lat=lat, lon=lon))

@@ -18,6 +18,10 @@ from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 from datetime import datetime, timedelta
 
+
+chs_is_up = chs.check_url_is_up("https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/")
+
+
 # remove fetched files to test fetching
 def unfetch():
     for f in os.listdir(storage_cfg()):
@@ -27,11 +31,12 @@ def unfetch():
     return
 
 
-def test_fetch_returns_two_files():
+def test_fetch_returns_expected_number_of_files():
     unfetch()
-    paths = Chs().fetch_bathymetry(south=42.1, north=44.6, west=-60.9, east=-59.1)
-    assert len(paths) == 6
-    assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
+    if chs_is_up:
+        paths = Chs().fetch_bathymetry(south=42.1, north=44.6, west=-60.9, east=-59.1)
+        assert len(paths) == 6
+        assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
 
 def test_filename():
     fname = chs.filename(south=50, west=-62)

@@ -67,10 +67,17 @@ def verify_local_files(south, north, west, east):
     return fnames 
 
 
+def check_url_is_up(url="https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"):
+    r = requests.head(url)
+    return r.status_code == 200
+
+
 def fetch_chs(south, north, west, east):
     """ Returns a list of filepaths for downloaded content """
     # api call: get raster IDs within bounding box
     source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
+    # check source exists
+    assert(check_url_is_up(source))
     spatialRel = "esriSpatialRelIntersects"
     spatialReference = "4326"  # WGS-84 spec
     geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})

@@ -52,15 +52,29 @@ def filename(south, west):
     return fname
 
 
-def verify_local_files(south, north, west, east):
+def verify_local_files(south, north, west, east, storage=None):
     """ 
         Checks to see if local files exist before querying 
         Returns filenames if true, otherwise returns false.
     """
+    if storage is None:
+        storage = storage_cfg()
+
+    print(storage)
+    # establish which maps are needed
+    xmin = int(np.floor(west))
+    xmax = int(np.floor(east))
+    ymin = int(np.floor(south))
+    ymax = int(np.floor(north))
+    if abs(east-int(east)) < 1e-6:
+        xmax -= 1
+    if abs(north-int(north)) < 1e-6:
+        ymax -= 1
+    # check if maps have already been downloaded
     fnames = []
-    for x in range(int(west), int(east) + 1):
-        for y in range(int(south), int(north) + 1):
-            f = f"{storage_cfg()}{filename(y, x)}"
+    for x in range(xmin, xmax + 1):
+        for y in range(ymin, ymax + 1):
+            f = os.path.join(storage, filename(y, x))
             if not os.path.isfile(f): return False
             fnames.append(f)
     print("Files exist, skipping retrieval...")
@@ -119,16 +133,25 @@ def fetch_chs(south, north, west, east):
     return filepaths
 
 
-def load_chs(south, north, west, east, band_id=1):
+def load_chs(south, north, west, east, band_id=1, storage=None):
     # verify the files exist - if not, fetch them
-    fnames = verify_local_files(south, north, west, east)
+    fnames = verify_local_files(south, north, west, east, storage=storage)
     if fnames is False: fnames = fetch_chs(south, north, west, east)
 
     bathy_out = np.array([])
     lat_out = np.array([])
     lon_out = np.array([])
     for filepath in fnames:
-        z,x,y = self.load_chs_file(filepath, band_id)
+        # load data from chs file (bathy,lat,lon)
+        z,y,x = load_chs_file(filepath, band_id)
+
+        # discard any data points that are outside requested area
+        indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
+        z = z[indices]
+        y = y[indices]
+        x = x[indices]
+
+        # append
         bathy_out = np.append(bathy_out, z)
         lat_out = np.append(lat_out, y)
         lon_out = np.append(lon_out, x)
@@ -136,17 +159,14 @@ def load_chs(south, north, west, east, band_id=1):
     return bathy_out, lat_out, lon_out
 
 def load_chs_file(filepath, band_id=1):
-
     # open file
     data_set = gdal.Open(filepath)
     band = data_set.GetRasterBand(band_id)
     values = data_set.ReadAsArray()
-
     # replace missing values with nan
     nodata = band.GetNoDataValue()
     values[values == nodata] = np.nan
     bathy = np.ma.masked_invalid(values)
-
     # select non-masked entries
     z = np.flip(bathy, axis=0)
     lat, lon = latlon(filepath)
@@ -155,14 +175,14 @@ def load_chs_file(filepath, band_id=1):
     y = y[~z.mask]
     z = z[~z.mask]
 
-    return z,x,y
+    return z,y,x
 
 
 class Chs():
     def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return fetch_chs(south, north, west, east)
-    def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
-        return load_chs(south, north, west, east, band_id=1)
+    def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8, storage=None):
+        return load_chs(south, north, west, east, band_id=1, storage=storage)
     def __str__(self):
         info = "Non-Navigational 100m (NONNA-100) bathymetry dataset from Canadian Hydrographic Datastore"
         args = "(south=-90, north=90, west=-180, east=180)"

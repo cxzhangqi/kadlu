@@ -30,7 +30,6 @@ def unfetch():
             os.remove(f"{storage_cfg()}{f}")
     return
 
-
 def test_fetch_returns_expected_number_of_files():
     unfetch()
     if chs_is_up:

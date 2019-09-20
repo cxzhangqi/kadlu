@@ -8,10 +8,10 @@ from os.path import isfile
 
 # time used for testing
 start = datetime(2018, 1, 1, 0, 0, 0, 0)
-end = datetime(2018, 1, 1, 6, 0, 0, 0)
+end   = datetime(2018, 1, 1, 0, 0, 0, 0)
 
 # disable fetch testing when not necessary to avoid slamming the API with automated requests
-test_fetch = False
+test_fetch = True
 
 def test_era5_fetch_windwaveswellheight():
     if not test_fetch: return
@@ -43,11 +43,11 @@ def test_era5_load_waveperiod():
     wave, lat, lon, time = Era5().load_waveperiod(start=start, end=end)
     assert(len(wave)==len(lat)==len(lon))
 
-def test_plot_era5_windwaveswellheight():
+#def test_plot_era5_windwaveswellheight():
     #filenames = Era5().fetch_windwaveswellheight(start=start, end=end)
     #fname = filenames[0]
     #for fname in filenames:
     #    assert(isfile(fname))
-    wave, lat, lon, time = Era5().load_windwaveswellheight(start=start, end=start, plot="Sig. Height of Combined Wind, Wave, and Swell 2018-01-01")
-    assert(len(wave) == len(lat) == len(lon))
+    #wave, lat, lon, time = Era5().load_windwaveswellheight(start=start, end=start, plot="Sig. Height of Combined Wind, Wave, and Swell 2018-01-01")
+    #assert(len(wave) == len(lat) == len(lon))
 

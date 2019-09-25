@@ -5,25 +5,34 @@ from kadlu.geospatial.data_sources.wwiii import Wwiii
 from kadlu.geospatial.data_sources import fetch_util
 
 
-test_fetch = False
+test_fetch = True
 
 start = datetime(2017, 2, 3, 0, 0, 0, 0)
-end = datetime(2017, 2, 3, 6, 0, 0, 0)
+end = datetime(2017, 2, 3, 0, 0, 0, 0)
 
-south=-90
-north=90
-west=-180
-east=180
-
+# gulf st lawrence
+south =  46
+north =  52
+west  = -70
+east  = -56
 
 def test_wwiii_ll2regionstr():
-    south=-90
-    north=90
+    """
+    south=-80
+    north=84
     west=-180
     east=180
     regions = wwiii.ll_2_regionstr(south, north, west, east)
-    assert(regions[0] == 'glo_30m')
     assert(len(regions) == 1)
+    assert(regions[0] == 'glo_30m')
+    """
+    # gulf st lawrence
+    south =  46
+    north =  52
+    west  = -70
+    east  = -56
+    regions = wwiii.ll_2_regionstr(south, north, west, east)
+    print(f"Regions for gulf st lawrence coords : {regions}")
 
 
 def test_wwiii_fetch_windwaveheight():

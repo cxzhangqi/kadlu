@@ -320,8 +320,8 @@ def test_can_interpolate_irregular_grid_by_mapping_to_regular_grid():
 def test_can_interpolate_geotiff_data():
     # load data and initialize interpolator
     path = path_to_assets + '/tif/CA2_4300N06000W.tif'
-    bathy, lat, lon = chs.load_from_file(path)
-    ip = Interpolator2D(bathy, lat, lon)
+    bathy, lat, lon = chs.load_chs_file(path)
+    ip = Interpolator2D(bathy, lat, lon, method_irreg='nearest')
     # --- 4 latitudes ---
     lats = [43.3, 43.2, 43.7, 43.5]
     # --- 4 longitudes --- 

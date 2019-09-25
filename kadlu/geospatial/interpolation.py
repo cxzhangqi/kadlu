@@ -244,9 +244,10 @@ class Interpolator2D():
         else:
             self._lon_corr = 0
 
+        lons_rad += self._lon_corr
+
         # initialize lat-lon interpolator
         if reggrid:
-            lons_rad += self._lon_corr
             self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
 
         else:
@@ -255,7 +256,6 @@ class Interpolator2D():
                     'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
     
                 # interpolators on irregular grid
-                lons_rad += self._lon_corr
                 gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
                 gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
@@ -271,7 +271,6 @@ class Interpolator2D():
                 self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=zi)
 
             else:
-                lons_rad += self._lon_corr
                 self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
 
         # store data used for interpolation

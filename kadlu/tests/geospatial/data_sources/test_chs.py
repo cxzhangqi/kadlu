@@ -21,25 +21,22 @@ from datetime import datetime, timedelta
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),"assets")
 
-chs_is_up = chs.check_url_is_up("https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/")
-
-
-# remove fetched files to test fetching
+# the script will now force-fetch regardless of whether local files exist, so this is no longer needed
+# local file checking is now performed inside the load function instead of the fetch function
+"""
 def unfetch():
     for f in os.listdir(storage_cfg()):
         if "CA2_" in f:
             print(f"Removing {f}")
             os.remove(f"{storage_cfg()}{f}")
     return
+"""
 
 
 def test_fetch_returns_expected_number_of_files():
-    # Obs: this test is only executed if the CHS url is up
-    unfetch()
-    if chs_is_up:
-        paths = Chs().fetch_bathymetry(south=42.1, north=44.6, west=-60.9, east=-59.1)
-        assert len(paths) == 6
-        assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
+    paths = Chs().fetch_bathymetry(south=42.1, north=44.6, west=-60.9, east=-59.1)
+    assert len(paths) == 6
+    assert os.path.basename(paths[0]) == "CA2_4200N06000W.tif"
 
 def test_filename():
     fname = chs.filename(south=50, west=-62)
@@ -51,20 +48,18 @@ def test_parse_sw_corner():
     assert w == -62
 
 def test_latlon():
-    # Obs: this test is only executed if the CHS url is up
-    if chs_is_up:
-        Chs().fetch_bathymetry(south=49, north=51, west=-63, east=-61)
-        lats, lons = chs.latlon(f"{storage_cfg()}CA2_5000N06200W.tif")
-        assert lats.shape[0] == 1001
-        assert lons.shape[0] == 1001
-        assert lats[0] == 50
-        assert lats[1] == 50.001
-        assert lons[0] == -62
-        assert lons[1] == -61.999
-        lats, lons = chs.latlon(f"{storage_cfg()}CA2_5000N06200W.tif")
-        assert lats.shape[0] == 501
-        assert lats[0] == 50
-        assert lats[1] == 50.001
+    Chs().fetch_bathymetry(south=49, north=51, west=-63, east=-61)
+    lats, lons = chs.latlon(f"{storage_cfg()}CA2_5000N06200W.tif")
+    assert lats.shape[0] == 1001
+    assert lons.shape[0] == 1001
+    assert lats[0] == 50
+    assert lats[1] == 50.001
+    assert lons[0] == -62
+    assert lons[1] == -61.999
+    lats, lons = chs.latlon(f"{storage_cfg()}CA2_5000N06200W.tif")
+    assert lats.shape[0] == 501
+    assert lats[0] == 50
+    assert lats[1] == 50.001
 
 def test_load_single_chs_file():
     storage = os.path.join(path_to_assets,'tif')
@@ -95,18 +90,15 @@ def test_load_partial_chs_file():
     assert bathy.shape[0] == lons.shape[0]
 
 def test_fetch_correct_number_of_files():
-    # Obs: this test is only executed if the CHS url is up
-    if chs_is_up:
-        unfetch()
-        south = 44.006
-        north = 45.994
-        west= -59.994
-        east= -58.006
-        filenames = Chs().fetch_bathymetry(south, north, west, east)
-        assert(len(filenames) == 4)
-        filenames_str = '\n'.join(filenames)
-        assert("4400N05800W.tif" in filenames_str)
-        assert("4400N05900W.tif" in filenames_str)
-        assert("4500N05800W.tif" in filenames_str)
-        assert("4500N05900W.tif" in filenames_str)
+    south = 44.006
+    north = 45.994
+    west= -59.994
+    east= -58.006
+    filenames = Chs().fetch_bathymetry(south, north, west, east)
+    assert(len(filenames) == 4)
+    filenames_str = '\n'.join(filenames)
+    assert("4400N05800W.tif" in filenames_str)
+    assert("4400N05900W.tif" in filenames_str)
+    assert("4500N05800W.tif" in filenames_str)
+    assert("4500N05900W.tif" in filenames_str)
 

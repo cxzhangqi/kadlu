@@ -16,7 +16,7 @@ import os
 import urllib.request
 import pygrib
 from kadlu.geospatial.data_sources import fetch_util 
-from kadlu.geospatial.data_sources.fetch_util import storage_cfg
+from kadlu.geospatial.data_sources.fetch_util import storage_cfg, Boundary, ll_2_regionstr
 import warnings
 
 
@@ -31,24 +31,6 @@ for reg in region_strs:
     level_ref[reg]['VGRD'] = 'TGL_10'
 level_ref['gulf-st-lawrence']['PKPER'] = 'TGL_0'
 level_ref['gulf-st-lawrence']['PRMSL'] = 'MSL_0'
-
-
-class Boundary():
-    def __init__(self, south, north, west, east):
-        self.south = south
-        self.north = north
-        self.west = west
-        self.east = east
-
-    def intersects(self, other):
-        """
-        separating axis theorem: quickly check for intersecting regions
-            https://en.wikipedia.org/wiki/Hyperplane_separation_theorem#Use_in_collision_detection
-        """
-        return not (self.east < other.west or 
-                    self.west > other.east or 
-                    self.north < other.south or 
-                    self.south > other.north)
 
 
 class Region():
@@ -71,11 +53,6 @@ rdwps_regions = [
         Region(43.0640, -79.9736, 348, 158, 0.0090, 0.0124, 'ontario'),
         Region(44.0750, -70.9250, 331, 160, 0.0500, 0.0500, 'gulf-st-lawrence')
     ]
-
-
-def ll_2_regionstr(south, north, west, east):
-    """ convert input bounds to region strings using the separating axis theorem """
-    return [str(reg) for reg in rdwps_regions if Boundary(south, north, west, east).intersects(reg)]
 
 
 def fetchname(wavevar, time, region):
@@ -111,7 +88,6 @@ def fetch_rdwps(wavevar, start, end, regions):
             hour = f"{(((datetime.now()-timedelta(hours=3)).hour) // 6 * 6):02d}"
             fetchurl = f"http://dd.weather.gc.ca/model_wave/{directory}/{reg}/grib2/{hour}/{fname}"
             print(f"Downloading {fname} from the Regional Deterministic Wave Prediction System...")
-            #print(fetchurl)
             urllib.request.urlretrieve(fetchurl, fetchfile)
             filenames.append(fetchfile)
 
@@ -121,23 +97,13 @@ def fetch_rdwps(wavevar, start, end, regions):
 
 
 def load_rdwps(wavevar, start, end, south, north, west, east, plot):
-    """
-    wavevar = 'HTSGW'
-    start = datetime.now()
-    end = start + timedelta(hours=6)
-    south =  44.4
-    north =  44.7
-    west  = -64.4
-    east  = -63.8
-    plot = False
-    """
     filenames = []
     val = np.array([])
     lat = np.array([])
     lon = np.array([])
     timestamps = np.array([])
     time = datetime(start.year, start.month, start.day, (start.hour // 3 * 3))
-    regions = ll_2_regionstr(south, north, west, east)
+    regions = ll_2_regionstr(south, north, west, east, rdwps_regions)
 
     # RDWPS is a prediction service - requested times must be in the 
     # following 48 hours from the current time
@@ -185,19 +151,19 @@ def load_rdwps(wavevar, start, end, south, north, west, east, plot):
 
 class Rdwps(): 
     def fetch_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
-        return fetch_rdwps('HTSGW', start, end, ll_2_regionstr(south, north, west, east))
+        return fetch_rdwps('HTSGW', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
     def fetch_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
-        return fetch_rdwps('WVHGT', start, end, ll_2_regionstr(south, north, west, east))
+        return fetch_rdwps('WVHGT', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
     def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
-        return fetch_rdwps('WVDIR', start, end, ll_2_regionstr(south, north, west, east))
+        return fetch_rdwps('WVDIR', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
     def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
-        return fetch_rdwps('WVPER', start, end, ll_2_regionstr(south, north, west, east))
+        return fetch_rdwps('WVPER', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
     def fetch_wind_u(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
-        return fetch_rdwps('UGRD', start, end, ll_2_regionstr(south, north, west, east))
+        return fetch_rdwps('UGRD', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
     def fetch_wind_v(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
-        return fetch_rdwps('VGRD', start, end, ll_2_regionstr(south, north, west, east))
+        return fetch_rdwps('VGRD', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
     def fetch_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
-        return fetch_rdwps('ICEC', start, end, ll_2_regionstr(south, north, west, east))
+        return fetch_rdwps('ICEC', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
 
     def load_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('HTSGW', start, end, south, north, west, east, plot=plot)
@@ -240,7 +206,7 @@ class Rdwps():
     west = -180
     east = 180
 
-ll_2_regionstr(south, north, west, east)
+ll_2_regionstr(south, north, west, east, rdwps_regions)
 
 time = datetime.now() - timedelta(hours=3)
 """

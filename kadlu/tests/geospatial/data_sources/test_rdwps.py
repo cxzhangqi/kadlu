@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import rdwps 
-from kadlu.geospatial.data_sources.rdwps import Rdwps
+from kadlu.geospatial.data_sources.rdwps import Rdwps, rdwps_regions
 from kadlu.geospatial.data_sources import fetch_util
 from os.path import isfile
 
@@ -61,10 +61,10 @@ def test_rdwps_fetch_icecover():
         assert(isfile(fname))
 
 def test_rdwps_region_abstraction():
-    regions = rdwps.ll_2_regionstr(south=-90, north=90, west=-180, east=180)
+    regions = rdwps.ll_2_regionstr(south=-90, north=90, west=-180, east=180, regions=rdwps_regions)
     assert(len(regions) == 5)
 
-    regions = rdwps.ll_2_regionstr(south=44.4, north=44.7, west=-64.4, east=-63.8)
+    regions = rdwps.ll_2_regionstr(south=44.4, north=44.7, west=-64.4, east=-63.8, regions=rdwps_regions)
     assert(len(regions) == 1)
     assert(regions[0] == 'gulf-st-lawrence')
 

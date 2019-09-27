@@ -1,8 +1,9 @@
 import pytest
 from datetime import datetime, timedelta
-from kadlu.geospatial.data_sources import wwiii
-from kadlu.geospatial.data_sources.wwiii import Wwiii
 from kadlu.geospatial.data_sources import fetch_util
+from kadlu.geospatial.data_sources import wwiii
+from kadlu.geospatial.data_sources.wwiii import Wwiii, wwiii_regions, wwiii_global
+from kadlu.geospatial.data_sources.wwiii import Boundary
 
 
 test_fetch = True
@@ -17,22 +18,30 @@ west  = -70
 east  = -56
 
 def test_wwiii_ll2regionstr():
-    """
-    south=-80
-    north=84
-    west=-180
-    east=180
-    regions = wwiii.ll_2_regionstr(south, north, west, east)
-    assert(len(regions) == 1)
-    assert(regions[0] == 'glo_30m')
-    """
+    
     # gulf st lawrence
     south =  46
     north =  52
     west  = -70
     east  = -56
-    regions = wwiii.ll_2_regionstr(south, north, west, east)
-    print(f"Regions for gulf st lawrence coords : {regions}")
+    regions = wwiii.ll_2_regionstr(south, north, west, east, wwiii_regions, wwiii_global)
+    assert(len(regions) == 1)
+    assert(regions[0] == 'at_4m')
+
+    # bering sea
+    # test area intersection across antimeridian 
+    south, north = 46, 67
+    west, east = 158, -156
+    east=-156
+    regions = wwiii.ll_2_regionstr(south, north, west, east, wwiii_regions, wwiii_global)
+    assert(len(regions) == 3)
+    assert('ak_4m' in regions)
+    assert('ao_30m' in regions)
+    assert('wc_4m' in regions)
+
+    # global 
+    globe = wwiii.ll_2_regionstr(-90, 90, -180, 180, wwiii_regions, wwiii_global)
+    assert(len(globe) == 5)
 
 
 def test_wwiii_fetch_windwaveheight():

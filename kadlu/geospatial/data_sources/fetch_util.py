@@ -34,6 +34,34 @@ def storage_cfg():
     return storage_location
 
 
+class Boundary():
+    def __init__(self, south, north, west, east, fetchvar=''):
+        self.south, self.north, self.west, self.east, self.fetchvar = south, north, west, east, fetchvar
+
+    def __str__(self): return self.fetchvar
+
+    def intersects(self, other):  # separating axis theorem
+        return not (self.east  < other.west or 
+                    self.west  > other.east or 
+                    self.north < other.south or 
+                    self.south > other.north )
+
+
+def ll_2_regionstr(south, north, west, east, regions, default=[]):
+    """ convert input bounds to region strings """
+
+    if west > east:  # recursive function call if query intersects antimeridian
+        return np.unique(np.append(ll_2_regionstr(south, north, west, 180, regions, default), 
+                                   ll_2_regionstr(south, north, -180, east, regions, default)))
+
+    query = Boundary(south, north, west, east)
+    matching = [str(reg) for reg in regions if query.intersects(reg)]
+    if len(matching) == 0: 
+        warnings.warn(f"No areas matched for query. Defaulting to {default}")
+        return default
+    return np.unique(matching)
+
+
 def str_def(self, info, args):
     """ builds string definition for data source class objects """
     fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
@@ -42,39 +70,6 @@ def str_def(self, info, args):
     return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
 
 
-def loadgrib(filenames, plot=False):
-    """
-    This needs to be updated to return the entire list of grib
-    messages. This is because WWIII data source returns data for
-    the entire month in 3-hour chunks. This will allow the 
-    load() function within the wwiii module to parse out the
-    desired 3-hour chunk from the list of messages. 
-
-    see the wwiii testing scripts in the playroom folder
-
-    matt_s 2019-08
-    """
-    if plot is not False:
-        plot_sample_grib(filenames, plot)
-
-    for fname in filenames:
-        grib = pygrib.open(fname)
-
-    #data = [None for msg in range(grib.messages)]
-    #for x in range(0, grib.messages):
-    #    data[x] = grib[x+1].data()  # grib indexing starts at 1
-
-    #return np.array(data)
-
-        for msg in grib:
-            lat, lon = np.array(msg.latlons())
-            vals, lat, lon = msg.data()
-            mask = vals.mask
-            data = vals.data
-            break
-
-    warnings.warn("This function is deprecated. Instead, use module function")
-    return grib[1].data()
 
 
 def plot_sample_grib(gribfiles, title_text="A sample plot"):

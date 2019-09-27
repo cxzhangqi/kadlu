@@ -114,7 +114,7 @@ class Ocean():
             if bathy == "CHS":
 
                 # load data
-                self.bathy_data = Chs().load_bathymetry(south, north, west, east, storage=storage)
+                self.bathy_data = Chs().load_bathymetry(south, north, west, east)
 
                 # lat coordinates
                 num_lats = int(np.ceil((north - south) / 0.001)) + 1

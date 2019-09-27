@@ -38,7 +38,7 @@ def fetchname(wavevar, time, region):
 
 
 def fetch_wwiii(wavevar, south, north, west, east, start, end):
-    regions = ll_2_regionstr(south, north, west, east, wwiii_regions, wwiii_global)
+    regions = ll_2_regionstr(south, north, west, east, wwiii_regions, [str(wwiii_global)])
     time = datetime(start.year, start.month, 1)
     filenames = []
 
@@ -63,7 +63,7 @@ def load_wwiii(wavevar, south, north, west, east, start, end, plot=False):
     lat = np.array([])
     lon = np.array([])
     timestamps = np.array([])
-    regions = ll_2_regionstr(south, north, west, east, wwiii_regions, wwiii_global)
+    regions = ll_2_regionstr(south, north, west, east, wwiii_regions, [str(wwiii_global]))
     time = datetime(start.year, start.month, 1)
 
     while time <= end:

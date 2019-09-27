@@ -64,7 +64,7 @@ def test_latlon():
 def test_load_single_chs_file():
     storage = os.path.join(path_to_assets,'tif')
     print(storage)
-    bathy, lats, lons = Chs().load_bathymetry(south=43, west=-60, north=44, east=-59, storage=storage)
+    bathy, lats, lons = Chs().load_bathymetry(south=43, west=-60, north=44, east=-59)
     assert np.ma.min(bathy) == pytest.approx(-3257.100, abs=0.001)
     assert np.ma.max(bathy) == pytest.approx(1.645, abs=0.001)
     assert bathy.shape[0] == lats.shape[0]
@@ -72,9 +72,9 @@ def test_load_single_chs_file():
 
 def test_load_multiple_chs_files():
     storage = os.path.join(path_to_assets,'tif')
-    bathy1, lats1, lons1 = Chs().load_bathymetry(south=43, west=-60, north=44, east=-59, storage=storage)
-    bathy2, lats2, lons2 = Chs().load_bathymetry(south=44, west=-60, north=45, east=-59, storage=storage)
-    bathy12, lats12, lons12 = Chs().load_bathymetry(south=43, west=-60, north=45, east=-59, storage=storage)
+    bathy1, lats1, lons1 = Chs().load_bathymetry(south=43, west=-60, north=44, east=-59)
+    bathy2, lats2, lons2 = Chs().load_bathymetry(south=44, west=-60, north=45, east=-59)
+    bathy12, lats12, lons12 = Chs().load_bathymetry(south=43, west=-60, north=45, east=-59)
     assert bathy12.shape[0] == bathy1.shape[0] + bathy2.shape[0]
     assert np.min(lats12) == np.min(lats1)
     assert np.max(lats12) == np.max(lats2)
@@ -83,7 +83,7 @@ def test_load_multiple_chs_files():
 
 def test_load_partial_chs_file():
     storage = os.path.join(path_to_assets,'tif')
-    bathy, lats, lons = Chs().load_bathymetry(south=43, west=-60, north=43.5, east=-59.5, storage=storage)
+    bathy, lats, lons = Chs().load_bathymetry(south=43, west=-60, north=43.5, east=-59.5)
     assert np.ma.min(bathy) == pytest.approx(-2695.4, abs=0.1)
     assert np.ma.max(bathy) == pytest.approx(-493.8, abs=0.1)
     assert bathy.shape[0] == lats.shape[0]

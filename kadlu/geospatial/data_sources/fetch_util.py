@@ -49,16 +49,17 @@ class Boundary():
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
     """ convert input bounds to region strings """
-
     if west > east:  # recursive function call if query intersects antimeridian
-        return np.unique(np.append(ll_2_regionstr(south, north, west, 180, regions, default), 
-                                   ll_2_regionstr(south, north, -180, east, regions, default)))
+        return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
+                          ll_2_regionstr(south, north, -180, east, regions, default))
 
     query = Boundary(south, north, west, east)
     matching = [str(reg) for reg in regions if query.intersects(reg)]
+
     if len(matching) == 0: 
-        warnings.warn(f"No areas matched for query. Defaulting to {default}")
+        warnings.warn(f"No regions matched for query. Defaulting to {default} ({len(default)} regions)")
         return default
+
     return np.unique(matching)
 
 

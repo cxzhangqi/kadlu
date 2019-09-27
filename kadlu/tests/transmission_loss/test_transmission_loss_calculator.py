@@ -30,15 +30,18 @@ import pytest
 import os
 import numpy as np
 from kadlu.transmission_loss.transmission_loss_calculator import TransmissionLossCalculator
+from kadlu.geospatial.ocean import Ocean
+from kadlu.transmission_loss.sound_speed import SoundSpeed
 
-path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
+path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
+
 
 def test_can_initialize_TL_calculator():
-    TransmissionLossCalculator(bathymetry=None, sound_speed=None, flat_seafloor_depth=10000,\
+    TransmissionLossCalculator(env_data=None, sound_speed=None, flat_seafloor_depth=10000,\
         progress_bar=False)
 
-def test_run_TL_calculator():
-    calc = TransmissionLossCalculator(bathymetry=None, sound_speed=None, flat_seafloor_depth=10000,\
+def test_run_TL_calculator_with_flat_seafloor():
+    calc = TransmissionLossCalculator(env_data=None, sound_speed=None, flat_seafloor_depth=10000,\
         step_size=1000, range=10e3, angular_bin_size=45, vertical_bin_size=1000, verbose=True, progress_bar=False)
     calc.run(frequency=10, source_depth=9900)
     field = calc.TL
@@ -52,6 +55,34 @@ def test_run_TL_calculator():
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535]])
     np.testing.assert_array_almost_equal(field, expected, decimal=3)
 
-    import matplotlib.pyplot as plt
-    calc.plot_vertical(angle=0, show_bathy=True)
-    plt.show()
+def test_run_TL_calculator_with_realistic_bathymetry():
+    # load bathymetric data
+    provider = Ocean(bathy="CHS")
+    provider.load(south=43, west=-60, north=44, east=-59)
+    # depth at center
+    seafloor_depth = -provider.bathy(x=0, y=0)
+    max_depth = -np.min(provider.bathy_data[0]) 
+    # initialize calculator
+    calc = TransmissionLossCalculator(env_data=provider, sound_speed=None,\
+        step_size=1000, range=10e3, angular_bin_size=45, vertical_bin_size=1000,\
+        max_depth=1.2*max_depth, steps_btw_sound_speed_updates=1,\
+        verbose=True, progress_bar=False)
+    # run
+    calc.run(frequency=10, source_depth=0.9*seafloor_depth)
+
+def test_run_TL_calculator_with_uniform_temp_and_salinity():
+    # load bathymetric data
+    provider = Ocean(bathy="CHS", temp=4, salinity=35)
+    provider.load(south=43, west=-60, north=44, east=-59)
+    # initialize sound speed module
+    ss = SoundSpeed(env_data=provider)
+    # depth at center
+    seafloor_depth = -provider.bathy(x=0, y=0)
+    max_depth = -np.min(provider.bathy_data[0]) 
+    # initialize calculator
+    calc = TransmissionLossCalculator(env_data=provider, sound_speed=ss,\
+        step_size=1000, range=10e3, angular_bin_size=45, vertical_bin_size=1000,\
+        max_depth=1.2*max_depth, steps_btw_sound_speed_updates=1,\
+        verbose=True, progress_bar=False)
+    # run
+    calc.run(frequency=10, source_depth=0.9*seafloor_depth)

@@ -23,40 +23,104 @@
 #       along with this program.  If not, see <https://www.gnu.org/licenses/>.     #
 # ================================================================================ #
 
-""" Parabolic Equation propagator module within the kadlu library
+""" Sound propagation module within the kadlu library
 
-    This module provides an implementation of the Parabolic Equation 
-    propagation scheme for numerically solving the wave equation 
-    for sound pressure.
+    The sound pressure wave equation is solved numerically using a
+    Parabolic Equation propagation scheme.
 
     Contents:
-        TransmissionLossCalculator class:
-        PEGrid class 
+        TLCalculator class:
+        TLGrid class 
 """
-
+import math
 import numpy as np
 from numpy.lib import scimath
-from kadlu.transmission_loss.pe_starter import PEStarter
-from kadlu.transmission_loss.pe_propagator import PEPropagator
-from kadlu.transmission_loss.environment_input import EnvironmentInput
-import math
+from kadlu.sound.sound_speed import SoundSpeed
+from kadlu.sound.pe.grid import Grid
+from kadlu.sound.pe.starter import Starter
+from kadlu.sound.pe.propagator import Propagator
+from kadlu.utils import XYtoLL
 
 from sys import platform as sys_pf
-if sys_pf == 'darwin':
+if sys_pf == 'darwin' or sys_pf == 'win32':
     import matplotlib
     matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 
 
-class TransmissionLossCalculator():
+class Seafloor():
+    """ Properties of the sea floor.
+
+        Args:
+            c: float
+                Uniform and isotropic sound speed in m/s
+            density: float
+                Uniform density in g/cm^3
+            thickness: float
+                Thickness in meters
+            loss: float
+                Attenuation in dB/lambda, where lambda is the reference 
+                wave length computed as c0 / frequency
+
+        Attributes:
+            c: float
+                Uniform and isotropic sound speed in m/s
+            density: float
+                Uniform density in g/cm^3
+            thickness: float
+                Thickness in meters
+            loss: float
+                Attenuation in dB/lambda, where lambda is the reference 
+                wave length computed as c0 / frequency
+            c0: float
+                Reference sound speed in m/s
+            frequency: float
+                Sound frequency in Hz
+    """
+    def __init__(self, c=1700, density=1.5, thickness=2000, loss=0.5):
+
+        self.c = c
+        self.density = density
+        self.thickness = thickness
+        self.loss = loss
+
+        self.c0 = None
+        self.frequency = None
+
+    def nsq(self):
+        """ Compute the refractive index squared.
+
+            Produces an AssertionError if the reference sound speed (c0)
+            and the sound frequency (frequency) have not been specified.
+
+            Returns:
+                n2: complex
+                    Refractive index squared
+        """
+        assert self.frequency is not None, 'Frequency must be specified to allow calculation of the refractive index'
+        assert self.c0 is not None, 'Reference sound speed must be specified to allow calculation of the refractive index'
+
+        f = self.frequency
+        ki = self.loss / (self.c / f) / 20. / np.log10(np.e) 
+        beta = ki / 2 / np.pi / f
+        ci = np.roots([beta, -1, beta * self.c**2])  # roots of polynomial p[0]*x^n+...p[n]
+        ci = ci[np.imag(ci) == 0] 
+        ci = ci[np.logical_and(ci >= 0, ci < self.c)]
+        c = self.c - 1j * ci
+        n2 = (self.c0 / c[0])**2
+
+        return n2
+
+
+class TLCalculator():
     """ Compute the reduction in intensity (transmission loss) of 
         sound waves propagating in an underwater environment.
 
         The wave equation is solved numerically using the 
         parabolic equation method.
 
-        The computation is performed on a regular, cylindrical 
-        grid with axes r, q, z:
+        The computation is performed on a regular grid in a 
+        cylindrical r,q,z coordinate system, where:
 
             r: radial distance in meters
             q: azimuthal angle in radians
@@ -137,45 +201,46 @@ class TransmissionLossCalculator():
                 Transmission loss in dB on a vertical plane for all angular bins. 
                 Has shape (Nz/2, Nr+1, Nq) where Nz is the number of vertical grid points, Nr is 
                 the number of radial steps, and Nq is number of angular bins. 
-            receiver_depths: list of floats
+            receiver_depth: list of floats
                 Depths of receivers. 
             env_input: EnvironmentInput
                 Module holding environment data
 
         Example:
     """
-    def __init__(self, env_data=None, flat_seafloor_depth=None, sound_speed=None, uniform_sound_speed=None, ref_sound_speed=1500,\
-            water_density=1.0, bottom_sound_speed=1700, bottom_loss=0.5, bottom_density=1.5,\
-            step_size=None, range=50e3, angular_bin_size=1, vertical_bin_size=10, max_depth=12e3,\
-            absorption_layer=1./6., starter_method='THOMSON', starter_aperture=88,\
-            steps_btw_bathy_updates=1, steps_btw_sound_speed_updates=math.inf,\
+    def __init__(self, ocean, seafloor, sound_speed=None, ref_sound_speed=1500,\
+            radial_bin=None, radial_range=50e3,\
+            angular_bin=10, angular_range=2*np.pi,\
+            vertical_bin=10, vertical_range=None,\
+            absorption_layer=1/6.,\
+            starter_method='THOMSON', starter_aperture=88,\
+            steps_btw_bathy_updates=1, steps_btw_sound_speed_updates=1,\
             verbose=False, progress_bar=True):
 
-        self.env_data = env_data
-        self.flat_seafloor_depth = flat_seafloor_depth
-        self.sound_speed = sound_speed
-        self.uniform_sound_speed = uniform_sound_speed
-        if uniform_sound_speed is None and sound_speed is None:
-            self.uniform_sound_speed = ref_sound_speed
-
+        self.ocean = ocean
+        self.seafloor = seafloor
         self.c0 = ref_sound_speed
-        self.water_density = water_density
-        self.cb = bottom_sound_speed
-        self.bottom_loss = bottom_loss
-        self.bottom_density = bottom_density
 
-        self.step_size = step_size
-        self.range = range
-        self.angular_bin_size = angular_bin_size
-        self.vertical_bin_size = vertical_bin_size
-        self.max_depth = max_depth
+        self.seafloor.c0 = self.c0
+
+        self.steps_btw_bathy_updates = steps_btw_bathy_updates
+        self.steps_btw_c_updates = steps_btw_sound_speed_updates
+
+        if sound_speed is None:
+            self._compute_sound_speed = True
+            self.c = None
+        else:
+            self._compute_sound_speed = False
+            self.c = SoundSpeed(ssp=sound_speed)
+            self.steps_btw_c_updates = math.inf
+
+        self.bin_size = {'r':radial_bin, 'q':angular_bin, 'z':vertical_bin}
+        self.range = {'r':radial_range, 'q':angular_range, 'z':vertical_range}
+
         self.absorption_layer = absorption_layer
 
         self.starter_method = starter_method
         self.starter_aperture = starter_aperture
-
-        self.steps_btw_bathy_updates = max(1, steps_btw_bathy_updates)
-        self.steps_btw_sound_speed_updates = max(1, steps_btw_sound_speed_updates)
 
         self.verbose = verbose
         self.progress_bar = progress_bar
@@ -183,20 +248,76 @@ class TransmissionLossCalculator():
         if self.verbose:
             print('\nTransmission loss calculator successfully initialized')
             print('Bathymetry will be updated every {0} steps'.format(self.steps_btw_bathy_updates))
-            if self.steps_btw_sound_speed_updates is math.inf:
+            if self.steps_btw_c_updates is math.inf:
                 print('Adopting range-independent sound-speed profile')
             else:
-                print('Sound speed will be updated every {0} steps'.format(self.steps_btw_sound_speed_updates))
-
-        self.receiver_depths = None
-        self.grid = None
-        self.TL = None
-        self.TL_vertical = None                
-        self.env_input = None
+                print('Sound speed will be updated every {0} steps'.format(self.steps_btw_c_updates))
 
 
-    def run(self, frequency, source_depth, receiver_depths=[.1], vertical_slice=False,\
-            ignore_bathy_gradient=False):
+    def _update_source_location_and_time(self, lat, lon, time):
+
+        r = self.range['r'] + 10e3
+        S, N, W, E = self._bounding_box(lat=lat, lon=lon, r=r)
+
+        self.ocean.load(south=S, north=N, west=W, east=E, time=time)
+
+        if self._compute_sound_speed:
+            self.c = SoundSpeed(self.ocean)
+
+
+    def _bounding_box(self, lat, lon, r):
+
+        angles = np.linspace(start=0, stop=2*np.pi, num=361)
+
+        x = r * np.cos(angles)
+        y = r * np.sin(angles)
+
+        lat, lon = XYtoLL(x, y, lat_ref=lat, lon_ref=lon)
+
+        S = np.min(lat)
+        N = np.max(lat)
+        W = np.min(lon)
+        E = np.max(lon)
+
+        return S, N, W, E
+
+
+    def _create_grid(self, frequency):
+
+        dz = self.bin_size['z']
+        rmax = self.range['r']
+        qmax = self.range['q']
+
+        # automatic determination of radial step size
+        if self.bin_size['r'] is None:
+            dr = 0.5 * self.c0 / frequency
+        else:
+            dr = self.bin_size['r']
+
+        # convert angular bin size to radians
+        dq = self.bin_size['q'] / 180 * np.pi
+
+        # automatic determination of vertical range
+        max_depth = -np.min(self.ocean.bathy()[0])
+        zmax = (max_depth + self.seafloor.thickness) * (1. + self.absorption_layer)
+
+        # create grid
+        grid = Grid(dr=dr, rmax=rmax, dq=dq, qmax=qmax, dz=dz, zmax=zmax)
+
+        if self.verbose:
+            print('Created computational grid:')
+            print('range (r) x angle (q) x depth (z)')
+            print('Dimensions: {0} x {1} x {2}'.format(grid.Nr, grid.Nq, grid.Nz))
+            print('min(r) = {0:.1f}, max(r) = {1:.1f}, delta(r) = {2:.1f}'.format(np.min(grid.r), np.max(grid.r), grid.dr))
+            print('min(q) = {0:.1f}, max(q) = {1:.1f}, delta(q) = {2:.1f}'.format(np.min(grid.q)*180./np.pi, np.max(grid.q)*180./np.pi, grid.dq*180./np.pi))
+            print('min(z) = {0:.1f}, max(z) = {1:.1f}, delta(z) = {2:.1f}'.format(np.min(grid.z), np.max(grid.z), grid.dz))
+
+        return grid
+
+
+    def run(self, frequency, source_lat, source_lon, source_depth, time=None,\
+            receiver_depth=[.1], vertical_slice=False,\
+            ignore_bathy_gradient=False, ignore_below_seafloor=True):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
             
@@ -209,9 +330,9 @@ class TransmissionLossCalculator():
             Args:
                 frequency: float
                     Sound frequency in Hz
-                source_depth: float
+                source_depth: float or list
                     Source depth in meters
-                receiver_depths: list of floats
+                receiver_depth: list of floats
                     Depths of receivers. 
                 vertical_slice: bool
                     For all angular bins, compute the sound pressure on a
@@ -223,114 +344,104 @@ class TransmissionLossCalculator():
                     data if the depth only changes gradually, implying that the gradient 
                     can be ignored.
         """
+        self.TL = list()
+        self.TLv = list()
+
+        source_depth = self._toarray(source_depth)
+        receiver_depth = self._toarray(receiver_depth)
+
         if self.verbose:
             import time
             start = time.time()
             print('Begin transmission-loss calculation')
-            print('Source depth is: {0} m'.format(source_depth))
-            print('Computing the transmission loss at depths:', receiver_depths)
+            print('Source depths:', source_depth)
+            print('Receiver depths:', receiver_depth)
             if ignore_bathy_gradient:
                 print('Ignoring bathymetry gradient')
             if vertical_slice:
                 print('Computing the transmission loss on a vertical plane')
-
-        # frequency in Hz
-        freq = frequency  
         
-        # source position in meters
-        xs = 0
-        ys = 0
-        zs = source_depth
+        self.seafloor.frequency = frequency
 
-        # reference wavelength and wavenumber
-        lambda0 = self.c0 / freq        
-        k0 = 2 * np.pi * freq / self.c0  
+        # load data and initialize grid
+        self._update_source_location_and_time(lat=source_lat, lon=source_lon, time=time)
 
-        # smoothing lengths
-        smoothing_length_density = self.c0 / freq / 4
-        smoothing_length_sound_speed = np.finfo(float).eps
+        seafloor_depth = np.abs(self.ocean.bathy(x=0, y=0))
 
-        # radial step size
-        if self.step_size is None:
-            dr = lambda0 / 2
-        else:
-            dr = self.step_size
+        # create grid
+        grid = self._create_grid(frequency)
 
-        # azimuthal step size
-        azimuthal_step = self.angular_bin_size / 180 * np.pi
-
-        # vertical range
-        vertical_range = 2 * self.max_depth * (1. + self.absorption_layer)
-        vertical_step = self.vertical_bin_size
-
-        # construct the computational grid
-        grid = PEGrid(radial_step=dr, radial_range=self.range,\
-                azimuthal_step=azimuthal_step, azimuthal_range=2*np.pi,\
-                vertical_step=vertical_step, vertical_range=vertical_range)
-
-        if self.verbose:
-            print('Computational grid:')
-            print('range (r) x angle (q) x depth (z)')
-            print('Dimensions: {0} x {1} x {2}'.format(grid.Nr, grid.Nq, grid.Nz))
-            print('min(r) = {0:.1f}, max(r) = {1:.1f}, delta(r) = {2:.1f}'.format(np.min(grid.r), np.max(grid.r), grid.dr))
-            print('min(q) = {0:.1f}, max(q) = {1:.1f}, delta(q) = {2:.1f}'.format(np.min(grid.q)*180./np.pi, np.max(grid.q)*180./np.pi, grid.dq*180./np.pi))
-            print('min(z) = {0:.1f}, max(z) = {1:.1f}, delta(z) = {2:.1f}'.format(np.min(grid.z), np.max(grid.z), grid.dz))
- 
         # PE starter
-        starter = PEStarter(ref_wavenumber=k0, grid=grid, method=self.starter_method, aperture=self.starter_aperture)
+        k0 = 2 * np.pi * frequency / self.c0
+        starter = Starter(grid=grid, k0=k0, method=self.starter_method, aperture=self.starter_aperture)
 
-        # compute initial field
-        psi = starter.eval(zs) * np.ones(shape=(1,grid.Nq))
+        # loop over source depths
+        # TODO: Vectorize the loop over source depths
+        for zs in source_depth:
 
-        if self.verbose:
-            print('Initial field computed')
+            # only compute if source is above seafloor
+            if ignore_below_seafloor and (np.abs(zs) > seafloor_depth):
+                self.TL.append(None)
+                self.TLv.append(None)
 
-        # module handling updates of environmental input
-        env_input = EnvironmentInput(ref_wavenumber=k0, grid=grid, xs=xs, ys=ys, freq=freq,\
-            steps_btw_bathy_updates=self.steps_btw_bathy_updates,\
-            steps_btw_sound_speed_updates=self.steps_btw_sound_speed_updates,\
-            c0=self.c0, cb=self.cb, bottom_loss=self.bottom_loss,\
-            bottom_density=self.bottom_density, water_density=self.water_density,\
-            smoothing_length_sound_speed=smoothing_length_sound_speed, smoothing_length_density=smoothing_length_density,
-            absorption_layer=self.absorption_layer, env_data=self.env_data,\
-            flat_seafloor_depth=self.flat_seafloor_depth, ignore_bathy_gradient=ignore_bathy_gradient,\
-            sound_speed=self.sound_speed, uniform_sound_speed=self.uniform_sound_speed, verbose=self.verbose)
+            # compute initial field
+            psi = starter.eval(zs=zs) * np.ones(shape=(1,grid.Nq))
+            if self.verbose:
+                print('Initial field computed')
 
-        # Configure the PE propagator
-        propagator = PEPropagator(ref_wavenumber=k0, grid=grid, env_input=env_input,\
-                                verbose=self.verbose, progress_bar=self.progress_bar)
+            # smoothing lengths
+            smooth_len_den = self.c0 / frequency / 4
+            smooth_len_c = np.finfo(float).eps
+ 
+            # Configure the PE propagator
+            propagator = Propagator(ocean=self.ocean, seafloor=self.seafloor,\
+                c=self.c, c0=self.c0, k0=k0, grid=grid,\
+                smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
+                absorption_layer=self.absorption_layer,\
+                ignore_bathy_gradient=ignore_bathy_gradient,\
+                bathy_step=self.steps_btw_bathy_updates,\
+                c_step=self.steps_btw_c_updates,\
+                verbose=self.verbose, progress_bar=self.progress_bar)
 
-        # propagate
-        output = propagator.run(psi=psi, depths=receiver_depths, vertical_slice=vertical_slice)
+            # propagate
+            propagator.run(psi=psi, receiver_depth=receiver_depth, vertical_slice=vertical_slice)
 
-        # transmission loss in dB (horizontal plane)
-        TL = np.fft.fftshift(output.field_horiz[:,:,1:], axes=1)
-        TL = 20 * np.log10(np.abs(TL))
-        TL = np.squeeze(TL)
+            # output
+            fh = propagator.field_horiz
+            fv = propagator.field_vert
 
-        # transmission loss in dB (vertical plane)  
-        if vertical_slice:
-            TL_vertical = 20 * np.ma.log10(np.abs(output.field_vert))  # OBS: this computation is rather slow
-            TL_vertical = np.squeeze(TL_vertical)
-        else:
-            TL_vertical = None
+            # transmission loss in dB (horizontal plane)
+            TL = np.fft.fftshift(fh[:,:,1:], axes=1)
+            TL = 20 * np.log10(np.abs(TL))
+            TL = np.squeeze(TL)
+
+            # transmission loss in dB (vertical plane)  
+            if vertical_slice:
+                TLv = 20 * np.ma.log10(np.abs(fv))  # OBS: this computation is rather slow
+                TLv = np.squeeze(TLv)
+            else:
+                TLv = None
+
+            self.TL.append(TL)
+            self.TLv.append(TLv)
+
 
         if self.verbose:
             end = time.time()
             print('Calculation completed in {0:.2f} seconds'.format(end - start))
 
-        # hang on to the relevant data
+        # store relevant data
         self.grid = grid
-        self.TL = TL
-        self.TL_vertical = TL_vertical
-        self.receiver_depths = receiver_depths
-        self.env_input = env_input
+        self.source_depth = source_depth
+        self.receiver_depth = receiver_depth
+        self.TL = self._toarray(self.TL)
+        self.TLv = self._toarray(self.TLv)
 
 
-    def plot(self, depth_index=0):
+    def plot(self, source_depth_index=0, receiver_depth_index=0):
         """ Plot the transmission loss on a horizontal plane at fixed depth.
 
-            The argument `depth_index` referes to the array `receiver_depths` 
+            The argument `depth_index` referes to the array `receiver_depth` 
             provided has input argument for the `run` method when the 
             transmission loss was calculated.
 
@@ -344,20 +455,22 @@ class TransmissionLossCalculator():
                 fig: matplotlib.figure.Figure
                     A figure object.
         """
+        assert source_depth_index < len(self.source_depth), 'Invalid source depth index. The index must be < {0}'.format(len(self.source_depth))
+
+        assert receiver_depth_index < len(self.receiver_depth), 'Invalid receiver depth index. The index must be < {0}'.format(len(self.receiver_depth))
+
+        TL = self.TL[source_depth_index]
+
         # check that transmission loss has been calculated
         if self.TL is None:
             print("Use the run method to calculate the transmission loss before plotting")
             return None
 
-        # check that depth_index is valid
-        if depth_index >= len(self.receiver_depths):
-            print('ERROR: Invalid depth index. The depth index cannot be larger than {0}'.format(len(self.receiver_depths)))
-            exit(1)
-
         if np.ndim(self.TL) == 2:
             tl = self.TL
+
         elif np.ndim(self.TL) == 3:
-            tl = self.TL[depth_index,:,:]
+            tl = self.TL[receiver_depth_index,:,:]
 
         r = self.grid.r[1:]
         q = np.fft.fftshift(np.squeeze(self.grid.q))
@@ -371,14 +484,14 @@ class TransmissionLossCalculator():
         ax = plt.gca()
         ax.set_xlabel('x(m)')
         ax.set_ylabel('y (m)')
-        plt.title('Transmission loss at {0:.1f} meters depth'.format(self.receiver_depths[depth_index]))
+        plt.title('Transmission loss, source at {0:.1f} m, receiver at {1:.1f} m'.format(self.receiver_depth[receiver_depth_index], self.source_depth[source_depth_index]))
 
         plt.colorbar(fig, format='%+2.0f dB')
 
         return fig
 
 
-    def plot_vertical(self, angle=0, show_bathy=False):
+    def plot_vertical(self, angle=0, source_depth_index=0, show_bathy=False):
         """ Plot the transmission loss on a vertical plane for a selected angular bin.
 
             Returns None if the transmission loss has not been computed.
@@ -393,8 +506,12 @@ class TransmissionLossCalculator():
                 fig: matplotlib.figure.Figure
                     A figure object.
         """
+        assert source_depth_index < len(self.source_depth), 'Invalid source depth index. The index must be < {0}'.format(len(self.source_depth))
+
+        TLv = self.TLv[source_depth_index]
+
         # check that transmission loss has been calculated
-        if self.TL_vertical is None:
+        if self.TLv is None:
             print("Use the run method with option vertical_slice set to True to calculate the transmission loss before plotting")
             return None
 
@@ -413,7 +530,11 @@ class TransmissionLossCalculator():
         tl = np.squeeze(self.TL_vertical[:,:,idx])
 
         # bathy
-        bathy = self.env_input.seafloor_depth_transect(dist=self.grid.r, angle=angle)
+        angle_rad = angle * np.pi / 180.
+        x = np.cos(angle_rad) * self.grid.r
+        y = np.sin(angle_rad) * self.grid.r
+        bathy = self.ocean.bathy(x=x, y=y)
+        bathy *= (-1.)
 
         # min and max transmission loss (excluding sea surface bin)
         tl_min = np.min(tl[1:,:])
@@ -437,99 +558,9 @@ class TransmissionLossCalculator():
         return fig
 
 
-class PEGrid():
-    """ Grid for Parabolic Equation solver.
-
-        Creates a regular cylindrical grid, where
-
-            r: radial distance
-            q: azimuthal angle
-            z: vertical depth
-
-        The radial (r) and vertical coordinates are in meters
-        while the angular coordinate (q) is in radians.
-
-        Args:
-            radial_step: float
-                Radial step size
-            radial_range: float
-                Radial range
-            azimuthal_step: float
-                Angular bin size
-            azimuthal_range: float
-                Angular domain
-            vertical_step: float
-                Vertical bin size
-            vertical_range: float
-                Vertical range
-
-        Attributes:
-            r: 1d numpy array
-                Radial grid values
-            dr: float
-                Radial step size
-            Nr: int
-                Number of radial steps
-            q: 1d numpy array
-                Angular grid values
-            dq: float
-                Angular bin size
-            Nq: int
-                Number of angular bins
-            z: 1d numpy array
-                Vertical grid values
-            dz: float
-                Vertical bin size
-            Nz: int
-                Number of vertical bins
-            z: 1d numpy array
-                Wavenumber grid values
-            Q: 2d numpy array
-                Angular values of azimuthal-vertical matrix; has shape (Nz,Nq).
-            Z: 2d numpy array
-                Vertical values of azimuthal-vertical matrix; has shape (Nz,Nq).
-    """
-    def __init__(self, radial_step, radial_range,\
-            azimuthal_step, azimuthal_range, vertical_step, vertical_range):
-
-        # radial
-        self.r, self.dr, self.Nr = self.__make_radial_grid__(radial_step, radial_range)
-
-        # azimuthal
-        self.q, self.dq, self.Nq = self.__make_azimuthal_grid__(azimuthal_step, azimuthal_range)
-
-        # vertical
-        self.z, self.dz, self.Nz = self.__make_vertical_grid__(vertical_step, vertical_range)
-
-        # wavenumber
-        L = self.Nz * self.dz  
-        self.kz = self.z * 2 * np.pi / (L * self.dz)
-
-        # mesh-grid
-        self.Q, self.Z = np.meshgrid(self.q, self.z)
-
-    def __make_radial_grid__(self, dr, rmax):
-        N = int(round(rmax / dr))
-        r = np.arange(N+1, dtype=float)
-        r *= dr
-        return r, dr, N
-
-    def __make_azimuthal_grid__(self, dq, qmax):
-        N = int(np.ceil(qmax / dq))
-        if N%2 == 1: 
-            N = N + 1 # ensure even number of angular bins
-
-        q_pos = np.arange(start=0, stop=N/2, step=1, dtype=float)
-        q_neg = np.arange(start=-N/2, stop=0, step=1, dtype=float)
-        q = np.concatenate((q_pos, q_neg)) 
-        q *= dq
-        return q, dq, N
-
-    def __make_vertical_grid__(self, dz, zmax):
-        N = zmax / dz
-        N = int(round(N / 2) * 2)  # ensure even number of vertical bins
-        z_pos = np.arange(start=0, stop=N/2, step=1, dtype=float)
-        z_neg = np.arange(start=-N/2, stop=0, step=1, dtype=float)
-        z = np.concatenate((z_pos, z_neg))
-        z *= dz
-        return z, dz, N
+    def _toarray(self, v):
+        if isinstance(v, float) or isinstance(v, int):
+            v = [v]
+        
+        v = np.array(v)
+        return v

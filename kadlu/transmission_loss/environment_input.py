@@ -31,9 +31,9 @@
     Contents:
         EnvironmentInput class
 """
-
 import numpy as np
 from numpy.lib import scimath
+from kadlu.utils import XYtoLL
 
 class EnvironmentInput():
     """ Compute the reduction in intensity (transmission loss) of 
@@ -67,18 +67,21 @@ class EnvironmentInput():
             steps_btw_bathy_updates, steps_btw_sound_speed_updates,\
             c0, cb, bottom_loss, bottom_density, water_density,\
             smoothing_length_sound_speed, smoothing_length_density,\
-            absorption_layer, bathymetry=None, ignore_bathy_gradient=False,\
-            flat_seafloor_depth=None, sound_speed=None, verbose=False):
+            absorption_layer, env_data=None, ignore_bathy_gradient=False,\
+            flat_seafloor_depth=None, sound_speed=None, uniform_sound_speed=None,\
+            verbose=False):
 
-        assert bathymetry or flat_seafloor_depth, 'bathymetry or flat_seafloor_depth must be provided'
+        assert env_data or flat_seafloor_depth, 'env_data or flat_seafloor_depth must be specified'
 
-        self.bathymetry = bathymetry
+        self.env_data = env_data
         self.ignore_bathy_gradient = ignore_bathy_gradient
         self.flat_seafloor_depth = flat_seafloor_depth
         self.sound_speed = sound_speed
+        self.uniform_sound_speed = uniform_sound_speed
         self.verbose = verbose
 
         self.k0 = ref_wavenumber
+        self.c0 = c0
 
         self.xs = xs
         self.ys = ys
@@ -163,13 +166,14 @@ class EnvironmentInput():
                     Propagation matrix. Has shape (Nz,Nq) where Nz and Nq are the 
                     number of vertical and angular grid points, respectively.
         """
-        do_update, indices = self.__update_env_model__(dist)        
-        if do_update:
-            self.U[:, indices] = np.exp(1j * self.dr * self.k0 * (-1 + scimath.sqrt( self.n2in[:,indices] + self.attenuation[:,indices] +\
-                1/2 / self.k0**2 * (self.d2denin[:,indices] / self.denin[:,indices] - 3/2 * (self.ddenin[:,indices] / self.denin[:,indices])**2))))
+        do_update, indices = self.__update_env_model__(dist)   
 
+        if do_update:
             if self.verbose:
                 print('Computing U matrix {0:.2f} m'.format(dist))
+
+            self.U[:, indices] = np.exp(1j * self.dr * self.k0 * (-1 + scimath.sqrt( self.n2in[:,indices] + self.attenuation[:,indices] +\
+                1/2 / self.k0**2 * (self.d2denin[:,indices] / self.denin[:,indices] - 3/2 * (self.ddenin[:,indices] / self.denin[:,indices])**2))))
 
         return self.U
 
@@ -208,7 +212,7 @@ class EnvironmentInput():
             itmp = (self.depth[0,:] == 0) 
             if np.any(itmp):
                 self.n2in[0,itmp] = self.n2b
-            
+
             # smooth density
             _tanh = np.tanh(self.height_above_seafloor[:,new] / self.smoothing_length_density / 2)
             self.H_rho[:,new] = (1 + _tanh) / 2
@@ -271,7 +275,7 @@ class EnvironmentInput():
 
             # next distance at which to update bathymetry
             self.dist_next_bathy_update = dist + self.dn_bathy * self.dr
-            
+
             # get bathymetry
             depth_new, gradient_new = self.__seafloor_depth__(dist)
 
@@ -290,7 +294,7 @@ class EnvironmentInput():
 
             # update height above seafloor matrix
             self.height_above_seafloor[:,new[0]] = np.abs(self.Z[:,new[0]]) - self.depth[:,new[0]]
-            
+
         new = np.squeeze(new)
 
         return new
@@ -330,7 +334,7 @@ class EnvironmentInput():
             below_sea_surf = np.nonzero(self.Z <= 0)
 
             # load refractive index squared
-            self.n2w_new[below_sea_surf] = self.__refractive_index__(dist, below_sea_surf)
+            self.n2w_new[below_sea_surf] = self.__refractive_index__(dist, self.grid.z[self.grid.z <= 0])
 
             # number of vertical bins
             Nz = self.grid.Nz
@@ -359,7 +363,7 @@ class EnvironmentInput():
             The computation is performed at equally spaced points on a circle, 
             at the specified distance from the source.
 
-            The depth is positive below the sea surface, positive above.
+            The depth is positive below the sea surface and negative above.
 
             The gradient is computed in the direction perpendicular to the circle.
 
@@ -382,24 +386,24 @@ class EnvironmentInput():
             gradient = np.zeros(n)
 
         else:
-            depth = self.bathymetry.eval_xy(x=x, y=y)
+            depth = self.env_data.bathy(x=x, y=y)
             depth *= (-1.)
 
             if self.ignore_bathy_gradient:
                 gradient = np.zeros(n)
             else:            
-                dfdx = self.bathymetry.eval_xy(x=x, y=y, x_deriv_order=1)
-                dfdy = self.bathymetry.eval_xy(x=x, y=y, y_deriv_order=1)
+                dfdx = self.env_data.bathy_gradient(x=x, y=y, axis='x')
+                dfdy = self.env_data.bathy_gradient(x=x, y=y, axis='y')
                 gradient = self.costheta * dfdx + self.sintheta * dfdy
                 gradient *= (-1.)
-            
+
         depth = depth[np.newaxis,:]
         gradient = gradient[np.newaxis,:]
 
         return depth, gradient
 
 
-    def __refractive_index__(self, dist, IDZ):
+    def __refractive_index__(self, dist, z):
         """ Compute refractive index squared. 
 
             The computation is performed at equally spaced points on a circle, 
@@ -408,20 +412,31 @@ class EnvironmentInput():
             Args:
                 dist: float
                     Distance from source in meters
+                z: numpy array
+                    Depths
 
             Returns:
                 nsq: 2d numpy array
                     Refractive index squared. Has shape (Nz,Nq) where Nz and Nq 
                     are the number of vertical and angular bins, respectively.
         """
-        if self.verbose:
-            print('\n *** WARNING: Adopting uniform sound-speed profile\n')
+        x = self.xs + self.costheta * dist
+        y = self.ys + self.sintheta * dist
 
-        # idy = np.nonzero(IDZ)[1]
+        x, _ = np.meshgrid(x,z)
+        y, z = np.meshgrid(y,z) 
 
-        n = self.Z[IDZ].shape
+        x = x.flatten()
+        y = y.flatten()
+        z = z.flatten()
 
-        nsq = np.ones(n)
+        if self.sound_speed is None:
+            c = np.ones(z.shape) * self.uniform_sound_speed
+
+        else:
+            c = self.sound_speed.eval(x=x, y=y, z=-z)
+        
+        nsq = (self.c0 / c)**2
 
         return nsq
 
@@ -448,7 +463,7 @@ class EnvironmentInput():
             depth = self.flat_seafloor_depth * np.ones(n)
 
         else:
-            depth = self.bathymetry.eval_xy(x=x, y=y)
+            depth = self.env_data.bathy(x=x, y=y)
             depth *= (-1.)
             
         return depth

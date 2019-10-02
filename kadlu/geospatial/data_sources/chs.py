@@ -35,6 +35,7 @@ def latlon(filepath):
 
     lat = np.arange(start=south, stop=(bathy.RasterYSize*dlat+south), step=dlat, dtype=np.float)
     lon = np.arange(start=west, stop=(bathy.RasterXSize*dlon+west), step=dlon, dtype=np.float)
+
     return lat, lon
 
 

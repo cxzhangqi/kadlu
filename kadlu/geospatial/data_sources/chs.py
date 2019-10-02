@@ -52,15 +52,12 @@ def filename(south, west):
     return fname
 
 
-def verify_local_files(south, north, west, east, storage=None):
+def verify_local_files(south, north, west, east):
     """ 
         Checks to see if local files exist before querying 
         Returns filenames if true, otherwise returns false.
     """
-    if storage is None:
-        storage = storage_cfg()
-
-    print(storage)
+    print(storage_cfg())
     # establish which maps are needed
     xmin = int(np.floor(west))
     xmax = int(np.floor(east))
@@ -74,24 +71,19 @@ def verify_local_files(south, north, west, east, storage=None):
     fnames = []
     for x in range(xmin, xmax + 1):
         for y in range(ymin, ymax + 1):
-            f = os.path.join(storage, filename(y, x))
+            f = os.path.join(storage_cfg(), filename(y, x))
             if not os.path.isfile(f): return False
             fnames.append(f)
     print("Files exist, skipping retrieval...")
     return fnames 
 
 
-def check_url_is_up(url="https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"):
-    r = requests.head(url)
-    return r.status_code == 200
-
-
 def fetch_chs(south, north, west, east):
     """ Returns a list of filepaths for downloaded content """
     # api call: get raster IDs within bounding box
-    source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
+    #source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
+    source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
     # check source exists
-    assert(check_url_is_up(source))
     spatialRel = "esriSpatialRelIntersects"
     spatialReference = "4326"  # WGS-84 spec
     geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})
@@ -133,9 +125,9 @@ def fetch_chs(south, north, west, east):
     return filepaths
 
 
-def load_chs(south, north, west, east, band_id=1, storage=None):
+def load_chs(south, north, west, east, band_id=1):
     # verify the files exist - if not, fetch them
-    fnames = verify_local_files(south, north, west, east, storage=storage)
+    fnames = verify_local_files(south, north, west, east)
     if fnames is False: fnames = fetch_chs(south, north, west, east)
 
     bathy_out = np.array([])
@@ -157,6 +149,7 @@ def load_chs(south, north, west, east, band_id=1, storage=None):
         lon_out = np.append(lon_out, x)
 
     return bathy_out, lat_out, lon_out
+
 
 def load_chs_file(filepath, band_id=1):
     # open file
@@ -181,8 +174,8 @@ def load_chs_file(filepath, band_id=1):
 class Chs():
     def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return fetch_chs(south, north, west, east)
-    def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8, storage=None):
-        return load_chs(south, north, west, east, band_id=1, storage=storage)
+    def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
+        return load_chs(south, north, west, east, band_id=1)
     def __str__(self):
         info = "Non-Navigational 100m (NONNA-100) bathymetry dataset from Canadian Hydrographic Datastore"
         args = "(south=-90, north=90, west=-180, east=180)"

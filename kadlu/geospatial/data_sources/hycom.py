@@ -79,7 +79,7 @@ def fetch_times():
         basetime = datetime(2000, 1, 1)
         tdelta = np.array(time_csv.split("\n")[1].split(", "), dtype=float)
         timestamps[year] = np.array([basetime + timedelta(hours=x) for x in tdelta])
-        time.sleep(0.1)
+        time.sleep(0.5)
 
     np.save(f"{storage_cfg()}hycom_timestamps_dict.npy", timestamps)
     return

@@ -36,7 +36,7 @@ def index(val, sorted_arr):
 
 
 def dt_2_tslice(start, end, times_dict):
-    """ converts datetime to hycom time slice """
+    """ converts datetime range to hycom time slice """
     assert(start >= datetime(1994, 1, 1))
     assert(end < datetime(2016, 1, 1))
     assert(start.year == end.year)
@@ -92,23 +92,34 @@ def load_times():
 
 
 def load_depth():
+    """ return depth values for indexing """
     return np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 125.0, 150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
 
 
 def fetch_hycom(year, slices, fetchvar):
-    """
-    download data from the hycom server
+    """ download data from the hycom server
 
-    year = '2015'       # string value between 2011? and 2015
-    slices = [
-        (0, 2),         # time: start, end 
-        (0, 3),         # depth: top?, bottom?
-        (800, 840),     # x grid index: lon min, lon max
-        (900, 1000)     # y grid index: lat min, lat max
-    ]
-    fetchvar = 'salinity'
+    args:
+        year: string
+            string value between 2011? and 2015
+        slices: list of tuples
+            correct ordering for tuples is [time, depth, lon, lat]
+            each tuple contains the start and end index of the variable to be sliced
+            optionally, step size can be included as a third value of the tuple
+            An example of what this list may look like:
+            [
+                (0, 2),         # time: start, end 
+                (0, 3, 2),      # depth: top, bottom, step (this is the index of array returned by load_depth() )
+                (800, 840),     # x grid index: lon min, lon max
+                (900, 1000)     # y grid index: lat min, lat max
+            ]
+        fetchvar: string
+            the variable to be fetched. a complete list of variables is found here
+            https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
 
-    returns: list of fetched filenames
+    return: 
+        filenames: list
+            list of strings describing complete path of fetched data
     """
     # generate request
     source = f"https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/{year}.ascii?"
@@ -134,7 +145,50 @@ def fetch_hycom(year, slices, fetchvar):
 
 
 def load_hycom(year, slices, fetchvar, lat, lon, time, depth):
-    """ load local data into memory as np arrays """
+    """ load local data into memory as np arrays 
+
+    args:
+        year: string
+            string value between 2011? and 2015
+        slices: list of tuples
+            correct ordering for tuples is [time, depth, lon, lat]
+            each tuple contains the start and end index of the variable to be sliced
+            optionally, step size can be included as a third value of the tuple
+            An example of what this list may look like:
+            [
+                (0, 2),         # time: start, end 
+                (0, 3, 2),      # depth: top, bottom, step (this is the index of array returned by load_depth() )
+                (800, 840),     # x grid index: lon min, lon max
+                (900, 1000)     # y grid index: lat min, lat max
+            ]
+        fetchvar: string
+            the variable to be fetched. a complete list of variables is found here
+            https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
+        lat: np.array
+            the first array returned by load_grid()
+            this is used as a Hycom() class attribute for optimization
+        lon: np.array
+            the second array returned by load_grid()
+            this is used as a Hycom() class attribute for optimization
+        time: dictionary
+            the dictionary of time arrays returned by load_times()
+            this is used as a Hycom() class attribute for optimization
+        depth: np.array
+            the array returned by load_depth()
+            this is used as a Hycom() class attribute for optimization
+
+    return: 
+       tuple 
+            the tuple contains:
+            - a 4D array containing the requested variable data slice
+            - latitudes describing the first dimension of the 4D array
+            - longitudes describing the second dimension
+            - datetimes describing the third dimension
+            - depths describing the fourth dimension
+    """
+
+    return: filenames
+        list of strings describing complete path of fetched data
     fname = f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy"
     if not isfile(fname): fetch_hycom(year, slices, fetchvar)
     data = np.load(fname)
@@ -148,6 +202,17 @@ def load_hycom(year, slices, fetchvar, lat, lon, time, depth):
 
 
 class Hycom():
+    """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable 
+
+    attributes:
+        lat, lon: np.array
+            latitude and longitude grid arrays, used to convert grid index to lat/lon
+        time: dictionary
+            dictionary containing time grid arrays for each year available, used to convert time index to datetime
+        depth: np.array
+            array of depths, used to convert depth index to depth value
+    """
+
     def __init__(self):
         self.lat, self.lon = load_grid()
         self.time = load_times()

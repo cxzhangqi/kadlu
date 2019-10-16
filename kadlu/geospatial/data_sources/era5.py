@@ -24,6 +24,22 @@ def fetchname(wavevar, time):
 
 
 def fetch_era5(wavevar, start, end):
+    """ return list of filenames containing era5 data for time range
+
+    args:
+        wavevar: string
+            the variable short name of desired wave parameter according to ERA5 docs
+            the complete listing can be found here (table 7 for wave params)
+            https://confluence.ecmwf.int/display/CKB/ERA5+data+documentation#ERA5datadocumentation-Temporalfrequency
+        start: datetime
+            the beginning of the desired time range
+        end: datetime
+            the end of the desired time range
+
+    return:
+        fetchfiles: list
+            a list of strings describing complete filepaths of downloaded data
+    """
     time = datetime(start.year, start.month, start.day, start.hour)
     fetchfiles = []
 
@@ -53,6 +69,24 @@ def fetch_era5(wavevar, start, end):
 
 
 def load_era5(wavevar, start, end, south, north, west, east, plot):
+    """ return era5 wave data for specified wave parameter within given time and spatial boundaries
+
+    args:
+        wavevar: string
+            the variable short name of desired wave parameter according to ERA5 docs
+            the complete listing can be found here (table 7 for wave params)
+            https://confluence.ecmwf.int/display/CKB/ERA5+data+documentation#ERA5datadocumentation-Temporalfrequency
+        start: datetime
+            the beginning of the desired time range
+        end: datetime
+            the end of the desired time range
+        south, north: float
+            ymin, ymax coordinate boundaries (latitude). range: -90, 90
+        west, east: float
+            xmin, xmax coordinate boundaries (longitude). range: -180, 180
+        plot: boolean
+            if true a plot will be output (experimental feature)
+    """
     fetchfiles = []  # used for plotting, this may be removed later
     val = np.array([])
     lat = np.array([])
@@ -94,15 +128,17 @@ def load_era5(wavevar, start, end, south, north, west, east, plot):
 
 
 class Era5():
+    """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
+
     def fetch_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return fetch_era5('significant_height_of_combined_wind_waves_and_swell', start, end)
+        return fetch_era5('swh', start, end)
     def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_era5('mean_wave_direction', start, end)
     def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_era5('mean_wave_period', start, end)
 
     def load_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now(), plot=False):
-        return load_era5('significant_height_of_combined_wind_waves_and_swell', start, end, south, north, west, east, plot)
+        return load_era5('swh', start, end, south, north, west, east, plot)
     def load_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now(), plot=False):
         return load_era5('mean_wave_direction', start, end, south, north, west, east, plot)
     def load_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now(), plot=False):
@@ -115,17 +151,4 @@ class Era5():
             ])
         args = "(south=-90, north=90, west=-180, east=180, start=datetime(), end=datetime())"
         return fetch_util.str_def(self, info, args)
-
-
-"""
-print(Era5())
-
-wavevar = 'significant_height_of_combined_wind_waves_and_swell'
-time = datetime(2018, 1, 1)
-fnames = Era5().fetch_windwaveswellheight(time)
-wave, lat, lon = Era5().load_windwaveswellheight(time)
-
-#wave, lat, lon = Era5().load_windwaveswellheight(time, "wind, wave, swell height")
-wave, lat, lon = Era5().load_windwaveswellheight(time, plot=False)
-"""
 

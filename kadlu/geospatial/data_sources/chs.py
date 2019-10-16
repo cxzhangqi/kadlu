@@ -40,6 +40,7 @@ def latlon(filepath):
 
 
 def parse_sw_corner(path):
+    """ return the southwest corner coordinates for a given bathymetry file """
     fname = os.path.basename(path)
     south = int(fname[4:8]) / 100
     west = -int(fname[9:14]) / 100
@@ -49,15 +50,13 @@ def parse_sw_corner(path):
 
 
 def filename(south, west):
+    """ generate a filename for given southwest corner coordinates """
     fname = "CA2_{0:04d}N{1:05d}W.tif".format(int(south * 100), -int(west * 100))
     return fname
 
 
 def verify_local_files(south, north, west, east):
-    """ 
-        Checks to see if local files exist before querying 
-        Returns filenames if true, otherwise returns false.
-    """
+    """ Check if local files exist before querying. Return filenames if true, else false. """
     print(storage_cfg())
     # establish which maps are needed
     xmin = int(np.floor(west))
@@ -80,7 +79,18 @@ def verify_local_files(south, north, west, east):
 
 
 def fetch_chs(south, north, west, east):
-    """ Returns a list of filepaths for downloaded content """
+    """ return a list of filepaths for downloaded content 
+
+    args:
+        south, north: float
+            ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
+        west, east: float
+            xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
+
+    returns: 
+        filepaths: list containing strings of path to bathy file
+
+    """
     # api call: get raster IDs within bounding box
     #source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
     source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
@@ -130,6 +140,24 @@ def fetch_chs(south, north, west, east):
 
 
 def load_chs(south, north, west, east, band_id=1):
+    """ return bathymetry for given input boundaries
+
+    args:
+        south, north: float
+            ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
+        west, east: float
+            xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
+        band_id: int
+            raster band id used to query geotiff file containing bathy data
+
+    returns: 
+        bathy_out: np.array
+            bathy values array
+        lat_out: np.array
+            latitude values array
+        lon_out: np.array
+            longitude values array
+    """
     # verify the files exist - if not, fetch them
     fnames = verify_local_files(south, north, west, east)
     if fnames is False: fnames = fetch_chs(south, north, west, east)
@@ -156,6 +184,7 @@ def load_chs(south, north, west, east, band_id=1):
 
 
 def load_chs_file(filepath, band_id=1):
+    """ return bathymetry, latitude, longitude from geotiff file """
     # open file
     data_set = gdal.Open(filepath)
     band = data_set.GetRasterBand(band_id)
@@ -176,6 +205,8 @@ def load_chs_file(filepath, band_id=1):
 
 
 class Chs():
+    """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
+
     def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return fetch_chs(south, north, west, east)
     def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
@@ -185,18 +216,3 @@ class Chs():
         args = "(south=-90, north=90, west=-180, east=180)"
         return fetch_util.str_def(self, info, args)
 
-"""
-# gulf st lawrence test area:
-south =  46
-north =  52
-west  = -70
-east  = -56
-
-
-print(Chs())
-bathy, lat, lon = Chs().load_bathymetry()
-
-filepath = f"{storage_cfg()}CA2_5000N06200W.tif" 
-lats, lons = latlon(f"{storage_cfg()}CA2_5000N06200W.tif")
-bathy, lat, lon = load_chs(50.5, 50.5, -61.5, -61.5)
-"""

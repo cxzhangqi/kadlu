@@ -23,6 +23,9 @@ from kadlu.geospatial.data_sources.fetch_util import storage_cfg, Boundary, ll_2
 
 wwiii_global = Boundary(-90, 90, -180, 180, 'glo_30m')  # global
 wwiii_regions = [
+        """ region boundaries as defined in WWIII docs:
+            https://polar.ncep.noaa.gov/waves/implementations.php
+        """
         Boundary( 15,  47,  -99,  -60, 'at_4m'),    # atlantic
         Boundary( 15,  50, -165, -116, 'wc_4m'),    # US west
         Boundary( 48,  74,  140,  180, 'ak_4m'),    # alaska
@@ -34,10 +37,31 @@ wwiii_regions = [
 
 
 def fetchname(wavevar, time, region):
+    """ generate filename for given wave variable, time, and region """
     return f"multi_1.{region}.{wavevar}.{time.strftime('%Y%m')}.grb2"
 
 
 def fetch_wwiii(wavevar, south, north, west, east, start, end):
+    """ download wwiii data and return associated filepaths
+
+    args:
+        wavevar: string
+            the variable short name of desired wave parameter according to WWIII docs
+            the complete list of variable short names can be found here (under 'model output')
+            https://polar.ncep.noaa.gov/waves/implementations.php
+        south, north: float
+            ymin, ymax coordinate boundaries (latitude). range: -90, 90
+        west, east: float
+            xmin, xmax coordinate boundaries (longitude). range: -180, 180
+        start: datetime
+            the start of the desired time range
+        end: datetime
+            the end of the desired time range
+
+    return:
+        filenames: list
+            list of strings containing complete file paths of fetched data
+    """
     regions = ll_2_regionstr(south, north, west, east, wwiii_regions, [str(wwiii_global)])
     time = datetime(start.year, start.month, 1)
     filenames = []
@@ -59,6 +83,28 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
     return filenames
 
 def load_wwiii(wavevar, south, north, west, east, start, end, plot=False):
+    """ return downloaded wwiii data for specified wavevar according to given time, lat, lon boundaries
+
+    args:
+        wavevar: string
+            the variable short name of desired wave parameter according to WWIII docs
+            the complete list of variable short names can be found here (under 'model output')
+            https://polar.ncep.noaa.gov/waves/implementations.php
+        south, north: float
+            ymin, ymax coordinate boundaries (latitude). range: -90, 90
+        west, east: float
+            xmin, xmax coordinate boundaries (longitude). range: -180, 180
+        start: datetime
+            the start of the desired time range
+        end: datetime
+            the end of the desired time range
+        plot: boolean
+            if true a plot will be output (experimental feature)
+
+    return:
+        filenames: list
+            list of strings containing complete file paths of fetched data
+    """
     val = np.array([])
     lat = np.array([])
     lon = np.array([])
@@ -100,6 +146,8 @@ def load_wwiii(wavevar, south, north, west, east, start, end, plot=False):
 
 
 class Wwiii():
+    """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
+
     def fetch_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_wwiii('hs', south, north, west, east, start, end)
     def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):

@@ -111,6 +111,8 @@ def load_era5(wavevar, start, end, south, north, west, east, plot):
         x -= 180  # normalize longitudes
 
         # build index to collect points in area of interest
+        #latix = np.array([l >= south and l <= north for l in y[~z.mask]])
+        #lonix = np.array([l >= west and l <= east for l in x[~z.mask]])
         latix = np.array([l >= south and l <= north for l in y[~z.mask]])
         lonix = np.array([l >= west and l <= east for l in x[~z.mask]])
         ix = latix & lonix
@@ -131,14 +133,14 @@ class Era5():
     """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
 
     def fetch_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return fetch_era5('swh', start, end)
+        return fetch_era5('significant_height_of_combined_wind_waves_and_swell', start, end)
     def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_era5('mean_wave_direction', start, end)
     def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_era5('mean_wave_period', start, end)
 
     def load_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now(), plot=False):
-        return load_era5('swh', start, end, south, north, west, east, plot)
+        return load_era5('significant_height_of_combined_wind_waves_and_swell', start, end, south, north, west, east, plot)
     def load_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now(), plot=False):
         return load_era5('mean_wave_direction', start, end, south, north, west, east, plot)
     def load_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now(), plot=False):

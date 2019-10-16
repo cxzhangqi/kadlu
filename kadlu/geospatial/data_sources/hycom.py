@@ -186,9 +186,6 @@ def load_hycom(year, slices, fetchvar, lat, lon, time, depth):
             - datetimes describing the third dimension
             - depths describing the fourth dimension
     """
-
-    return: filenames
-        list of strings describing complete path of fetched data
     fname = f"{storage_cfg()}hycom_{year}_{fetchname(fetchvar, slices)}.npy"
     if not isfile(fname): fetch_hycom(year, slices, fetchvar)
     data = np.load(fname)

@@ -23,9 +23,8 @@ from kadlu.geospatial.data_sources.fetch_util import storage_cfg, Boundary, ll_2
 
 wwiii_global = Boundary(-90, 90, -180, 180, 'glo_30m')  # global
 wwiii_regions = [
-        """ region boundaries as defined in WWIII docs:
-            https://polar.ncep.noaa.gov/waves/implementations.php
-        """
+        #region boundaries as defined in WWIII docs:
+        #    https://polar.ncep.noaa.gov/waves/implementations.php
         Boundary( 15,  47,  -99,  -60, 'at_4m'),    # atlantic
         Boundary( 15,  50, -165, -116, 'wc_4m'),    # US west
         Boundary( 48,  74,  140,  180, 'ak_4m'),    # alaska

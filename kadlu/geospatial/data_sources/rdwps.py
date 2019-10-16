@@ -46,9 +46,8 @@ class Region():
 
 
 rdwps_regions = [
-        """ region boundary parameters as defined in RDWPS docs:
-            https://weather.gc.ca/grib/grib2_RDWPS_e.html
-        """
+        #region boundary parameters as defined in RDWPS docs:
+        #    https://weather.gc.ca/grib/grib2_RDWPS_e.html
         Region(46.2590, -92.3116, 658, 318, 0.0090, 0.0124, 'superior'),
         Region(41.4260, -88.1452, 698, 573, 0.0090, 0.0124, 'huron-michigan'),
         Region(41.2190, -83.6068, 398, 210, 0.0090, 0.0124, 'erie'),

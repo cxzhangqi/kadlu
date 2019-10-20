@@ -2,7 +2,7 @@
     Kadlu API for HYCOM data source
 
     Data source:
-        https://www.hycom.org/data/glbv0pt08
+        https://www.hycom.org/data/glbv1pt08
     Web interface for hycom data retrieval:
         https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
     Example of GET query for salinity:
@@ -18,19 +18,23 @@ import requests
 from os.path import isfile
 from kadlu.geospatial.data_sources import fetch_util
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
+from kadlu.geospatial.data_sources.fetch_util import database_cfg
 from datetime import datetime, timedelta
 import time
 import warnings
+from functools import reduce
+
+conn, db = database_cfg()
 
 
-def fetchname(fetchvar, slices):
+def fetchname(fetchvar, slices, steps=(1, 1, 1, 1)):
     """ build the query to slice the data from the dataset """
-    slicer = lambda tup, step=1 : f"[{tup[0]}:{step}:{tup[1]}]"
-    return f"{fetchvar}{''.join(map(slicer, slices))}"
+    slicer = lambda tup, step : f"[{tup[0]}:{step}:{tup[1]}]"
+    return f"{fetchvar}{''.join(map(slicer, slices, steps))}"
 
 
 def index(val, sorted_arr):
-    """ converts lat/lon/time values to grid index (next nearest index >= value) """
+    """ converts lat/lon/time values to grid index (next nearest index < value) """
     if val > sorted_arr[-1]: return len(sorted_arr) - 1
     return np.nonzero(sorted_arr >= val)[0][0]
 
@@ -61,7 +65,7 @@ def fetch_grid():
 
 
 def load_grid():
-    """ put downloaded grid into memory """
+    """ put grid into memory """
     if not isfile(f"{storage_cfg()}hycom_lats.npy"): fetch_grid()
     return np.load(f"{storage_cfg()}hycom_lats.npy"), np.load(f"{storage_cfg()}hycom_lons.npy")
 
@@ -92,34 +96,61 @@ def load_times():
 
 
 def load_depth():
-    """ return depth values for indexing """
-    return np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 125.0, 150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
+    """ return depth values array for indexing """
+    return np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 25.0,
+        30.0, 35.0, 40.0, 45.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 125.0,
+        150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 500.0, 600.0, 700.0, 800.0,
+        900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
 
 
-def fetch_hycom(year, slices, fetchvar):
-    """ download data from the hycom server
+def fetch_hycom(year, slices, fetchvar, lat, lon, time, depth):
+    """ download data from the hycom server, prepare it, and load into database
 
     args:
         year: string
-            string value between 2011? and 2015
+            string value between 2011? and 2016
         slices: list of tuples
             correct ordering for tuples is [time, depth, lon, lat]
-            each tuple contains the start and end index of the variable to be sliced
-            optionally, step size can be included as a third value of the tuple
-            An example of what this list may look like:
-            [
+            each tuple contains the start and end grid index of the variable to
+            be sliced
+            an example of the slices list:
+            slices = [
                 (0, 2),         # time: start, end 
-                (0, 3, 2),      # depth: top, bottom, step (this is the index of array returned by load_depth() )
-                (800, 840),     # x grid index: lon min, lon max
-                (900, 1000)     # y grid index: lat min, lat max
+                (0, 3),         # depth: top, bottom
+                (800, 840),     # x grid index: xmin, xmax (lon)
+                (900, 1000)     # y grid index: ymin, ymax (lat)
             ]
         fetchvar: string
-            the variable to be fetched. a complete list of variables is found here
+            the variable to be fetched. complete list of variables found here
             https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
+        lat: np.array
+            the first array returned by load_grid()
+            this is used as a Hycom() class attribute for optimization
+        lon: np.array
+            the second array returned by load_grid()
+            this is used as a Hycom() class attribute for optimization
+        time: dictionary
+            the time array returned from the year key of load_times() dictionary
+            this is used as a Hycom() class attribute for optimization
+        depth: np.array
+            the array returned by load_depth()
+            this is used as a Hycom() class attribute for optimization
 
-    return: 
-        filenames: list
-            list of strings describing complete path of fetched data
+    stores data in geospatial database and returns nothing
+    """
+
+    """ input variables for interactive mode debugging:
+        year = '2012'
+        fetchvar = 'salinity'
+        slices = [
+            (0, 2),         # time: start, end 
+            (0, 3),         # depth: top, bottom
+            (800, 840),     # x grid index: lon min, lon max
+            (900, 1000)     # y grid index: lat min, lat max
+        ]
+        lat, lon = load_grid()
+        time = load_times()[year]
+        depth = load_depth()
     """
     # generate request
     source = f"https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/{year}.ascii?"
@@ -133,15 +164,25 @@ def fetch_hycom(year, slices, fetchvar):
     arrs = data.split("\n\n")[:-1]
     shape_str, payload = arrs[0].split("\n", 1)
     assert(shape_str[0:len(fetchvar)] == fetchvar)
-    shape = tuple([int(x) for x in shape_str.split("[", 1)[1][:-1].split("][")])  # black magic list coercion
+    shape = tuple([int(x) for x in shape_str.split("[", 1)[1][:-1].split("][")])
     output = np.ndarray(shape, dtype=np.float)
     for arr in payload.split("\n"):
         ix_str, row_csv = arr.split(", ", 1)
         a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
         output[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
-    np.save(f"{storage_cfg()}{fname}", output, allow_pickle=False)
-    return [f"{storage_cfg()}{fname}"]
+    # build coordinate grid and populate it with values
+    grid = np.array([(None, y, x, t, d, 'hycom') 
+            for t in time [slices[0][0] : slices[0][1] +1]
+            for d in depth[slices[1][0] : slices[1][1] +1]
+            for x in lon  [slices[2][0] : slices[2][1] +1]
+            for y in lat  [slices[3][0] : slices[3][1] +1]])
+    grid[:,0] = np.reshape(output, reduce(np.multiply, map(lambda x : x[1]+1-x[0], slices)))
+
+    # batch database insertion ignoring duplicates
+    db.executemany("INSERT OR IGNORE INTO salinity VALUES (?,?,?,?,?,?)", grid)
+    conn.commit()
+    return
 
 
 def load_hycom(year, slices, fetchvar, lat, lon, time, depth):

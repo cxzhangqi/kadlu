@@ -7,17 +7,25 @@ import warnings
 import pygrib
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-
-
-def default_storage(msg):
-    storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
-    if not os.path.isdir(storage_location):
-        os.mkdir(storage_location)
-    warnings.warn("%s storage location will be set to %s" % (msg, storage_location))
-    return storage_location
+import sqlite3
 
 
 def storage_cfg():
+    """ return filepath containing storage configuration string
+
+    first tries to check the config.ini file in kadlu root folder, if there's a 
+    problem defaults to kadlu/storage and issues a warning
+    """
+
+    def default_storage(msg):
+        """ helper function for storage_cfg() """
+        storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
+        if not os.path.isdir(storage_location):
+            os.mkdir(storage_location)
+        warnings.warn("%s storage location will be set to %s" % (msg, storage_location))
+        return storage_location
+
+
     cfg = configparser.ConfigParser()       # read .ini into dictionary object
     cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
     try:
@@ -34,7 +42,34 @@ def storage_cfg():
     return storage_location
 
 
+def database_cfg():
+    """ create a new sqlite database connection with preloaded schema """
+    path = storage_cfg() + "geospatial.db"
+    if not os.path.isfile(path):
+        conn = sqlite3.connect(path)
+        c = conn.cursor()
+        c.execute("CREATE TABLE IF NOT EXISTS salinity(val INT, lat REAL, lon REAL, time INT, depth INT, source TEXT)")
+        c.execute("CREATE UNIQUE INDEX idx_salinity on salinity (lat, lon, time, depth, source)")
+
+        #c.execute("CREATE TABLE IF NOT EXISTS water_temp(val INT, lat INT, lon INT, time INT, depth INT, source TEXT)")
+        #c.execute("CREATE UNIQUE INDEX idx_water_temp on water_temp (lat, lon, time)")
+
+    return sqlite3.connect(path), sqlite3.connect(path).cursor()
+
+"""
+c.execute("DROP TABLE salinity")
+"""
+
+
+def dt_2_epoch(dt_arr):
+    """ convert python datetimes to epoch integers """
+    return list(map(lambda epoch : int(epoch.strftime("%s")), dt_arr))
+
+
+
 class Boundary():
+    """ class to compute intersecting area boundaries using the separating axis theorem """
+
     def __init__(self, south, north, west, east, fetchvar=''):
         self.south, self.north, self.west, self.east, self.fetchvar = south, north, west, east, fetchvar
 
@@ -48,7 +83,8 @@ class Boundary():
 
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
-    """ convert input bounds to region strings """
+    """ convert input bounds to region strings using Boundary() class and separating axis theorem """
+
     if west > east:  # recursive function call if query intersects antimeridian
         return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
                           ll_2_regionstr(south, north, -180, east, regions, default))

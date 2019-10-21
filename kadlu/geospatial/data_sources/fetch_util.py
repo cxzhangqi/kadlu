@@ -43,7 +43,7 @@ def storage_cfg():
 
 
 def database_cfg():
-    """ create a new sqlite database connection with preloaded schema """
+    """ connect to sqlite database. if missing, """
     path = storage_cfg() + "geospatial.db"
     if not os.path.isfile(path):
         conn = sqlite3.connect(path)

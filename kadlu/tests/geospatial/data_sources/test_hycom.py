@@ -19,7 +19,7 @@ end   = datetime(2015, 1, 1, 6)
 
 # disable automated testing of fetching to avoid slamming the API with
 # requests in the automated development pipeline
-test_fetch = False
+test_fetch = True
 
 # remove fetched files to test fetching
 def unfetch():
@@ -98,4 +98,34 @@ def test_hycom_dt_2_tslice():
     end = datetime(2015, 12, 31, 23, 59)
     dateslice = hycom.dt_2_tslice(start, end, Hycom().time)
     assert(2859 <= dateslice[1] <= 2860)
+
+""" interactive mode debugging: assert db ordering is correct
+
+    step through fetch_hycom() and put output and grid arrays into memory. 
+    example test input:
+>>>     
+        year = '2012'
+        fetchvar = 'salinity'
+        slices = [
+            (0, 2),         # time: start, end 
+            (0, 3),         # depth: top, bottom
+            (800, 840),     # x grid index: lon min, lon max
+            (900, 1000)     # y grid index: lat min, lat max
+        ]
+        lat, lon = load_grid()
+        dtime = load_times()
+        depth = load_depth()
+
+    run through the output builder loop again. this time, add an assertion to check 
+    that the 4D array was flattened correctly
+>>>     
+        ix = 0  # debug index: assert order is correct
+        for arr in payload.split("\n"):
+            ix_str, row_csv = arr.split(", ", 1)
+            a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
+            output[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
+            assert((output[a][b][c] == grid[ix:ix+len(output[a][b][c]), 0]).all())
+            ix += len(output[a][b][c])
+
+"""
 

@@ -99,6 +99,7 @@ def test_hycom_dt_2_tslice():
     dateslice = hycom.dt_2_tslice(start, end, Hycom().time)
     assert(2859 <= dateslice[1] <= 2860)
 
+
 """ interactive mode debugging: assert db ordering is correct
 
     step through fetch_hycom() and put output and grid arrays into memory. 
@@ -123,9 +124,19 @@ def test_hycom_dt_2_tslice():
         for arr in payload.split("\n"):
             ix_str, row_csv = arr.split(", ", 1)
             a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
-            output[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
+            # output[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
             assert((output[a][b][c] == grid[ix:ix+len(output[a][b][c]), 0]).all())
             ix += len(output[a][b][c])
 
+"""
+"""
+    import timeit 
+
+    lat, sorted_arr = load_grid()
+    def fcn():
+        return index(np.random.rand()*360 - 180, sorted_arr)
+    
+    timeit.timeit(fcn, number=1000000)
+    
 """
 

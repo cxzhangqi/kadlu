@@ -1,9 +1,9 @@
 """
     Kadlu API for HYCOM data source
 
-    Data source:
+    data source:
         https://www.hycom.org/data/glbv1pt08
-    Web interface for hycom data retrieval:
+    web interface for manual hycom data retrieval:
         https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
 
     Oliver Kirsebom
@@ -24,7 +24,7 @@ import warnings
 
 
 conn, db = database_cfg()  # database connection and cursor objects 
-hycom_src = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X"
+hycom_src = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data"
 
 
 def fetchname(fetchvar, slices, steps=(1, 1, 1, 1)):
@@ -52,7 +52,7 @@ def dt_2_tslice(start, end, times_dict):
 def fetch_grid():
     """ download the lat/lon arrays for grid indexing """
     print("Fetching Hycom lat/lon grid arrays...")
-    url = f"{hycom_src}/data/2015.ascii?lat%5B0:1:3250%5D,lon%5B0:1:4499%5D"
+    url = f"{hycom_src}/2015.ascii?lat%5B0:1:3250%5D,lon%5B0:1:4499%5D"
     grid_ascii = requests.get(url)
     assert(grid_ascii.status_code == 200)
 
@@ -79,7 +79,7 @@ def fetch_times():
     timestamps = {}
 
     for year in map(lambda y: f"{y}", range(1994, 2016)):
-        url = f"{hycom_src}/data/{year}.ascii?time"
+        url = f"{hycom_src}/{year}.ascii?time"
         time_ascii = requests.get(url)
         assert(time_ascii.status_code == 200)
         meta, data = time_ascii.text.split\
@@ -135,7 +135,8 @@ def fetch_hycom(year, slices, fetchvar, lat, lon, dtime, depth):
             the second array returned by load_grid()
             used as a Hycom() class attribute for optimization
         dtime: dictionary
-            time array returned from the year key of load_times() dictionary
+            dictionary of timestamps. a year string passed as dictionary key
+            will return a numpy array of datetimes
             used as a Hycom() class attribute for optimization
         depth: np.array
             array returned by load_depth()
@@ -145,12 +146,16 @@ def fetch_hycom(year, slices, fetchvar, lat, lon, dtime, depth):
     displays status message to standard output
     """
 
+    t1 = datetime.now()
+
     # generate request
-    src = f"{hycom_src}/data/{year}.ascii?"
+    src = f"{hycom_src}/{year}.ascii?"
     payload_ascii = requests.get(f"{src}{fetchname(fetchvar, slices)}")
     assert(payload_ascii.status_code == 200)
     fname = f"hycom_{year}_{fetchname(fetchvar, slices)}.npy"
     print(f"Downloading {fname} from Hycom")
+
+    t2 = datetime.now()
 
     # parse response into numpy array
     meta, data = payload_ascii.text.split\
@@ -179,10 +184,15 @@ def fetch_hycom(year, slices, fetchvar, lat, lon, dtime, depth):
     n1 = db.execute(f"SELECT COUNT(*) FROM {fetchvar}").fetchall()[0][0]
     db.executemany(f"INSERT OR IGNORE INTO {fetchvar} VALUES (?,?,?,?,?,?)", grid)
     n2 = db.execute(f"SELECT COUNT(*) FROM {fetchvar}").fetchall()[0][0]
-
-    print(f"inserted {n2 - n1} rows into {fetchvar}. "
-          f"{len(grid) - (n2 - n1)} duplicates ignored")
     conn.commit()
+
+    t3 = datetime.now()
+
+    print(f"downloaded in {(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s\n"
+          f"parsed and inserted {n2 - n1} rows in "
+          f"{(t3-t2).seconds}.{str((t3-t2).microseconds)[0:3]}s\n"
+          f"{len(grid) - (n2 - n1)} duplicate rows ignored")
+
     return
 
 
@@ -236,12 +246,12 @@ def load_hycom(year, slices, fetchvar, lat, lon, dtime, depth):
     return (data,       # 4 dimensional array 
             lat         [slices[3][0] : slices[3][1] +1], 
             lon         [slices[2][0] : slices[2][1] +1], 
-            dtime[year]  [slices[0][0] : slices[0][1] +1],
+            dtime[year] [slices[0][0] : slices[0][1] +1],
             depth       [slices[1][0] : slices[1][1] +1])
 
 
 class Hycom():
-    """ collection of module functions for fetching and loading 
+    """ collection of module functions for fetching and loading. 
     abstracted to include a seperate function for each variable 
 
     attributes:

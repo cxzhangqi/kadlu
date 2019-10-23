@@ -184,6 +184,7 @@ def fetch_hycom(year, slices, fetchvar, lat, lon, epoch, depth):
     n1 = db.execute(f"SELECT COUNT(*) FROM {fetchvar}").fetchall()[0][0]
     db.executemany(f"INSERT OR IGNORE INTO {fetchvar} VALUES (?,?,?,?,?,?)", grid)
     n2 = db.execute(f"SELECT COUNT(*) FROM {fetchvar}").fetchall()[0][0]
+    db.execute("COMMIT")
     conn.commit()
 
     t3 = datetime.now()

@@ -52,13 +52,13 @@ def dt_2_tslice(start, end, epoch):
 
 
 def fetch_grid():
-    """ download the lat/lon arrays for grid indexing """
+    """ download lat/lon arrays for grid indexing """
     print("Fetching Hycom lat/lon grid arrays...")
     url = f"{hycom_src}/2015.ascii?lat%5B0:1:3250%5D,lon%5B0:1:4499%5D"
-    grid_ascii = requests.get(url)
-    assert(grid_ascii.status_code == 200)
+    grid_netcdf = requests.get(url)
+    assert(grid_netcdf.status_code == 200)
 
-    meta, data = grid_ascii.text.split\
+    meta, data = grid_netcdf.text.split\
     ("---------------------------------------------\n")
     lat_csv, lon_csv = data.split("\n\n")[:-1]
     lat = np.array(lat_csv.split("\n")[1].split(", "), dtype=np.float)
@@ -135,8 +135,8 @@ def fetch_hycom(year, slices, fetchvar, lat, lon, epoch, depth):
                 used as a Hycom() class attribute for optimization
             epoch: dictionary
                 dictionary of timestamps. a year string passed as
-                dictionary key. returns a numpy array of datetimes
-                used as a Hycom() class attribute for optimization
+                dictionary key returns a numpy array of datetimes.
+                this dict is returned by load_times()
             depth: np.array
                 array returned by load_depth()
                 used as a Hycom() class attribute for optimization
@@ -148,16 +148,16 @@ def fetch_hycom(year, slices, fetchvar, lat, lon, epoch, depth):
     t1 = datetime.now()
 
     # generate request
+    n = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
+    print(f"downloading {n} {fetchvar} values from hycom...")
     src = f"{hycom_src}/{year}.ascii?"
-    payload_ascii = requests.get(f"{src}{fetchname(fetchvar, slices)}")
-    assert(payload_ascii.status_code == 200)
-    fname = f"hycom_{year}_{fetchname(fetchvar, slices)}.npy"
-    print(f"Downloading {fname} from Hycom")
+    payload_netcdf= requests.get(f"{src}{fetchname(fetchvar, slices)}")
+    assert(payload_netcdf.status_code == 200)
 
     t2 = datetime.now()
 
     # parse response into numpy array
-    meta, data = payload_ascii.text.split\
+    meta, data = payload_netcdf.text.split\
     ("---------------------------------------------\n")
     arrs = data.split("\n\n")[:-1]
     shape_str, payload = arrs[0].split("\n", 1)
@@ -189,10 +189,11 @@ def fetch_hycom(year, slices, fetchvar, lat, lon, epoch, depth):
 
     t3 = datetime.now()
 
-    print(f"downloaded in {(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s\n"
+    print(f"downloaded in {(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s. "
           f"parsed and inserted {n2 - n1} rows in "
           f"{(t3-t2).seconds}.{str((t3-t2).microseconds)[0:3]}s\n"
-          f"{len(grid) - (n2 - n1)} duplicate rows ignored")
+          f"{flatten - len(grid)} missing values removed, "
+          f"{len(grid) - (n2 - n1)} duplicate rows ignored\n")
 
     return
 
@@ -204,9 +205,12 @@ def load_hycom(fetchvar, south, north, west, east, start, end):
             fetchvar:
                 variable to be fetched. complete list of variables here
                 https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
-            south, north:
-            west, east:
-            start, end:
+            south, north: float
+                ymin, ymax coordinate values. range: -90, 90
+            west, east: float
+                xmin, xmax coordinate values. range: -180, 180
+            start, end: datetime
+                temporal boundaries in datetime format
 
         return: 
             values: array

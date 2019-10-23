@@ -8,6 +8,11 @@ import pygrib
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import sqlite3
+from datetime import datetime, timedelta
+
+
+# database tables
+atmospheric = ['salinity', 'water_temp', 'water_u', 'water_v']
 
 
 def storage_cfg():
@@ -22,9 +27,8 @@ def storage_cfg():
         storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
         if not os.path.isdir(storage_location):
             os.mkdir(storage_location)
-        warnings.warn("%s storage location will be set to %s" % (msg, storage_location))
+        warnings.warn(f"{msg} storage location will be set to {storage_location}")
         return storage_location
-
 
     cfg = configparser.ConfigParser()       # read .ini into dictionary object
     cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
@@ -43,32 +47,41 @@ def storage_cfg():
 
 
 def database_cfg():
-    """ connect to sqlite database. if missing, """
+    """ connect to sqlite database """
     path = storage_cfg() + "geospatial.db"
-    if not os.path.isfile(path):
-        conn = sqlite3.connect(path)
-        c = conn.cursor()
-        c.execute("CREATE TABLE IF NOT EXISTS salinity(val INT, lat REAL, lon REAL, time INT, depth INT, source TEXT)")
-        c.execute("CREATE UNIQUE INDEX idx_salinity on salinity (lat, lon, time, depth, source)")
 
-        #c.execute("CREATE TABLE IF NOT EXISTS water_temp(val INT, lat INT, lon INT, time INT, depth INT, source TEXT)")
-        #c.execute("CREATE UNIQUE INDEX idx_water_temp on water_temp (lat, lon, time)")
+    if not os.path.isfile(path):
+        print(f"creating new database {path}")
+        conn = sqlite3.connect(path)
+        db = conn.cursor()
+        for table in atmospheric:
+            db.execute(f"CREATE TABLE IF NOT EXISTS {table}(val INT, lat REAL, lon REAL, time INT, depth INT, source TEXT)")
+            db.execute(f"CREATE UNIQUE INDEX idx_{table} on {table}(lat, lon, time, depth, source)")
 
     return sqlite3.connect(path), sqlite3.connect(path).cursor()
 
+
 """
-c.execute("DROP TABLE salinity")
+db.execute("DROP TABLE salinity")
 """
 
 
 def dt_2_epoch(dt_arr):
-    """ convert python datetimes to epoch integers """
-    return list(map(lambda epoch : int(epoch.strftime("%s")), dt_arr))
+    """ convert datetimes to epoch hours """
+    t0 = datetime(2000, 1, 1, 0, 0, 0)
+    delta = lambda dt : (dt - t0).total_seconds()/60/60
+    if type(dt_arr) == datetime : return delta(dt_arr)
+    return list(map(delta, dt_arr))
 
+
+def epoch_2_dt(ep_arr):
+    """ convert epoch hours to datetimes """
+    t0 = datetime(2000, 1, 1)
+    return list(map(lambda ep : t0 + timedelta(hours=ep), ep_arr))
 
 
 class Boundary():
-    """ class to compute intersecting area boundaries using the separating axis theorem """
+    """ compute intersecting boundaries using the separating axis theorem """
 
     def __init__(self, south, north, west, east, fetchvar=''):
         self.south, self.north, self.west, self.east, self.fetchvar = south, north, west, east, fetchvar
@@ -105,8 +118,6 @@ def str_def(self, info, args):
     strlen = list(map(lambda f : len(f), fcns))
     whitespace = ''.join(map(lambda f : ' ', range(0, np.max(strlen) - np.min(strlen))))
     return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
-
-
 
 
 def plot_sample_grib(gribfiles, title_text="A sample plot"):

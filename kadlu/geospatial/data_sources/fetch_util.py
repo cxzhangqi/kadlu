@@ -54,15 +54,29 @@ def database_cfg():
         print(f"creating new database {path}")
         conn = sqlite3.connect(path)
         db = conn.cursor()
-        for table in atmospheric:
-            db.execute(f"CREATE TABLE IF NOT EXISTS {table}(val INT, lat REAL, lon REAL, time INT, depth INT, source TEXT)")
-            db.execute(f"CREATE UNIQUE INDEX idx_{table} on {table}(lat, lon, time, depth, source)")
+        for fetchvar in atmospheric:
+            db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+                        "(  val     INT,    "
+                        "   lat     REAL,   "
+                        "   lon     REAL,   "
+                        "   time    INT,    "
+                        "   depth   INT,    "
+                        "   source  TEXT   )")
+
+            db.execute(f"CREATE UNIQUE INDEX idx_{fetchvar} "
+                       f"   on {fetchvar}(time, lon, lat)")
 
     return sqlite3.connect(path), sqlite3.connect(path).cursor()
 
 
 """
 db.execute("DROP TABLE salinity")
+db.execute(f"DROP TRIGGER del_{fetchvar}_null")
+db.execute(f"CREATE TRIGGER del_{fetchvar}_null BEFORE INSERT ON {fetchvar} "
+        "WHEN new.val <= -30000 "
+        "BEGIN "
+        f"    DELETE FROM new.{fetchvar} WHERE new.val <= -30000; "
+        "END ")
 """
 
 
@@ -70,8 +84,8 @@ def dt_2_epoch(dt_arr):
     """ convert datetimes to epoch hours """
     t0 = datetime(2000, 1, 1, 0, 0, 0)
     delta = lambda dt : (dt - t0).total_seconds()/60/60
-    if type(dt_arr) == datetime : return delta(dt_arr)
-    return list(map(delta, dt_arr))
+    dt_arr = np.array([dt_arr]) if np.array([dt_arr]).shape == (1,) else dt_arr
+    return list(map(int, map(delta, dt_arr)))
 
 
 def epoch_2_dt(ep_arr):

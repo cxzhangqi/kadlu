@@ -83,7 +83,7 @@ def test_load_water_v():
     step through fetch_hycom() and put output and grid arrays into memory. 
     example test input:
 >>>     
-        year = '2012'
+        year = '2000'
         fetchvar = 'salinity'
         slices = [
             (0, 2),         # time: start, end 
@@ -92,7 +92,7 @@ def test_load_water_v():
             (900, 1000)     # y grid index: lat min, lat max
         ]
         lat, lon = load_grid()
-        dtime = load_times()
+        epoch = load_times()
         depth = load_depth()
 
     run through the output builder loop again. this time, add an assertion to check 

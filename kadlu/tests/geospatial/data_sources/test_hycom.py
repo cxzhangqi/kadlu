@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
-from kadlu.geospatial.data_sources import hycom
+from kadlu import hycom
 from kadlu.geospatial.data_sources.hycom import Hycom
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 import os
@@ -26,19 +26,27 @@ south =  46
 north =  48
 west  = -60
 east  = -58
-
-def test_hycom_dt_2_tslice():
-    start = datetime(2015, 1, 1)
-    end = datetime(2015, 1, 7)
-    dateslice = hycom.dt_2_tslice(start, end, Hycom().times_dict)
-    assert(dateslice[0] == 0)
-    end = datetime(2015, 12, 31, 23, 59)
-    dateslice = hycom.dt_2_tslice(start, end, Hycom().times_dict)
-    assert(2859 <= dateslice[1] <= 2860)
+top   = 0
+bottom = 50
 
 def test_fetch_salinity():
     if not test_fetch: return
-    Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end)
+    Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+    """
+
+    fetch_water_u(Hycom(), south=south, north=north, west=west, east=east, top=top, bottom=bottom, start=start, end=end)
+
+    def fetch_salinity(self, **kwargs):
+        return kwargs
+    qry = fetch_salinity(Hycom(), south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+
+
+    fetch_hycom(year=year, slices=slices, fetchvar=fetchvar, lat=lat, lon=lon, epoch=epoch, depth=depth)
+
+
+
+    qry = {'south': 46.0, 'north': 48.0, 'west': 175.0, 'east': 179.9200439453125, 'top': 0, 'bottom': 1, 'start': datetime(2000, 1, 2, 0, 0), 'end': datetime(2000, 1, 2, 4, 0)}
+    """
 
 def test_load_salinity():
     val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end)
@@ -49,30 +57,30 @@ def test_load_salinity():
 
 def test_fetch_temp():
     if not test_fetch: return
-    Hycom().fetch_temp(south=south, north=north, west=west, east=east, start=start, end=end)
+    Hycom().fetch_temp(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_temp():
-    val, lat, lon, time, depth = Hycom().load_temp(south=south, north=north, west=west, east=east, start=start, end=end)
+    val, lat, lon, time, depth = Hycom().load_temp(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
     assert(len(val) == len(lat) == len(lon) == len(time))
     assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_fetch_water_u():
     if not test_fetch: return
-    Hycom().fetch_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
+    Hycom().fetch_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_water_u():
-    val, lat, lon, time, depth = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
+    val, lat, lon, time, depth = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
     assert(len(val) == len(lat) == len(lon) == len(time))
     assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_fetch_water_v():
     if not test_fetch: return
-    Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end)
+    Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_water_v():
-    val, lat, lon, time, depth = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end)
+    val, lat, lon, time, depth = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
     assert(len(val) == len(lat) == len(lon) == len(time))
     assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))

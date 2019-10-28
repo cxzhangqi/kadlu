@@ -18,6 +18,11 @@ import requests
 from kadlu.geospatial.data_sources import fetch_util 
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 from osgeo import gdal
+import warnings
+
+
+#source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
+source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
 
 
 def latlon(filepath):
@@ -92,8 +97,6 @@ def fetch_chs(south, north, west, east):
 
     """
     # api call: get raster IDs within bounding box
-    #source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
-    source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
     # check source exists
     spatialRel = "esriSpatialRelIntersects"
     spatialReference = "4326"  # WGS-84 spec
@@ -166,19 +169,23 @@ def load_chs(south, north, west, east, band_id=1):
     lat_out = np.array([])
     lon_out = np.array([])
     for filepath in fnames:
-        # load data from chs file (bathy,lat,lon)
-        z,y,x = load_chs_file(filepath, band_id)
+        try:
+            # load data from chs file (bathy,lat,lon)
+            z,y,x = load_chs_file(filepath, band_id)
+        except Exception as e:
+            print(e)
+            continue
 
-        # discard any data points that are outside requested area
-        indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
-        z = z[indices]
-        y = y[indices]
-        x = x[indices]
+            # discard any data points that are outside requested area
+            indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
+            z = z[indices]
+            y = y[indices]
+            x = x[indices]
 
-        # append
-        bathy_out = np.append(bathy_out, z)
-        lat_out = np.append(lat_out, y)
-        lon_out = np.append(lon_out, x)
+            # append
+            bathy_out = np.append(bathy_out, z)
+            lat_out = np.append(lat_out, y)
+            lon_out = np.append(lon_out, x)
 
     return bathy_out, lat_out, lon_out
 

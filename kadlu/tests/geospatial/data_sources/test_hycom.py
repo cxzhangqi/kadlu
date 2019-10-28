@@ -27,7 +27,7 @@ north =  48
 west  = -60
 east  = -58
 top   =   0
-bottom=  50
+bottom =  0
 
 # TODO: add start to fcn calls
 start = datetime(2000, 1, 1)

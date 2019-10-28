@@ -178,8 +178,8 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
 
     t3 = datetime.now()
 
-    print(f"downloaded {len(payload_netcdf.content)}MB in {(t2-t1).seconds}."
-          f"{str((t2-t1).microseconds)[0:3]}s. "
+    print(f"downloaded {len(payload_netcdf.content)/8/1000:.1f}Kb in "
+          f"{(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s. "
           f"parsed and inserted {n2 - n1} rows in "
           f"{(t3-t2).seconds}.{str((t3-t2).microseconds)[0:3]}s\n"
           f"{n - len(grid)} null values removed, "
@@ -188,7 +188,7 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
     return
 
 
-def load_hycom(var, south, north, west, east, start, end, top, bottom, **kwargs):
+def load_hycom(*args, var, south, north, west, east, start, end, top, bottom, **kwargs):
     """ load hycom data from local database
 
         args:
@@ -219,12 +219,14 @@ def load_hycom(var, south, north, west, east, start, end, top, bottom, **kwargs)
     assert(top <= bottom)
     assert(start < end)
     if 'limit' not in kwargs.keys() : kwargs['limit'] = '50000;--infinity'
+
+    # recursive function call for queries spanning antimeridian
     if (west > east): return np.hstack(
-            load_hycom(var, south, north, self.lon[0],  east, start, end,
-                top, bottom, limit=kwargs['limit']), 
-            load_hycom(var, south, north, west, self.lon[-1], start, end,
-                top, bottom, limit=kwargs['limit'])
-    )
+            load_hycom(var, south, north, self.lon[0], east, 
+                       start, end, top, bottom, limit=kwargs['limit']), 
+            load_hycom(var, south, north, west, self.lon[-1], 
+                       start, end, top, bottom, limit=kwargs['limit']))
+
     db.execute(' AND '.join([
             f"SELECT * FROM {var} WHERE lat >= ?",
                                        "lat <= ?",
@@ -247,7 +249,6 @@ def load_hycom(var, south, north, west, east, start, end, top, bottom, **kwargs)
     except AssertionError as e:
         print("WARNING: " + str(e))
         return np.array([])
-
     data[3] = epoch_2_dt(data[3])
 
     return data[0:5]
@@ -256,26 +257,18 @@ def load_hycom(var, south, north, west, east, start, end, top, bottom, **kwargs)
 def fetch_idx(self, var, qry): 
     """ build indices based on keyword arguments """
 
-    def _idx(self, var, year, qry): return fetch_hycom(
-        slices=[
-            (index(dt_2_epoch(qry['start']), self.epoch[year]),
-             index(dt_2_epoch(qry['end']),   self.epoch[year])),
-
-            (index(qry['top'],    self.depth),
-             index(qry['bottom'], self.depth) ),
-
-            (index(qry['south'],  self.lat),
-             index(qry['north'],  self.lat)   ),
-
-            (index(qry['west'],   self.lon),
-             index(qry['east'],   self.lon)   )
-        ],
-        var=var,
-        year=year,
-        lat=self.lat,
-        lon=self.lon,
-        epoch=self.epoch,
-        depth=self.depth)
+    def _idx(self, var, year, qry): 
+        needles1 = np.array([dt_2_epoch(qry['start'])[0], qry['top'],
+                             qry['south'], qry['west']])
+        needles2 = np.array([dt_2_epoch(qry['end'])[0], qry['bottom'],
+                             qry['north'], qry['east']])
+        haystack = np.array([self.epoch[year], self.depth, self.lat, self.lon])
+        slice1 = map(index, needles1, haystack)
+        slice2 = map(index, needles2, haystack)
+        slices = list(zip(slice1, slice2))
+        
+        return fetch_hycom(slices=slices, var=var, year=year, lat=self.lat,
+                lon=self.lon, epoch=self.epoch, depth=self.depth)
 
     south, north, west, east = \
     map(float, [qry['south'], qry['north'], qry['west'], qry['east']])

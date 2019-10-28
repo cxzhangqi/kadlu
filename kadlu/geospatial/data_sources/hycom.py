@@ -178,7 +178,8 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
 
     t3 = datetime.now()
 
-    print(f"downloaded in {(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s. "
+    print(f"downloaded {len(payload_netcdf.content)}MB in {(t2-t1).seconds}."
+          f"{str((t2-t1).microseconds)[0:3]}s. "
           f"parsed and inserted {n2 - n1} rows in "
           f"{(t3-t2).seconds}.{str((t3-t2).microseconds)[0:3]}s\n"
           f"{n - len(grid)} null values removed, "
@@ -187,7 +188,7 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
     return
 
 
-def load_hycom(var, south, north, west, east, start, end, top, bottom):
+def load_hycom(var, south, north, west, east, start, end, top, bottom, **kwargs):
     """ load hycom data from local database
 
         args:
@@ -213,33 +214,43 @@ def load_hycom(var, south, north, west, east, start, end, top, bottom):
             depth: array
                 measured in meters
     """
-    # TODO: validate and sanitize user input
     south, north, west, east = map(float, [south, north, west, east])
-    assert west < east, "divide query code goes here"
-    #if (west > east): return np.append(
-    #        load_hycom(), 
-    #        load_hycom()
-    #    )
     assert(south < north)
-    assert(top < bottom)
+    assert(top <= bottom)
     assert(start < end)
+    if 'limit' not in kwargs.keys() : kwargs['limit'] = '50000;--infinity'
+    if (west > east): return np.hstack(
+            load_hycom(var, south, north, self.lon[0],  east, start, end,
+                top, bottom, limit=kwargs['limit']), 
+            load_hycom(var, south, north, west, self.lon[-1], start, end,
+                top, bottom, limit=kwargs['limit'])
+    )
     db.execute(' AND '.join([
-            f"SELECT * FROM {var} WHERE lat <= {north}",
-            f"lat >= {south}",
-            f"lon >= {west}",
-            f"lon <= {east}",
-            f"time >= {dt_2_epoch(start)[0] }",
-            f"time <= {dt_2_epoch(end)[0]   }",
-            f"depth >= {top}",
-            f"depth <= {bottom}",
-            f"source == 'hycom'"]))
+            f"SELECT * FROM {var} WHERE lat >= ?",
+                                       "lat <= ?",
+                                       "lon >= ?",
+                                       "lon <= ?",
+                                       "time >= ?",
+                                       "time <= ?",
+                                       "depth >= ?",
+                                       "depth <= ?",
+                                      f"source == 'hycom' LIMIT {kwargs['limit']}"]),
+            tuple(map(str, 
+                [south, north, west, east, 
+                dt_2_epoch(start)[0], dt_2_epoch(end)[0], 
+                top, bottom]   )     )       )
 
     # transpose grid and convert epochs to datetime
     data = np.array(db.fetchall(), dtype=object).T
-    assert len(data) > 0, "no records found"
+    try:
+        assert len(data) > 0, "no records found"
+    except AssertionError as e:
+        print("WARNING: " + str(e))
+        return np.array([])
+
     data[3] = epoch_2_dt(data[3])
 
-    return data[0], data[1], data[2], data[3], data[4]
+    return data[0:5]
 
 
 def fetch_idx(self, var, qry): 
@@ -247,10 +258,8 @@ def fetch_idx(self, var, qry):
 
     def _idx(self, var, year, qry): return fetch_hycom(
         slices=[
-            (index(dt_2_epoch(qry['start']),
-                   self.epoch[str(qry['start'].year)]),
-             index(dt_2_epoch(qry['end']),
-                   self.epoch[str(qry['end'].year)]) ),
+            (index(dt_2_epoch(qry['start']), self.epoch[year]),
+             index(dt_2_epoch(qry['end']),   self.epoch[year])),
 
             (index(qry['top'],    self.depth),
              index(qry['bottom'], self.depth) ),

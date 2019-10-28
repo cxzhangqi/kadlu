@@ -26,8 +26,12 @@ south =  46
 north =  48
 west  = -60
 east  = -58
-top   = 0
-bottom = 50
+top   =   0
+bottom=  50
+
+# TODO: add start to fcn calls
+start = datetime(2000, 1, 1)
+end = datetime(2000, 1, 12)
 
 def test_fetch_salinity():
     if not test_fetch: return
@@ -38,10 +42,11 @@ def test_fetch_salinity():
 
     def fetch_salinity(self, **kwargs):
         return kwargs
-    qry = fetch_salinity(Hycom(), south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+    fetch_idx(Hycom(), 'salinity', south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
+    fetch_salinity()
 
-    fetch_hycom(year=year, slices=slices, fetchvar=fetchvar, lat=lat, lon=lon, epoch=epoch, depth=depth)
+    fetch_salinity(slices=slices, fetchvar=fetchvar, lat=lat, lon=lon, epoch=epoch, depth=depth, top=top, bottom=bottom, start=start, end=end)
 
 
 

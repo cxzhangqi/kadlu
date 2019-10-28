@@ -35,6 +35,7 @@ def latlon(filepath):
 
     lat = np.arange(start=south, stop=(bathy.RasterYSize*dlat+south), step=dlat, dtype=np.float)
     lon = np.arange(start=west, stop=(bathy.RasterXSize*dlon+west), step=dlon, dtype=np.float)
+
     return lat, lon
 
 
@@ -111,13 +112,16 @@ def fetch_chs(south, north, west, east):
             if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
             fpath = f"{storage_cfg()}{fname}"
             filepaths.append(fpath)
+
+            """
             if os.path.isfile(fpath):
                 print(f"File {fname} exists, skipping retrieval...")
                 continue
+            """
 
             print(f"Downloading {fname} from Canadian Hydrographic Service NONNA-100...")
             assert(len(img['rasterIds']) == 1)  # we make an assumption that each file has only one associated raster
-            url3 = f"https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
+            url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
             tiff = requests.get(url3)
             assert(tiff.status_code == 200)
             with open(fpath, "wb") as f: f.write(tiff.content)

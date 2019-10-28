@@ -298,7 +298,7 @@ class TLCalculator():
         dq = self.bin_size['q'] / 180 * np.pi
 
         # automatic determination of vertical range
-        max_depth = -np.min(self.ocean.bathy()[0])
+        max_depth = -np.min(self.ocean.bathy())
         zmax = (max_depth + self.seafloor.thickness) * (1. + self.absorption_layer)
 
         # create grid

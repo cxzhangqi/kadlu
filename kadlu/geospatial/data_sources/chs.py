@@ -25,25 +25,6 @@ import warnings
 source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
 
 
-def latlon(filepath):
-    """ construct lat / lon arrays based on attributes found in the data """
-    bathy = gdal.Open(filepath)
-    south, west = parse_sw_corner(filepath)
-
-    dlat = 0.001
-    if south < 68:
-        dlon = 0.001
-    elif south >=68 and south < 80:
-        dlon = 0.002
-    elif south >= 80:
-        dlon = 0.004
-
-    lat = np.arange(start=south, stop=(bathy.RasterYSize*dlat+south), step=dlat, dtype=np.float)
-    lon = np.arange(start=west, stop=(bathy.RasterXSize*dlon+west), step=dlon, dtype=np.float)
-
-    return lat, lon
-
-
 def parse_sw_corner(path):
     """ return the southwest corner coordinates for a given bathymetry file """
     fname = os.path.basename(path)
@@ -60,27 +41,53 @@ def filename(south, west):
     return fname
 
 
+# matt_s 2019-11-12
+# i couldn't get this code to work so i reverted to the verify function 
+# from earlier in the branch history
+# the commented function is returning an empty list
+# also i dont understand what is happening on these lines:
+#    if abs(east-int(east)) < 1e-6:
+#        xmax -= 1
+#
+#def verify_local_files(south, north, west, east):
+#    """ Check if local files exist before querying. Return filenames if true, else false. """
+#    print(storage_cfg())
+#    # establish which maps are needed
+#    xmin = int(np.floor(west))
+#    xmax = int(np.floor(east))
+#    ymin = int(np.floor(south))
+#    ymax = int(np.floor(north))
+#    if abs(east-int(east)) < 1e-6:
+#        xmax -= 1
+#    if abs(north-int(north)) < 1e-6:
+#        ymax -= 1
+#    # check if maps have already been downloaded
+#    fnames = []
+#    for x in range(xmin, xmax + 1):
+#        for y in range(ymin, ymax + 1):
+#            f = os.path.join(storage_cfg(), filename(y, x))
+#            if not os.path.isfile(f): return False
+#            fnames.append(f)
+#    print("Files exist, skipping retrieval...")
+#
+#    assert(len(fnames) > 0)
+#    return fnames 
+
+
 def verify_local_files(south, north, west, east):
-    """ Check if local files exist before querying. Return filenames if true, else false. """
-    print(storage_cfg())
-    # establish which maps are needed
-    xmin = int(np.floor(west))
-    xmax = int(np.floor(east))
-    ymin = int(np.floor(south))
-    ymax = int(np.floor(north))
-    if abs(east-int(east)) < 1e-6:
-        xmax -= 1
-    if abs(north-int(north)) < 1e-6:
-        ymax -= 1
-    # check if maps have already been downloaded
+    """ 
+        Checks to see if local files exist before querying 
+        Returns filenames if true, otherwise returns false.
+    """
     fnames = []
-    for x in range(xmin, xmax + 1):
-        for y in range(ymin, ymax + 1):
-            f = os.path.join(storage_cfg(), filename(y, x))
+    for x in range(int(west), int(east) + 1):
+        for y in range(int(south), int(north) + 1):
+            f = f"{storage_cfg()}{filename(y, x)}"
             if not os.path.isfile(f): return False
             fnames.append(f)
     print("Files exist, skipping retrieval...")
-    return fnames 
+    return fnames
+
 
 
 def fetch_chs(south, north, west, east):
@@ -139,67 +146,115 @@ def fetch_chs(south, north, west, east):
             assert(tiff.status_code == 200)
             with open(fpath, "wb") as f: f.write(tiff.content)
         
+    assert(len(filepaths) > 0)
     return filepaths
 
 
+# matt_s 2019-11-12
+# this function was reverted to a previous commit in the branch history
+# i encountered a bug on the following line:
+# indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
+# in the future, points outside the requested area will be discarded
+# when querying from the database
+# 
+#def load_chs(south, north, west, east, band_id=1):
+#    """ return bathymetry for given input boundaries
+#
+#    args:
+#        south, north: float
+#            ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
+#        west, east: float
+#            xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
+#        band_id: int
+#            raster band id used to query geotiff file containing bathy data
+#
+#    returns: 
+#        bathy_out: np.array
+#            bathy values array
+#        lat_out: np.array
+#            latitude values array
+#        lon_out: np.array
+#            longitude values array
+#    """
+#    # verify the files exist - if not, fetch them
+#    print(south, north, west, east)
+#    fnames = verify_local_files(south, north, west, east)
+#    if fnames is False: fnames = fetch_chs(south, north, west, east)
+#    assert(len(fnames) > 0)
+#
+#    bathy_out = np.array([])
+#    lat_out = np.array([])
+#    lon_out = np.array([])
+#
+#    for filepath in fnames:
+#        print(filepath)
+#        z,y,x = load_chs_file(filepath, band_id)
+#
+#        # discard any data points that are outside requested area
+#        indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
+#        print("indices:\t" + indices)
+#        z = z[indices]
+#        y = y[indices]
+#        x = x[indices]
+#
+#        # append
+#        bathy_out = np.append(bathy_out, z)
+#        lat_out = np.append(lat_out, y)
+#        lon_out = np.append(lon_out, x)
+#
+#    assert(len(lat_out) > 0)
+#    assert(len(lon_out) > 0)
+#    return bathy_out, lat_out, lon_out
+
+
 def load_chs(south, north, west, east, band_id=1):
-    """ return bathymetry for given input boundaries
-
-    args:
-        south, north: float
-            ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
-        west, east: float
-            xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
-        band_id: int
-            raster band id used to query geotiff file containing bathy data
-
-    returns: 
-        bathy_out: np.array
-            bathy values array
-        lat_out: np.array
-            latitude values array
-        lon_out: np.array
-            longitude values array
-    """
-    # verify the files exist - if not, fetch them
+    """ verify the files exist - if not, fetch them """
     fnames = verify_local_files(south, north, west, east)
     if fnames is False: fnames = fetch_chs(south, north, west, east)
-
     bathy_out = np.array([])
     lat_out = np.array([])
     lon_out = np.array([])
     for filepath in fnames:
-        try:
-            # load data from chs file (bathy,lat,lon)
-            z,y,x = load_chs_file(filepath, band_id)
-        except Exception as e:
-            print(e)
-            continue
-
-            # discard any data points that are outside requested area
-            indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
-            z = z[indices]
-            y = y[indices]
-            x = x[indices]
-
-            # append
-            bathy_out = np.append(bathy_out, z)
-            lat_out = np.append(lat_out, y)
-            lon_out = np.append(lon_out, x)
+        z,x,y = load_chs_file(filepath, band_id)
+        bathy_out = np.append(bathy_out, z)
+        lat_out = np.append(lat_out, y)
+        lon_out = np.append(lon_out, y)
 
     return bathy_out, lat_out, lon_out
 
 
 def load_chs_file(filepath, band_id=1):
     """ return bathymetry, latitude, longitude from geotiff file """
+
+    def latlon(filepath):
+        """ construct lat / lon arrays based on attributes found in the data """
+        bathy_data = gdal.Open(filepath)
+        south, west = parse_sw_corner(filepath)
+
+        dlat = 0.001
+        if south < 68:
+            dlon = 0.001
+        elif south >=68 and south < 80:
+            dlon = 0.002
+        elif south >= 80:
+            dlon = 0.004
+
+        xmax = bathy_data.RasterXSize*dlon+west
+        ymax = bathy_data.RasterYSize*dlat+south
+
+        #lat = np.arange(start=south, stop=ymax, step=dlat, dtype=np.float)
+        #lon = np.arange(start=west,  stop=xmax, step=dlon, dtype=np.float)
+        lat = np.linspace(start=south, stop=ymax, num=bathy_data.RasterYSize)
+        lon = np.linspace(start=west,  stop=xmax, num=bathy_data.RasterXSize)
+
+        return lat, lon
+
     # open file
     data_set = gdal.Open(filepath)
     band = data_set.GetRasterBand(band_id)
     values = data_set.ReadAsArray()
-    # replace missing values with nan
-    nodata = band.GetNoDataValue()
-    values[values == nodata] = np.nan
     bathy = np.ma.masked_invalid(values)
+
     # select non-masked entries
     z = np.flip(bathy, axis=0)
     lat, lon = latlon(filepath)
@@ -208,7 +263,10 @@ def load_chs_file(filepath, band_id=1):
     y = y[~z.mask]
     z = z[~z.mask]
 
-    return z,y,x
+    # return values, lats, lons without missing values
+    return (np.array(z)[z != band.GetNoDataValue()], 
+            np.array(y)[z != band.GetNoDataValue()],
+            np.array(x)[z != band.GetNoDataValue()])
 
 
 class Chs():

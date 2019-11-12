@@ -258,6 +258,8 @@ def fetch_idx(self, var, qry):
     """ build indices based on keyword arguments """
 
     def _idx(self, var, year, qry): 
+        """ helper function to build indices and call fetch_hycom with 
+        the given query """
         needles1 = np.array([dt_2_epoch(qry['start'])[0], qry['top'],
                              qry['south'], qry['west']])
         needles2 = np.array([dt_2_epoch(qry['end'])[0], qry['bottom'],

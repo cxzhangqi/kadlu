@@ -15,14 +15,14 @@ import numpy as np
 from kadlu.geospatial.geospatial import crop, read_geotiff
 import json
 import requests
-from kadlu.geospatial.data_sources import fetch_util 
-from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 from osgeo import gdal
 import warnings
 
+from kadlu.geospatial.data_sources.fetch_util import \
+storage_cfg, database_cfg, str_def
 
-#source = "https://geoportal.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
-source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
+
+conn, db = database_cfg()
 
 
 def parse_sw_corner(path):
@@ -41,56 +41,7 @@ def filename(south, west):
     return fname
 
 
-# matt_s 2019-11-12
-# i couldn't get this code to work so i reverted to the verify function 
-# from earlier in the branch history
-# the commented function is returning an empty list
-# also i dont understand what is happening on these lines:
-#    if abs(east-int(east)) < 1e-6:
-#        xmax -= 1
-#
-#def verify_local_files(south, north, west, east):
-#    """ Check if local files exist before querying. Return filenames if true, else false. """
-#    print(storage_cfg())
-#    # establish which maps are needed
-#    xmin = int(np.floor(west))
-#    xmax = int(np.floor(east))
-#    ymin = int(np.floor(south))
-#    ymax = int(np.floor(north))
-#    if abs(east-int(east)) < 1e-6:
-#        xmax -= 1
-#    if abs(north-int(north)) < 1e-6:
-#        ymax -= 1
-#    # check if maps have already been downloaded
-#    fnames = []
-#    for x in range(xmin, xmax + 1):
-#        for y in range(ymin, ymax + 1):
-#            f = os.path.join(storage_cfg(), filename(y, x))
-#            if not os.path.isfile(f): return False
-#            fnames.append(f)
-#    print("Files exist, skipping retrieval...")
-#
-#    assert(len(fnames) > 0)
-#    return fnames 
-
-
-def verify_local_files(south, north, west, east):
-    """ 
-        Checks to see if local files exist before querying 
-        Returns filenames if true, otherwise returns false.
-    """
-    fnames = []
-    for x in range(int(west), int(east) + 1):
-        for y in range(int(south), int(north) + 1):
-            f = f"{storage_cfg()}{filename(y, x)}"
-            if not os.path.isfile(f): return False
-            fnames.append(f)
-    print("Files exist, skipping retrieval...")
-    return fnames
-
-
-
-def fetch_chs(south, north, west, east):
+def fetch_chs(south, north, west, east, band_id=1):
     """ return a list of filepaths for downloaded content 
 
     args:
@@ -105,6 +56,7 @@ def fetch_chs(south, north, west, east):
     """
     # api call: get raster IDs within bounding box
     # check source exists
+    source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
     spatialRel = "esriSpatialRelIntersects"
     spatialReference = "4326"  # WGS-84 spec
     geometry = json.dumps({"xmin":west, "ymin":south, "xmax":east, "ymax":north})
@@ -147,137 +99,73 @@ def fetch_chs(south, north, west, east):
             with open(fpath, "wb") as f: f.write(tiff.content)
         
     assert(len(filepaths) > 0)
-    return filepaths
 
-
-# matt_s 2019-11-12
-# this function was reverted to a previous commit in the branch history
-# i encountered a bug on the following line:
-# indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
-# in the future, points outside the requested area will be discarded
-# when querying from the database
-# 
-#def load_chs(south, north, west, east, band_id=1):
-#    """ return bathymetry for given input boundaries
-#
-#    args:
-#        south, north: float
-#            ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
-#        west, east: float
-#            xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
-#        band_id: int
-#            raster band id used to query geotiff file containing bathy data
-#
-#    returns: 
-#        bathy_out: np.array
-#            bathy values array
-#        lat_out: np.array
-#            latitude values array
-#        lon_out: np.array
-#            longitude values array
-#    """
-#    # verify the files exist - if not, fetch them
-#    print(south, north, west, east)
-#    fnames = verify_local_files(south, north, west, east)
-#    if fnames is False: fnames = fetch_chs(south, north, west, east)
-#    assert(len(fnames) > 0)
-#
-#    bathy_out = np.array([])
-#    lat_out = np.array([])
-#    lon_out = np.array([])
-#
-#    for filepath in fnames:
-#        print(filepath)
-#        z,y,x = load_chs_file(filepath, band_id)
-#
-#        # discard any data points that are outside requested area
-#        indices = np.argwhere(np.logical_and(np.logical_and(x >= west, x <= east), np.logical_and(y >= south, y <= north)))
-#        print("indices:\t" + indices)
-#        z = z[indices]
-#        y = y[indices]
-#        x = x[indices]
-#
-#        # append
-#        bathy_out = np.append(bathy_out, z)
-#        lat_out = np.append(lat_out, y)
-#        lon_out = np.append(lon_out, x)
-#
-#    assert(len(lat_out) > 0)
-#    assert(len(lon_out) > 0)
-#    return bathy_out, lat_out, lon_out
-
-
-def load_chs(south, north, west, east, band_id=1):
-    """ verify the files exist - if not, fetch them """
-    fnames = verify_local_files(south, north, west, east)
-    if fnames is False: fnames = fetch_chs(south, north, west, east)
-    bathy_out = np.array([])
-    lat_out = np.array([])
-    lon_out = np.array([])
-    for filepath in fnames:
-        z,x,y = load_chs_file(filepath, band_id)
-        bathy_out = np.append(bathy_out, z)
-        lat_out = np.append(lat_out, y)
-        lon_out = np.append(lon_out, y)
-
-    return bathy_out, lat_out, lon_out
-
-
-def load_chs_file(filepath, band_id=1):
-    """ return bathymetry, latitude, longitude from geotiff file """
-
-    def latlon(filepath):
-        """ construct lat / lon arrays based on attributes found in the data """
-        bathy_data = gdal.Open(filepath)
-        south, west = parse_sw_corner(filepath)
-
+    # read downloaded files and process them for DB insertion
+    for filepath in filepaths:
+        tiff_data = gdal.Open(filepath)
+        band = tiff_data.GetRasterBand(band_id)
+        values = tiff_data.ReadAsArray()
+        bathy = np.ma.masked_invalid(values)
+        
+        # generate latlon arrays
+        file_south, file_west = parse_sw_corner(filepath)
         dlat = 0.001
-        if south < 68:
+        if file_south < 68:
             dlon = 0.001
-        elif south >=68 and south < 80:
+        elif file_south >=68 and file_south < 80:
             dlon = 0.002
-        elif south >= 80:
+        elif file_south >= 80:
             dlon = 0.004
+        file_ymax = tiff_data.RasterYSize*dlat+file_south
+        file_xmax = tiff_data.RasterXSize*dlon+file_west
+        file_lat = np.linspace(start=file_south, stop=file_ymax, num=tiff_data.RasterYSize)
+        file_lon = np.linspace(start=file_west,  stop=file_xmax, num=tiff_data.RasterXSize)
 
-        xmax = bathy_data.RasterXSize*dlon+west
-        ymax = bathy_data.RasterYSize*dlat+south
+        # select non-masked entries and remove missing
+        z1 = np.flip(bathy, axis=0)
+        x1, y1 = np.meshgrid(file_lon, file_lat)
+        ix = z1[~z1.mask] != band.GetNoDataValue()
+        x2 = x1[~z1.mask][ix]
+        y2 = y1[~z1.mask][ix]
+        z2 = np.array(z1[~z1.mask][ix].data, dtype=int)
 
-        #lat = np.arange(start=south, stop=ymax, step=dlat, dtype=np.float)
-        #lon = np.arange(start=west,  stop=xmax, step=dlon, dtype=np.float)
-        lat = np.linspace(start=south, stop=ymax, num=bathy_data.RasterYSize)
-        lon = np.linspace(start=west,  stop=xmax, num=bathy_data.RasterXSize)
+        # build coordinate grid and insert into db
+        source = ['chs' for z in z2]
+        grid = list(map(tuple, np.vstack((z2, y2, x2, source)).T))
+        n1 = db.execute(f"SELECT COUNT(*) FROM bathy").fetchall()[0][0]
+        db.executemany("INSERT OR IGNORE INTO bathy VALUES (?,?,?,?)", grid)
+        n2 = db.execute(f"SELECT COUNT(*) FROM bathy").fetchall()[0][0]
+        db.execute("COMMIT")
+        conn.commit()
 
-        return lat, lon
+        print(f"{filepath.split('/')[-1]}\tprocessed and inserted {n2 - n1} rows. "
+              f"{len(z1[~z1.mask]) - len(grid)} null values removed, "
+              f"{len(grid) - (n2-n1)} duplicate rows ignored")
 
-    # open file
-    data_set = gdal.Open(filepath)
-    band = data_set.GetRasterBand(band_id)
-    values = data_set.ReadAsArray()
-    bathy = np.ma.masked_invalid(values)
+    return 
 
-    # select non-masked entries
-    z = np.flip(bathy, axis=0)
-    lat, lon = latlon(filepath)
-    x, y = np.meshgrid(lon, lat)
-    x = x[~z.mask]
-    y = y[~z.mask]
-    z = z[~z.mask]
 
-    # return values, lats, lons without missing values
-    return (np.array(z)[z != band.GetNoDataValue()], 
-            np.array(y)[z != band.GetNoDataValue()],
-            np.array(x)[z != band.GetNoDataValue()])
+def load_chs(south, north, west, east):
+    db.execute(' AND '.join(["SELECT * FROM bathy WHERE lat >= ?",
+                                                       "lat <= ?",
+                                                       "lon >= ?",
+                                                       "lon <= ?"]),
+               tuple(map(str, [south, north, west, east])))
+    
+    bathy, lat, lon, source = np.array(db.fetchall(), dtype=object).T
+    return bathy, lat, lon
 
 
 class Chs():
     """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
 
     def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
-        return fetch_chs(south, north, west, east)
+        return fetch_chs(south, north, west, east, band_id=1)
     def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
-        return load_chs(south, north, west, east, band_id=1)
+        return load_chs(south, north, west, east)
     def __str__(self):
         info = "Non-Navigational 100m (NONNA-100) bathymetry dataset from Canadian Hydrographic Datastore"
         args = "(south=-90, north=90, west=-180, east=180)"
-        return fetch_util.str_def(self, info, args)
+        return str_def(self, info, args)
+
 

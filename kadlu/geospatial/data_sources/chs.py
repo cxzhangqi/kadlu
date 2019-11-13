@@ -19,7 +19,7 @@ from osgeo import gdal
 import warnings
 
 from kadlu.geospatial.data_sources.fetch_util import \
-storage_cfg, database_cfg, str_def
+storage_cfg, database_cfg, chs_table, str_def
 
 
 conn, db = database_cfg()
@@ -42,7 +42,7 @@ def filename(south, west):
 
 
 def fetch_chs(south, north, west, east, band_id=1):
-    """ return a list of filepaths for downloaded content 
+    """ download bathymetric geotiffs, process them, and insert into db
 
     args:
         south, north: float
@@ -50,12 +50,11 @@ def fetch_chs(south, north, west, east, band_id=1):
         west, east: float
             xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
 
-    returns: 
-        filepaths: list containing strings of path to bathy file
+    return: 
+      nothing
 
     """
     # api call: get raster IDs within bounding box
-    # check source exists
     source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
     spatialRel = "esriSpatialRelIntersects"
     spatialReference = "4326"  # WGS-84 spec
@@ -84,15 +83,9 @@ def fetch_chs(south, north, west, east, band_id=1):
             if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
             fpath = f"{storage_cfg()}{fname}"
             filepaths.append(fpath)
-
-            """
-            if os.path.isfile(fpath):
-                print(f"File {fname} exists, skipping retrieval...")
-                continue
-            """
-
             print(f"Downloading {fname} from Canadian Hydrographic Service NONNA-100...")
-            assert(len(img['rasterIds']) == 1)  # we make an assumption that each file has only one associated raster
+            if os.path.isfile(fpath): continue
+            assert(len(img['rasterIds']) == 1)
             url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
             tiff = requests.get(url3)
             assert(tiff.status_code == 200)
@@ -106,7 +99,7 @@ def fetch_chs(south, north, west, east, band_id=1):
         band = tiff_data.GetRasterBand(band_id)
         values = tiff_data.ReadAsArray()
         bathy = np.ma.masked_invalid(values)
-        
+
         # generate latlon arrays
         file_south, file_west = parse_sw_corner(filepath)
         dlat = 0.001
@@ -132,13 +125,13 @@ def fetch_chs(south, north, west, east, band_id=1):
         # build coordinate grid and insert into db
         source = ['chs' for z in z2]
         grid = list(map(tuple, np.vstack((z2, y2, x2, source)).T))
-        n1 = db.execute(f"SELECT COUNT(*) FROM bathy").fetchall()[0][0]
-        db.executemany("INSERT OR IGNORE INTO bathy VALUES (?,?,?,?)", grid)
-        n2 = db.execute(f"SELECT COUNT(*) FROM bathy").fetchall()[0][0]
+        n1 = db.execute(f"SELECT COUNT(*) FROM {chs_table}").fetchall()[0][0]
+        db.executemany(f"INSERT OR IGNORE INTO {chs_table} VALUES (?,?,?,?)", grid)
+        n2 = db.execute(f"SELECT COUNT(*) FROM {chs_table}").fetchall()[0][0]
         db.execute("COMMIT")
         conn.commit()
 
-        print(f"{filepath.split('/')[-1]}\tprocessed and inserted {n2 - n1} rows. "
+        print(f"{filepath.split('/')[-1]} processed and inserted {n2-n1} rows. "
               f"{len(z1[~z1.mask]) - len(grid)} null values removed, "
               f"{len(grid) - (n2-n1)} duplicate rows ignored")
 
@@ -146,10 +139,10 @@ def fetch_chs(south, north, west, east, band_id=1):
 
 
 def load_chs(south, north, west, east):
-    db.execute(' AND '.join(["SELECT * FROM bathy WHERE lat >= ?",
-                                                       "lat <= ?",
-                                                       "lon >= ?",
-                                                       "lon <= ?"]),
+    db.execute(' AND '.join([f"SELECT * FROM {chs_table} WHERE lat >= ?",
+                                                              "lat <= ?",
+                                                              "lon >= ?",
+                                                              "lon <= ?"]),
                tuple(map(str, [south, north, west, east])))
     
     bathy, lat, lon, source = np.array(db.fetchall(), dtype=object).T
@@ -161,8 +154,10 @@ class Chs():
 
     def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return fetch_chs(south, north, west, east, band_id=1)
+
     def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return load_chs(south, north, west, east)
+
     def __str__(self):
         info = "Non-Navigational 100m (NONNA-100) bathymetry dataset from Canadian Hydrographic Datastore"
         args = "(south=-90, north=90, west=-180, east=180)"

@@ -244,22 +244,16 @@ def load_hycom(*args, var, south, north, west, east, start, end, top, bottom, **
 
     # transpose grid and convert epochs to datetime
     data = np.array(db.fetchall(), dtype=object).T
-    try:
-        assert len(data) > 0, "no records found"
-    except AssertionError as e:
-        print("WARNING: " + str(e))
-        return np.array([])
-    data[3] = epoch_2_dt(data[3])
+    assert len(data[0]) > 0, "no records found"
 
     return data[0:5]
 
 
 def fetch_idx(self, var, qry): 
-    """ build indices based on keyword arguments """
+    """ convert user query to slices and handle edge cases """
 
     def _idx(self, var, year, qry): 
-        """ helper function to build indices and call fetch_hycom with 
-        the given query """
+        """ build indices for query and call fetch_hycom """
         needles1 = np.array([dt_2_epoch(qry['start'])[0], qry['top'],
                              qry['south'], qry['west']])
         needles2 = np.array([dt_2_epoch(qry['end'])[0], qry['bottom'],
@@ -281,6 +275,9 @@ def fetch_idx(self, var, qry):
     assert(qry['start'] <= qry['end'])
     assert(qry['top']   <= qry['bottom'])
 
+    # TODO: 
+    # if start.year != end.year:
+    #     call _idx once per year
     assert(qry['start'].year == qry['end'].year)
     year = str(qry['start'].year)
 
@@ -289,8 +286,8 @@ def fetch_idx(self, var, qry):
         qry1['east'] = self.lon[-1]
         qry2['west'] = self.lon[0]
         print('partitioning query boundaries at antimeridian')
-        for qr in [qry1, qry2]:
-            return _idx(self, var, year, qr)
+        for qr in [qry1, qry2]: _idx(self, var, year, qr)
+        return
 
     return _idx(self, var, year, qry)
 

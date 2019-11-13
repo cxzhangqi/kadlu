@@ -12,7 +12,10 @@ from datetime import datetime, timedelta
 
 
 # database tables
-atmospheric = ['salinity', 'water_temp', 'water_u', 'water_v']
+hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
+chs_table    = 'bathy'
+era5_tables  = ['significant_height_of_combined_wind_waves_and_swell', 'mean_wave_direction', 'mean_wave_period']
+wwiii_tables = ['hs', 'dp', 'tp']
 
 
 def storage_cfg():
@@ -47,37 +50,40 @@ def storage_cfg():
 
 
 def database_cfg():
-    """ connect to sqlite database """
-    path = storage_cfg() + "geospatial.db"
+    """ configure and connect to sqlite database """
+    conn = sqlite3.connect(storage_cfg() + "geospatial.db")
+    db = conn.cursor()
 
-    if not os.path.isfile(path):
-        print(f"creating new database {path}")
-        conn = sqlite3.connect(path)
-        db = conn.cursor()
-        for fetchvar in atmospheric:
-            db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
-                        "(  val     INT,    "
-                        "   lat     REAL,   "
-                        "   lon     REAL,   "
-                        "   time    INT,    "
-                        "   depth   INT,    "
-                        "   source  TEXT   )")
+    db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}"
+               "(   val     REAL,   "
+               "    lat     REAL,   "
+               "    lon     REAL,   "
+               "    source  TEXT   )") 
+    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+               f"idx_{chs_table} on {chs_table}(lon, lat)")
 
-            db.execute(f"CREATE UNIQUE INDEX idx_{fetchvar} "
-                       f"   on {fetchvar}(time, lon, lat)")
+    for fetchvar in hycom_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+                    "(  val     INT,    "
+                    "   lat     REAL,   "
+                    "   lon     REAL,   "
+                    "   time    INT,    "
+                    "   depth   INT,    "
+                    "   source  TEXT   )")
+        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
 
-    return sqlite3.connect(path), sqlite3.connect(path).cursor()
+    for fetchvar in era5_tables + wwiii_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+                    "(  val     INT,    "
+                    "   lat     REAL,   "
+                    "   lon     REAL,   "
+                    "   time    INT,    "
+                    "   source  TEXT   )")
+        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
 
-
-"""
-db.execute("DROP TABLE salinity")
-db.execute(f"DROP TRIGGER del_{fetchvar}_null")
-db.execute(f"CREATE TRIGGER del_{fetchvar}_null BEFORE INSERT ON {fetchvar} "
-        "WHEN new.val <= -30000 "
-        "BEGIN "
-        f"    DELETE FROM new.{fetchvar} WHERE new.val <= -30000; "
-        "END ")
-"""
+    return conn, db
 
 
 def dt_2_epoch(dt_arr):

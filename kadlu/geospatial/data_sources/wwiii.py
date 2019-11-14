@@ -68,6 +68,7 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
             list of strings containing complete file paths of fetched data
     """
     regions = ll_2_regionstr(south, north, west, east, wwiii_regions, [str(wwiii_global)])
+    #if str(wwiii_global) not in regions: regions = np.append(regions, str(wwiii_global))
     time = datetime(start.year, start.month, 1)
     filenames = []
 
@@ -99,6 +100,7 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
         nulls = 0
 
         for msg in grib:
+            print(f"processing messages from {msg.validDate}...")
             z, y, x = msg.data()
             val = np.append(val, z[~z.mask].data)
             lat = np.append(lat, y[~z.mask]) 
@@ -106,6 +108,7 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
             t = np.append(t, dt_2_epoch([msg.validDate for each in z[~z.mask].data]))
             nulls += sum(sum(z.mask))
 
+        print("formatting and inserting...")
         src = np.array(['wwiii' for each in val])
         grid = list(map(tuple, np.vstack((val, lat, lon, t, src)).T))
         n1 = db.execute(f"SELECT COUNT(*) FROM {wavevar}").fetchall()[0][0]

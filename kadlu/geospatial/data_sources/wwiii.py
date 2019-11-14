@@ -15,12 +15,18 @@
 import numpy as np
 from datetime import datetime, timedelta
 import os
-from urllib.request import urlretrieve
+import requests
+import shutil
 import pygrib
-from kadlu.geospatial.data_sources import fetch_util
-from kadlu.geospatial.data_sources.fetch_util import storage_cfg, Boundary, ll_2_regionstr
+
+from kadlu.geospatial.data_sources.fetch_util import \
+storage_cfg, database_cfg, Boundary, ll_2_regionstr, dt_2_epoch, epoch_2_dt, str_def
 
 
+conn, db = database_cfg()
+
+wwiii_src = "https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/"
+            
 wwiii_global = Boundary(-90, 90, -180, 180, 'glo_30m')  # global
 wwiii_regions = [
         #region boundaries as defined in WWIII docs:
@@ -69,9 +75,12 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
         for reg in regions:
             fname = fetchname(wavevar, time, reg)
             fetchfile = f"{storage_cfg()}{fname}"
-            print(f"Downloading {fname} from NOAA WaveWatch III...")
-            fetchurl = f"https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/{time.strftime('%Y/%m')}/gribs/{fname}"
-            urlretrieve(fetchurl, fetchfile)
+            print(f"downloading {fname} from NOAA WaveWatch III...")
+            fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/{reg}/{fname}"
+            with requests.get(fetchurl, stream=True) as payload:
+                assert payload.status_code == 200, 'couldn\'t retrieve file'
+                with open(fetchfile, 'wb') as f:
+                    shutil.copyfileobj(payload.raw, f)
             filenames.append(fetchfile)
 
         # on this datasource, data is sorted per month
@@ -79,9 +88,39 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
         time += timedelta(weeks=4)
         while (fetchname(wavevar, time, reg) == fname): time += timedelta(days=1)
 
-    return filenames
+    for fetchfile in filenames:
+        print(f"preparing {fetchfile.split('/')[-1]} for the database...")
+        grib = pygrib.open(fetchfile)
+        assert(grib.messages > 0)
+        val = np.array([])
+        lat = np.array([])
+        lon = np.array([])
+        t   = np.array([])
+        nulls = 0
 
-def load_wwiii(wavevar, south, north, west, east, start, end, plot=False):
+        for msg in grib:
+            z, y, x = msg.data()
+            val = np.append(val, z[~z.mask].data)
+            lat = np.append(lat, y[~z.mask]) 
+            lon = np.append(lon, x[~z.mask]-180)
+            t = np.append(t, dt_2_epoch([msg.validDate for each in z[~z.mask].data]))
+            nulls += sum(sum(z.mask))
+
+        src = np.array(['wwiii' for each in val])
+        grid = list(map(tuple, np.vstack((val, lat, lon, t, src)).T))
+        n1 = db.execute(f"SELECT COUNT(*) FROM {wavevar}").fetchall()[0][0]
+        db.executemany(f"INSERT OR IGNORE INTO {wavevar} VALUES (?,?,?,?,?)", grid)
+        n2 = db.execute(f"SELECT COUNT(*) FROM {wavevar}").fetchall()[0][0]
+        db.execute("COMMIT")
+        conn.commit()
+
+        print(f"processed and inserted {n2-n1} rows. "
+              f"{nulls} null values removed, "
+              f"{len(grid) - (n2-n1)} duplicate rows ignored")
+
+    return 
+
+def load_wwiii(wavevar, south, north, west, east, start, end):
     """ return downloaded wwiii data for specified wavevar according to given time, lat, lon boundaries
 
     args:
@@ -97,51 +136,23 @@ def load_wwiii(wavevar, south, north, west, east, start, end, plot=False):
             the start of the desired time range
         end: datetime
             the end of the desired time range
-        plot: boolean
-            if true a plot will be output (experimental feature)
 
     return:
-        filenames: list
-            list of strings containing complete file paths of fetched data
+        val, lat, lon, time as np arrays
+        (time is datetime)
     """
-    val = np.array([])
-    lat = np.array([])
-    lon = np.array([])
-    timestamps = np.array([])
-    regions = ll_2_regionstr(south, north, west, east, wwiii_regions, [str(wwiii_global)])
-    time = datetime(start.year, start.month, 1)
 
-    while time <= end:
-        for reg in regions:
-            fname = fetchname(wavevar, time, reg)
-            fetchfile = f"{storage_cfg()}{fname}"
-            if not os.path.isfile(fetchfile): fetch_wwiii(wavevar, south, north, west, east, start, end)
+    db.execute(' AND '.join([f"SELECT * FROM {wavevar} WHERE lat >= ?",
+                                                            "lat <= ?",
+                                                            "lon >= ?",
+                                                            "lon <= ?",
+                                                           "time >= ?",
+                                                           "time <= ?"]),
+               tuple(map(str, [south, north, west, east, 
+                               dt_2_epoch(start), dt_2_epoch(end)])))
+    val, lat, lon, time, source = np.array(db.fetchall(), dtype=object).T
 
-            grib = pygrib.open(fetchfile)
-            for msg in grib:
-                msgtime = msg.validDate
-                if msgtime < start : continue
-                if msgtime > end : break
-                z, y, x = msg.data()
-                x -= 360  # normalize longitude
-                x[x < -180] += 360
-
-                for slx in range(z.shape[0]):
-                    latix = np.array([l >= south and l <= north for l in y[slx]])
-                    lonix = np.array([l >= west and l <= east for l in x[slx]])
-                    ix = latix & lonix
-
-                    val = np.append(val, z[slx][ix])
-                    lat = np.append(lat, y[slx][ix])
-                    lon = np.append(lon, x[slx][ix])
-                    timestamps = np.append(timestamps, [msgtime for x in range(sum(ix))])
-
-        # on this datasource, data is sorted per month
-        # some months have more days than exactly 4 weeks
-        time += timedelta(weeks=4)
-        while (fetchname(wavevar, time, reg) == fname): time += timedelta(days=1)
-
-    return val, lat, lon, timestamps
+    return val, lat, lon, epoch_2_dt(time)
 
 
 class Wwiii():
@@ -149,20 +160,24 @@ class Wwiii():
 
     def fetch_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_wwiii('hs', south, north, west, east, start, end)
+    
     def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_wwiii('dp', south, north, west, east, start, end)
+    
     def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return fetch_wwiii('tp', south, north, west, east, start, end)
 
     def load_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return load_wwiii('hs', south, north, west, east, start, end)
+    
     def load_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return load_wwiii('dp', south, north, west, east, start, end)
+    
     def load_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
         return load_wwiii('tp', south, north, west, east, start, end)
 
     def __str__(self):
         info = '\n'.join([ "Wavewatch info goes here" ])
         args = "(south=-90, north=90, west=-180, east=180, start=datetime(), end=datetime())"
-        return fetch_util.str_def(self, info, args)
+        return str_def(self, info, args)
 

@@ -51,6 +51,10 @@ def storage_cfg():
 
 def database_cfg():
     """ configure and connect to sqlite database """
+    """
+        time is stored as an INT in the database, where each integer
+        is epoch hours since 2000-01-01 00:00
+    """
     conn = sqlite3.connect(storage_cfg() + "geospatial.db")
     db = conn.cursor()
 

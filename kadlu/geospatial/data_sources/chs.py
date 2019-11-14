@@ -83,7 +83,7 @@ def fetch_chs(south, north, west, east, band_id=1):
             if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
             fpath = f"{storage_cfg()}{fname}"
             filepaths.append(fpath)
-            print(f"Downloading {fname} from Canadian Hydrographic Service NONNA-100...")
+            print(f"downloading {fname} from Canadian Hydrographic Service NONNA-100...")
             if os.path.isfile(fpath): continue
             assert(len(img['rasterIds']) == 1)
             url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"

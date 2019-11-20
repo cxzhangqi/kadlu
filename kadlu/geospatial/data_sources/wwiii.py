@@ -24,9 +24,7 @@ storage_cfg, database_cfg, Boundary, ll_2_regionstr, dt_2_epoch, epoch_2_dt, str
 
 
 conn, db = database_cfg()
-
 wwiii_src = "https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/"
-            
 wwiii_global = Boundary(-90, 90, -180, 180, 'glo_30m')  # global
 wwiii_regions = [
         #region boundaries as defined in WWIII docs:
@@ -49,23 +47,22 @@ def fetchname(wavevar, time, region):
 def fetch_wwiii(wavevar, south, north, west, east, start, end):
     """ download wwiii data and return associated filepaths
 
-    args:
-        wavevar: string
-            the variable short name of desired wave parameter according to WWIII docs
-            the complete list of variable short names can be found here (under 'model output')
-            https://polar.ncep.noaa.gov/waves/implementations.php
-        south, north: float
-            ymin, ymax coordinate boundaries (latitude). range: -90, 90
-        west, east: float
-            xmin, xmax coordinate boundaries (longitude). range: -180, 180
-        start: datetime
-            the start of the desired time range
-        end: datetime
-            the end of the desired time range
+        args:
+            wavevar: string
+                the variable short name of desired wave parameter according to WWIII docs
+                the complete list of variable short names can be found here (under 'model output')
+                https://polar.ncep.noaa.gov/waves/implementations.php
+            south, north: float
+                ymin, ymax coordinate boundaries (latitude). range: -90, 90
+            west, east: float
+                xmin, xmax coordinate boundaries (longitude). range: -180, 180
+            start: datetime
+                the start of the desired time range
+            end: datetime
+                the end of the desired time range
 
-    return:
-        filenames: list
-            list of strings containing complete file paths of fetched data
+        return:
+            nothing. some status messages are printed to stdout
     """
     regions = ll_2_regionstr(south, north, west, east, wwiii_regions, [str(wwiii_global)])
     #if str(wwiii_global) not in regions: regions = np.append(regions, str(wwiii_global))
@@ -92,7 +89,7 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
     for fetchfile in filenames:
         print(f"preparing {fetchfile.split('/')[-1]} for the database...")
         grib = pygrib.open(fetchfile)
-        assert(grib.messages > 0)
+        assert grib.messages > 0, f'problem opening {fetchfile}'
         val = np.array([])
         lat = np.array([])
         lon = np.array([])
@@ -100,7 +97,7 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
         nulls = 0
 
         for msg in grib:
-            print(f"processing messages from {msg.validDate}...")
+            print(f"\tprocessing message {msg.messagenumber}/{grib.messages} from {msg.validDate}...", end='\r')
             z, y, x = msg.data()
             val = np.append(val, z[~z.mask].data)
             lat = np.append(lat, y[~z.mask]) 

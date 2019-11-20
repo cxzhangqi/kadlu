@@ -64,33 +64,36 @@ def fetch_chs(south, north, west, east, band_id=1):
     assert(req1.status_code == 200)
     assert("error" not in json.loads(req1.text).keys())
 
-    # break up the retrieved objectIds into chunks of size 20
-    filepaths = []
+    # api call: query for resource locations of rasters
+    imgs = []
     rasterIds = json.loads(req1.text)['objectIds']
     assert(len(rasterIds) > 0)
-    for chunk in range(0, int(len(rasterIds) / 20) + 1):
-        # api call: get resource location of rasters for each raster ID 
+    for chunk in range(0, int(len(rasterIds) / 20) + 1):  # max request size is 20 at a time
         rasterIdsCSV = ','.join([f"{x}" for x in rasterIds[chunk * 20:(chunk+1) * 20]])
         url2 = f"{source}ImageServer/download?geometry={geometry}&geometryType=esriGeometryPolygon&format=TIFF&f=json&rasterIds={rasterIdsCSV}"
         req2 = requests.get(url2)
         assert(req2.status_code == 200)
         jsondata = json.loads(req2.text)
         assert("error" not in jsondata.keys())
+        imgs += [img for img in jsondata['rasterFiles'] if 'CA2' in img['id']]
 
-        # api call: for each resource location, download the rasters for each tiff file
-        for img in jsondata['rasterFiles']:
-            fname = img['id'].split('\\')[-1]
-            if 'CA2_' not in fname: continue  # more research required to find out why the Ov_i files exist
-            fpath = f"{storage_cfg()}{fname}"
-            filepaths.append(fpath)
-            print(f"downloading {fname} from Canadian Hydrographic Service NONNA-100...")
-            if os.path.isfile(fpath): continue
-            assert(len(img['rasterIds']) == 1)
-            url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
-            tiff = requests.get(url3)
-            assert(tiff.status_code == 200)
-            with open(fpath, "wb") as f: f.write(tiff.content)
+    # api call: for each tiff image, download the associated rasters
+    filepaths = []
+    imgnum = 1
+    for img in imgs:
+        fname = img['id'].split('\\')[-1]
+        fpath = f"{storage_cfg()}{fname}"
+        print(f"{fname}: downloading {imgnum}/{len(imgs)} from CHS NONNA-100...", end="\r")
+        #if os.path.isfile(fpath): continue
+        filepaths.append(fpath)
+        assert(len(img['rasterIds']) == 1)
+        url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
+        tiff = requests.get(url3)
+        assert(tiff.status_code == 200)
+        with open(fpath, "wb") as f: f.write(tiff.content)
+        imgnum += 1
         
+    print()
     assert(len(filepaths) > 0)
 
     # read downloaded files and process them for DB insertion

@@ -35,10 +35,13 @@ def parse_sw_corner(path):
     return south, west
 
 
-def filename(south, west):
-    """ generate a filename for given southwest corner coordinates """
-    fname = "CA2_{0:04d}N{1:05d}W.tif".format(int(south * 100), -int(west * 100))
-    return fname
+# matt_s 2019-12
+# removed this function since filenames are now pulled directly from source
+
+#def filename(south, west):
+#    """ generate a filename for given southwest corner coordinates """
+#    fname = "CA2_{0:04d}N{1:05d}W.tif".format(int(south * 100), -int(west * 100))
+#    return fname
 
 
 def fetch_chs(south, north, west, east, band_id=1):
@@ -80,6 +83,7 @@ def fetch_chs(south, north, west, east, band_id=1):
     # api call: for each tiff image, download the associated rasters
     filepaths = []
     imgnum = 1
+    print()
     for img in imgs:
         fname = img['id'].split('\\')[-1]
         fpath = f"{storage_cfg()}{fname}"
@@ -148,7 +152,9 @@ def load_chs(south, north, west, east):
                                                               "lon <= ?"]),
                tuple(map(str, [south, north, west, east])))
     
-    bathy, lat, lon, source = np.array(db.fetchall(), dtype=object).T
+    slices = np.array(db.fetchall(), dtype=object).T
+    assert len(slices) == 4, "no data found for query range"
+    bathy, lat, lon, source = slices
     return bathy, lat, lon
 
 

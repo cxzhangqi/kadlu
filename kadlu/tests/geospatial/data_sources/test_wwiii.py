@@ -5,19 +5,15 @@ from kadlu.geospatial.data_sources import wwiii
 from kadlu.geospatial.data_sources.wwiii import Wwiii, Boundary, wwiii_regions, wwiii_global
 
 
-test_fetch = True
-
 start = datetime(2017, 2, 3, 0, 0, 0, 0)
 end = datetime(2017, 2, 3, 0, 0, 0, 0)
 
 # gulf st lawrence
-south =  46
-north =  52
-west  = -70
-east  = -56
+south, west = 47.1, -70
+north, east = 52, -56
+
 
 def test_wwiii_ll2regionstr():
-    
     # gulf st lawrence
     south =  46
     north =  52
@@ -42,22 +38,21 @@ def test_wwiii_ll2regionstr():
     globe = wwiii.ll_2_regionstr(-90, 90, -180, 180, wwiii_regions, wwiii_global)
     assert(len(globe) == 5)
 
-
 def test_wwiii_fetch_windwaveheight():
-    if not test_fetch: return
     filenames = Wwiii().fetch_windwaveheight(south, north, west, east, start, end)
-
 
 def test_wwiii_load_windwaveheight():
     wave, lat, lon, time = Wwiii().load_windwaveheight(south=43, west=-60, north=44, east=-59, start=start, end=end)
    
+# matt_s 2019-12
+# fetching and preprocessing is really slow due to wwiii using monthly data files
+# only fetching windwaveheight for now to speed up the unit tests
 
-def test_wwiii_fetch_waveperiod():
-    if not test_fetch: return
-    filenames = Wwiii().fetch_waveperiod(south, north, west, east, start, end)
+#def test_wwiii_fetch_waveperiod():
+#    if not test_fetch: return
+#    filenames = Wwiii().fetch_waveperiod(south, north, west, east, start, end)
 
-
-def test_wwiii_load_waveperiod():
-    wave, lat, lon, time = Wwiii().load_waveperiod(south=43, west=-60, north=44, east=-59, start=start, end=end)
+#def test_wwiii_load_waveperiod():
+#    wave, lat, lon, time = Wwiii().load_waveperiod(south=43, west=-60, north=44, east=-59, start=start, end=end)
    
 

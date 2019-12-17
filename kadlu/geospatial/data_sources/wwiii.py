@@ -103,7 +103,8 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
         null = 0
         n1 = db.execute(f"SELECT COUNT(*) FROM {wavevar}").fetchall()[0][0]
         for msg in grib:
-            print(f"\tprocessing message {msg.messagenumber}/{grib.messages} from {msg.validDate}", end='\r')
+            print(f"\tprocessing msg {msg.messagenumber} of {grib.messages}",
+                  f"monthly messages for {msg.validDate}", end='\r')
             if msg.validDate < start: continue
             if msg.validDate > end: break
             z, y, x = msg.data()

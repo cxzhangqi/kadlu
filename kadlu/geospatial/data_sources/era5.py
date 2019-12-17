@@ -88,9 +88,9 @@ def fetch_era5(wavevar, start, end):
         db.execute("COMMIT")
         conn.commit()
 
-        print(f"{fname.split('/')[-1]} processed and inserted {n2-n1} rows. "
+        print(f"processed and inserted {n2-n1} rows. "
               f"{(z.shape[0]*z.shape[1])-len(z[~z.mask])} null values removed, "
-              f"{len(grid) - (n2-n1)} duplicate rows ignored")
+              f"{len(grid) - (n2-n1)} duplicate rows ignored\n")
 
         time += timedelta(hours=1)
 

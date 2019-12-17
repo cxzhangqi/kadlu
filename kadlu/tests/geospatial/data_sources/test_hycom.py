@@ -36,22 +36,6 @@ end = datetime(2000, 1, 12)
 def test_fetch_salinity():
     if not test_fetch: return
     Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
-    """
-
-    fetch_water_u(Hycom(), south=south, north=north, west=west, east=east, top=top, bottom=bottom, start=start, end=end)
-
-    def fetch_salinity(self, **kwargs):
-        return kwargs
-    fetch_idx(Hycom(), 'salinity', south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
-
-    fetch_salinity()
-
-    fetch_salinity(slices=slices, fetchvar=fetchvar, lat=lat, lon=lon, epoch=epoch, depth=depth, top=top, bottom=bottom, start=start, end=end)
-
-
-
-    qry = {'south': 46.0, 'north': 48.0, 'west': 175.0, 'east': 179.9200439453125, 'top': 0, 'bottom': 1, 'start': datetime(2000, 1, 2, 0, 0), 'end': datetime(2000, 1, 2, 4, 0)}
-    """
 
 def test_load_salinity():
     val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end)

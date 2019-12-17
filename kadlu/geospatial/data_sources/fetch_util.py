@@ -58,6 +58,7 @@ def database_cfg():
     conn = sqlite3.connect(storage_cfg() + "geospatial.db")
     db = conn.cursor()
 
+    # bathymetry table (CHS)
     db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}"
                "(   val     REAL,   "
                "    lat     REAL,   "
@@ -66,6 +67,7 @@ def database_cfg():
     db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                f"idx_{chs_table} on {chs_table}(lon, lat)")
 
+    # hycom environmental data tables
     for fetchvar in hycom_tables:
         db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
                     "(  val     INT,    "
@@ -77,6 +79,7 @@ def database_cfg():
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                    f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
 
+    # wave data tables
     for fetchvar in era5_tables + wwiii_tables:
         db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
                     "(  val     INT,    "

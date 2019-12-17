@@ -278,10 +278,11 @@ def fetch_idx(self, var, qry):
     # TODO: 
     # if start.year != end.year:
     #     call _idx once per year
-    assert(qry['start'].year == qry['end'].year)
+    assert qry['start'].year == qry['end'].year, \
+            "hycom queries spanning multiple years are not supported yet"
     year = str(qry['start'].year)
 
-    if west >= east:
+    if west > east:
         qry1, qry2 = [qry.copy(), qry.copy()]
         qry1['east'] = self.lon[-1]
         qry2['west'] = self.lon[0]

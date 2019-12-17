@@ -23,7 +23,6 @@ north, east = 46.12, -62.92
 def test_fetch_bathy():
     source.fetch_bathymetry(south=south, north=north, west=west, east=east)
 
-
 def test_load_bathy():
     bathy, lat, lon = source.load_bathymetry(south=south, north=north, west=west, east=east)
     assert (len(bathy) == len(lat) == len(lon))

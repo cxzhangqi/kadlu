@@ -104,6 +104,8 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
         n1 = db.execute(f"SELECT COUNT(*) FROM {wavevar}").fetchall()[0][0]
         for msg in grib:
             print(f"\tprocessing message {msg.messagenumber}/{grib.messages} from {msg.validDate}", end='\r')
+            if msg.validDate < start: continue
+            if msg.validDate > end: break
             z, y, x = msg.data()
             src = np.array(['wwiii' for each in z[~z.mask].data])
             grid = list(map(tuple, 

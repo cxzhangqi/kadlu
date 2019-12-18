@@ -98,7 +98,7 @@ def load_depth():
 
 
 def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
-    """ download data from hycom , prepare it, and load into db
+    """ download data from hycom, prepare it, and load into db
 
         args:
             year: string

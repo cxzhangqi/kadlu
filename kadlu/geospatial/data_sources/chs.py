@@ -153,8 +153,12 @@ def load_chs(south, north, west, east):
                tuple(map(str, [south, north, west, east])))
     
     slices = np.array(db.fetchall(), dtype=object).T
-    assert len(slices) == 4, "no data found for query range"
-    bathy, lat, lon, source = slices
+    #assert len(slices) == 4, "no data found for query range"
+    if len(slices) != 4:
+       warnings.warn("no data found for query range, returning empty arrays")
+       bathy, lat, lon = np.array([]), np.array([]), np.array([])
+    else:
+       bathy, lat, lon, source = slices
     return bathy, lat, lon
 
 

@@ -139,16 +139,15 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
     assert n > 0, f"{n} records available within query boundaries {slices}"
     print(f"downloading {n} {var} values from hycom...")
     t1 = datetime.now()
-    src = f"{hycom_src}/{year}.ascii?"
-    payload_netcdf= requests.get(f"{src}{slices_str(var, slices)}")
-    assert payload_netcdf.status_code == 200, f"{payload_netcdf.status_code}\n"\
-            f"{src}{slices_str(var, slices)} couldn't access hycom server"
+    url = f"{hycom_src}/{year}.ascii?{slices_str(var, slices)}"
+    with requests.get(url, stream=True) as payload_netcdf:
+        assert payload_netcdf.status_code == 200, "couldn't access hycom server"
+        meta, data = payload_netcdf.text.split\
+        ("---------------------------------------------\n")
 
     t2 = datetime.now()
 
     # parse response into numpy array
-    meta, data = payload_netcdf.text.split\
-    ("---------------------------------------------\n")
     arrs = data.split("\n\n")[:-1]
     shape_str, payload = arrs[0].split("\n", 1)
     shape = tuple([int(x) for x in shape_str.split("[", 1)[1][:-1].split("][")])

@@ -12,36 +12,36 @@ west  = -64.4
 east  = -63.8
 
 start = datetime.now()
-end = datetime.now() + timedelta(hours=12)
+end = datetime.now() + timedelta(hours=6)
 
 
 def test_rdwps_fetch_windwaveswellheight():
-    filenames = Rdwps().fetch_windwaveswellheight(south=-90, north=90, west=-180, east=180, start=start, end=end)
+    filenames = Rdwps().fetch_windwaveswellheight(south=south, north=north, west=west, east=east, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_windwaveheight():
-    filenames = Rdwps().fetch_windwaveheight(south=-90, north=90, west=-180, east=180, start=start, end=end)
+    filenames = Rdwps().fetch_windwaveheight(south=south, north=north, west=west, east=east, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_wavedirection():
-    filenames = Rdwps().fetch_wavedirection(south=-90, north=90, west=-180, east=180, start=start, end=end)
+    filenames = Rdwps().fetch_wavedirection(south=south, north=north, west=west, east=east, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_waveperiod():
-    filenames = Rdwps().fetch_waveperiod(south=-90, north=90, west=-180, east=180, start=start, end=end)
+    filenames = Rdwps().fetch_waveperiod(south=south, north=north, west=west, east=east, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_wind_u():
-    filenames = Rdwps().fetch_wind_u(south=-90, north=90, west=-180, east=180, start=start, end=end)
+    filenames = Rdwps().fetch_wind_u(south=south, north=north, west=west, east=east, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 
 def test_rdwps_fetch_wind_v():
-    filenames = Rdwps().fetch_wind_v(south=-90, north=90, west=-180, east=180, start=start, end=end)
+    filenames = Rdwps().fetch_wind_v(south=south, north=north, west=west, east=east, start=start, end=end)
     for fname in filenames:
         assert(isfile(fname))
 

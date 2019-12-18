@@ -6,28 +6,19 @@ from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 import os
 from os.path import isfile
 
-# run pytest with '--capture=no' arg to print class function info 
-print(Hycom())
-
-# gulf st lawrence test area:
-south =  46
-north =  52
-west  = -70
-east  = -56
-start = datetime(2000, 1, 2)
-end   = datetime(2000, 1, 2, 4)
-
 # disable automated testing of fetching to avoid slamming the API with
 # requests in the automated development pipeline
 test_fetch = True
 
-# smaller test area for faster tests
+# gulf st lawrence - small test area
 south =  46 
-north =  48
+north =  47
 west  = -60
-east  = -58
+east  = -59
 top   =   0
 bottom =  0
+start = datetime(2000, 1, 2)
+end   = datetime(2000, 1, 2, 1)
 
 # TODO: add start to fcn calls
 start = datetime(2000, 1, 1)
@@ -81,7 +72,7 @@ def test_load_water_v():
     example test input:
 >>>     
         year = '2000'
-        fetchvar = 'salinity'
+        var = 'salinity'
         slices = [
             (0, 2),         # time: start, end 
             (0, 3),         # depth: top, bottom

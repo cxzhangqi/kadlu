@@ -12,7 +12,10 @@ from datetime import datetime, timedelta
 
 
 # database tables
-atmospheric = ['salinity', 'water_temp', 'water_u', 'water_v']
+hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
+chs_table    = 'bathy'
+era5_tables  = ['significant_height_of_combined_wind_waves_and_swell', 'mean_wave_direction', 'mean_wave_period']
+wwiii_tables = ['hs', 'dp', 'tp']
 
 
 def storage_cfg():
@@ -47,31 +50,55 @@ def storage_cfg():
 
 
 def database_cfg():
-    """ connect to sqlite database """
-    path = storage_cfg() + "geospatial.db"
+    """ configure and connect to sqlite database """
+    """
+        time is stored as an INT in the database, where each integer
+        is epoch hours since 2000-01-01 00:00
+    """
+    conn = sqlite3.connect(storage_cfg() + "geospatial.db")
+    db = conn.cursor()
 
-    if not os.path.isfile(path):
-        print(f"creating new database {path}")
-        conn = sqlite3.connect(path)
-        db = conn.cursor()
-        for table in atmospheric:
-            db.execute(f"CREATE TABLE IF NOT EXISTS {table}(val INT, lat REAL, lon REAL, time INT, depth INT, source TEXT)")
-            db.execute(f"CREATE UNIQUE INDEX idx_{table} on {table}(lat, lon, time, depth, source)")
+    # bathymetry table (CHS)
+    db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}"
+               "(   val     REAL,   "
+               "    lat     REAL,   "
+               "    lon     REAL,   "
+               "    source  TEXT   )") 
+    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+               f"idx_{chs_table} on {chs_table}(lon, lat)")
 
-    return sqlite3.connect(path), sqlite3.connect(path).cursor()
+    # hycom environmental data tables
+    for fetchvar in hycom_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+                    "(  val     INT,    "
+                    "   lat     REAL,   "
+                    "   lon     REAL,   "
+                    "   time    INT,    "
+                    "   depth   INT,    "
+                    "   source  TEXT   )")
+        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
 
+    # wave data tables
+    for fetchvar in era5_tables + wwiii_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+                    "(  val     INT,    "
+                    "   lat     REAL,   "
+                    "   lon     REAL,   "
+                    "   time    INT,    "
+                    "   source  TEXT   )")
+        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
 
-"""
-db.execute("DROP TABLE salinity")
-"""
+    return conn, db
 
 
 def dt_2_epoch(dt_arr):
     """ convert datetimes to epoch hours """
     t0 = datetime(2000, 1, 1, 0, 0, 0)
     delta = lambda dt : (dt - t0).total_seconds()/60/60
-    if type(dt_arr) == datetime : return delta(dt_arr)
-    return list(map(delta, dt_arr))
+    dt_arr = np.array([dt_arr]) if np.array([dt_arr]).shape == (1,) else dt_arr
+    return list(map(int, map(delta, dt_arr)))
 
 
 def epoch_2_dt(ep_arr):

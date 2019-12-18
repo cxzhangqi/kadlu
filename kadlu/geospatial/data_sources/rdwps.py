@@ -196,33 +196,45 @@ class Rdwps():
 
     def fetch_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
         return fetch_rdwps('HTSGW', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+
     def fetch_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('WVHGT', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('WVDIR', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('WVPER', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_wind_u(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('UGRD', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_wind_v(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('VGRD', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
-    def fetch_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
-        return fetch_rdwps('ICEC', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
+#    def fetch_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
+#        return fetch_rdwps('ICEC', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
 
     def load_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('HTSGW', start, end, south, north, west, east, plot=plot)
+    
     def load_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('WVHGT', start, end, south, north, west, east, plot=plot)
+    
     def load_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('WVDIR', start, end, south, north, west, east, plot=plot)
+    
     def load_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('WVPER', start, end, south, north, west, east, plot=plot)
+    
     def load_wind_u(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('UGRD', start, end, south, north, west, east, plot=plot)
+    
     def load_wind_v(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('VGRD', start, end, south, north, west, east, plot=plot)
-    def load_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
-        return load_rdwps('ICEC', start, end, south, north, west, east, plot=plot)
+    
+#    def load_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+#        return load_rdwps('ICEC', start, end, south, north, west, east, plot=plot)
 
     def __str__(self):
         info = '\n'.join([

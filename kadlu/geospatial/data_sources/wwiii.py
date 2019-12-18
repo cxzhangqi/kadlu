@@ -18,6 +18,7 @@ import os
 import requests
 import shutil
 import pygrib
+import warnings
 
 from kadlu.geospatial.data_sources.fetch_util import \
 storage_cfg, database_cfg, Boundary, ll_2_regionstr, dt_2_epoch, epoch_2_dt, str_def
@@ -76,13 +77,16 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
     time = datetime(start.year, start.month, 1)
     filenames = []
 
+    warnings.warn("resolution selection not implemented yet. defaulting to 0.5deg resolution")
+    regions = ['glo_30m']
+
     while time <= end:
         for reg in regions:
             fname = fetchname(wavevar, time, reg)
             fetchfile = f"{storage_cfg()}{fname}"
             print(f"\ndownloading {fname} from NOAA WaveWatch III...", end="\r")
-            #fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/{reg}/{fname}"
-            fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/gribs/{fname}"
+            fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/{reg}/{fname}"
+            #fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/gribs/{fname}"
             with requests.get(fetchurl, stream=True) as payload:
                 assert payload.status_code == 200, 'couldn\'t retrieve file'
                 with open(fetchfile, 'wb') as f:

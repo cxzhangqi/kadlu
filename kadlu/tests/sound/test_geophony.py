@@ -56,9 +56,9 @@ def test_wind_source_level_per_area():
     o = Ocean(wave=5.14)
     tl = TLCalculator(ocean=o, seafloor=s)
     geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
-    SL_f10 = geo._wind_source_level_per_area(freq=10, x=0, y=0, time=None)
-    SL_f20 = geo._wind_source_level_per_area(freq=10, x=0, y=0, time=None)
-    SL_arr = geo._wind_source_level_per_area(freq=10, x=[0,1,2], y=[0,1,2], time=None)
+    SL_f10 = geo._wind_source_level_per_area(freq=10, x=0, y=0, start=None, end=None)
+    SL_f20 = geo._wind_source_level_per_area(freq=10, x=0, y=0, start=None, end=None)
+    SL_arr = geo._wind_source_level_per_area(freq=10, x=[0,1,2], y=[0,1,2], start=None, end=None)
     assert SL_f10 == SL_f20
     assert SL_f10 == 39.0
     assert len(SL_arr) == 3
@@ -69,6 +69,6 @@ def test_source_level(grid):
     o = Ocean(wave=5.14)
     tl = TLCalculator(ocean=o, seafloor=s)
     geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
-    SL = geo._source_level(freq=10, grid=grid, time=None, method='wind')
+    SL = geo._source_level(freq=10, grid=grid, start=None, end=None, method='wind')
     assert SL.shape[0] == len(grid.q)
     assert SL.shape[1] == len(grid.r) - 1

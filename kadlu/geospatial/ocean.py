@@ -13,8 +13,12 @@
 import numpy as np
 from kadlu.utils import LatLon
 from kadlu.geospatial.data_sources.chs import Chs
+from kadlu.geospatial.data_sources.hycom import Hycom
+from kadlu.geospatial.data_sources.era5 import Era5
+from kadlu.geospatial.data_sources.wwiii import Wwiii
 import kadlu.geospatial.data_sources.gebco as gebco 
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D
+from datetime import datetime
 
 
 class Ocean():
@@ -66,7 +70,8 @@ class Ocean():
             self.load_wave()
 
 
-    def load(self, south=-90, north=90, west=-180, east=180, time=None):
+    def load(self, south=-90, north=90, west=-180, east=180, 
+            start=datetime(2019, 1, 1), end=datetime(2019, 1, 1), top=0, bottom=0):
 
         # save south-west and north-east corners as class attributes
         self.SW = LatLon(south, west)
@@ -79,9 +84,9 @@ class Ocean():
 
         # load data and initialize interpolation tables
         self.load_bathy(south, north, west, east)
-        self.load_temp(south, north, west, east, time)
-        self.load_salinity(south, north, west, east, time)
-        self.load_wave(south, north, west, east, time)
+        self.load_temp(south, north, west, east, start, end, top, bottom)
+        self.load_salinity(south, north, west, east, start, end, top, bottom)
+        self.load_wave(south, north, west, east, start, end)
 
 
     def set_origin(self, lat_ref, lon_ref):
@@ -112,8 +117,6 @@ class Ocean():
         elif isinstance(bathy, str):
     
             if bathy == "CHS":
-
-                # load data
                 self.bathy_data = Chs().load_bathymetry(south, north, west, east)
 
                 # lat coordinates
@@ -152,7 +155,7 @@ class Ocean():
             self.bathy_interp = Uniform2D(bathy)
 
 
-    def load_temp(self, south=None, north=None, west=None, east=None, time=None):
+    def load_temp(self, south=None, north=None, west=None, east=None, start=None, end=None, top=None, bottom=None):
 
         temp = self.data_source['temp']
 
@@ -161,9 +164,21 @@ class Ocean():
             self.temp_interp = None
 
         elif isinstance(temp, str):
-    
             if temp == "HYCOM":
-                print('Error: Data loading from {0} not yet implemented.'.format(temp))
+                self.temp_data = Hycom().load_temp(south, north, west, east, start, end, top, bottom)
+
+                # lat coordinates
+                num_lats = int(np.ceil((north - south) / 0.001)) + 1
+                lats = np.linspace(south, north, num=num_lats)
+
+                # lon coordinates
+                num_lons = int(np.ceil((east - west) / 0.001)) + 1
+                lons = np.linspace(west, east, num=num_lons)
+
+                # interpolate
+                self.temp_interp = Interpolator2D(values=self.temp_data[0],\
+                        lats=self.temp_data[1], lons=self.temp_data[2], origin=self.origin,\
+                        method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
             else: 
                 print('Error: Unknown temperature source {0}.'.format(temp))
@@ -180,8 +195,7 @@ class Ocean():
             self.temp_interp = Uniform3D(temp)
 
 
-    def load_salinity(self, south=None, north=None, west=None, east=None, time=None):
-
+    def load_salinity(self, south=None, north=None, west=None, east=None, start=None, end=None, top=None, bottom=None):
         salinity = self.data_source['salinity']
 
         if salinity is None:
@@ -189,9 +203,21 @@ class Ocean():
             self.salinity_interp = None
 
         elif isinstance(salinity, str):
-    
             if salinity == "HYCOM":
-                print('Error: Data loading from {0} not yet implemented.'.format(salinity))
+                self.salinity_data = Hycom().load_salinity(south, north, west, east, start, end, top, bottom)
+
+                # lat coordinates
+                num_lats = int(np.ceil((north - south) / 0.001)) + 1
+                lats = np.linspace(south, north, num=num_lats)
+
+                # lon coordinates
+                num_lons = int(np.ceil((east - west) / 0.001)) + 1
+                lons = np.linspace(west, east, num=num_lons)
+
+                # interpolate
+                self.salinity_interp = Interpolator2D(values=self.salinity_data[0],\
+                        lats=self.salinity_data[1], lons=self.salinity_data[2], origin=self.origin,\
+                        method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
             else: 
                 print('Error: Unknown salinity source {0}.'.format(salinity))
@@ -208,7 +234,7 @@ class Ocean():
             self.salinity_interp = Uniform3D(salinity)
 
 
-    def load_wave(self, south=None, north=None, west=None, east=None, time=None):
+    def load_wave(self, south=None, north=None, west=None, east=None, start=None, end=None):
 
         wave = self.data_source['wave']
 
@@ -219,13 +245,39 @@ class Ocean():
         elif isinstance(wave, str):
     
             if wave == "ERA5":
-                print('Error: Data loading from {0} not yet implemented.'.format(wave))
+                self.wave_data = Era5().load_windwaveswellheight(south, north, west, east, start, end)
+
+                # lat coordinates
+                num_lats = int(np.ceil((north - south) / 0.001)) + 1
+                lats = np.linspace(south, north, num=num_lats)
+
+                # lon coordinates
+                num_lons = int(np.ceil((east - west) / 0.001)) + 1
+                lons = np.linspace(west, east, num=num_lons)
+
+                # interpolate
+                self.wave_interp = Interpolator2D(values=self.wave_data[0],\
+                        lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin,\
+                        method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
             elif wave == "RDWPS":
                 print('Error: Data loading from {0} not yet implemented.'.format(wave))
 
             elif wave == "WWIII":
-                print('Error: Data loading from {0} not yet implemented.'.format(wave))
+                self.wave_data = Wwiii().load_windwaveheight(south, north, west, east, start, end)
+
+                # lat coordinates
+                num_lats = int(np.ceil((north - south) / 0.001)) + 1
+                lats = np.linspace(south, north, num=num_lats)
+
+                # lon coordinates
+                num_lons = int(np.ceil((east - west) / 0.001)) + 1
+                lons = np.linspace(west, east, num=num_lons)
+
+                # interpolate
+                self.wave_interp = Interpolator2D(values=self.wave_data[0],\
+                        lats=self.wave_data[1], lons=self.wave_data[2], origin=self.origin,\
+                        method_irreg='regular', lats_reg=lats, lons_reg=lons)       
 
             else: 
                 print('Error: Unknown wave source {0}.'.format(wave))

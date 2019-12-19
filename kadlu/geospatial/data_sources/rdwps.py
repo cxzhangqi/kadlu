@@ -13,7 +13,8 @@
 import numpy as np
 from datetime import datetime, timedelta
 import os
-import urllib.request
+#import urllib.request
+import requests
 import pygrib
 from kadlu.geospatial.data_sources import fetch_util 
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg, Boundary, ll_2_regionstr
@@ -34,6 +35,7 @@ level_ref['gulf-st-lawrence']['PRMSL'] = 'MSL_0'
 
 
 class Region():
+    """ utility class for computing intersecting regions. compatible with ll_2_regionstr() in fetch_util module """
     def __init__(self, ymin, xmin, nx, ny, ystep, xstep, name):
         self.south = ymin
         self.north = ymin + (ny * ystep)
@@ -45,8 +47,8 @@ class Region():
 
 
 rdwps_regions = [
-        # region parameters as defined in RDWPS docs
-        #   https://weather.gc.ca/grib/grib2_RDWPS_e.html
+        #region boundary parameters as defined in RDWPS docs:
+        #    https://weather.gc.ca/grib/grib2_RDWPS_e.html
         Region(46.2590, -92.3116, 658, 318, 0.0090, 0.0124, 'superior'),
         Region(41.4260, -88.1452, 698, 573, 0.0090, 0.0124, 'huron-michigan'),
         Region(41.2190, -83.6068, 398, 210, 0.0090, 0.0124, 'erie'),
@@ -56,6 +58,7 @@ rdwps_regions = [
 
 
 def fetchname(wavevar, time, region):
+    """ generate a filename for given wave variable, time, and region """
     timestr = datetime.now().strftime('%Y%m%d')
     hour = f"{((datetime.now()-timedelta(hours=3)).hour // 6) * 6:02d}"
     predictionhour = f"{(time.hour // 3) * 3:03d}"
@@ -71,6 +74,24 @@ def fetchname(wavevar, time, region):
 
 
 def fetch_rdwps(wavevar, start, end, regions):
+    """ download rdwps data and return associated filepaths 
+
+    args:
+        wavevar: string
+            the variable short name of desired wave parameter according to RDWPS docs
+            the complete list of variable short names can be found here
+            https://weather.gc.ca/grib/grib2_RDWPS_e.html
+        start: datetime
+            the start of the desired time range
+        end: datetime
+            the end of the desired time range
+        regions: list
+            list of strings containing regions to fetch
+
+    return:
+        filenames: list
+            list of strings containing complete file paths of fetched data
+    """
     filenames = []
     time = datetime(start.year, start.month, start.day, (start.hour // 3 * 3))
 
@@ -88,7 +109,10 @@ def fetch_rdwps(wavevar, start, end, regions):
             hour = f"{(((datetime.now()-timedelta(hours=3)).hour) // 6 * 6):02d}"
             fetchurl = f"http://dd.weather.gc.ca/model_wave/{directory}/{reg}/grib2/{hour}/{fname}"
             print(f"Downloading {fname} from the Regional Deterministic Wave Prediction System...")
-            urllib.request.urlretrieve(fetchurl, fetchfile)
+            #urllib.request.urlretrieve(fetchurl, fetchfile)
+            grib = requests.get(fetchurl)
+            assert(grib.status_code == 200)
+            with open(fetchfile, 'wb') as f: f.write(grib.content)
             filenames.append(fetchfile)
 
         time += timedelta(hours=3)
@@ -97,6 +121,28 @@ def fetch_rdwps(wavevar, start, end, regions):
 
 
 def load_rdwps(wavevar, start, end, south, north, west, east, plot):
+    """ return downloaded rdwps data for specified wavevar according to given time, lat, lon boundaries
+
+    args:
+        wavevar: string
+            the variable short name of desired wave parameter according to RDWPS docs
+            the complete list of variable short names can be found here
+            https://weather.gc.ca/grib/grib2_RDWPS_e.html
+        start: datetime
+            the start of the desired time range
+        end: datetime
+            the end of the desired time range
+        south, north: float
+            ymin, ymax coordinate boundaries (latitude). range: -90, 90
+        west, east: float
+            xmin, xmax coordinate boundaries (longitude). range: -180, 180
+        plot: boolean
+            if true a plot will be output (experimental feature)
+
+    return:
+        filenames: list
+            list of strings containing complete file paths of fetched data
+    """
     filenames = []
     val = np.array([])
     lat = np.array([])
@@ -150,35 +196,49 @@ def load_rdwps(wavevar, start, end, south, north, west, east, plot):
 
 
 class Rdwps(): 
+    """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
+
     def fetch_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
         return fetch_rdwps('HTSGW', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+
     def fetch_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('WVHGT', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('WVDIR', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('WVPER', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_wind_u(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('UGRD', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
     def fetch_wind_v(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()):
         return fetch_rdwps('VGRD', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
-    def fetch_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
-        return fetch_rdwps('ICEC', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
+    
+#    def fetch_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now()): 
+#        return fetch_rdwps('ICEC', start, end, ll_2_regionstr(south, north, west, east, rdwps_regions))
 
     def load_windwaveswellheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('HTSGW', start, end, south, north, west, east, plot=plot)
+    
     def load_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('WVHGT', start, end, south, north, west, east, plot=plot)
+    
     def load_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('WVDIR', start, end, south, north, west, east, plot=plot)
+    
     def load_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('WVPER', start, end, south, north, west, east, plot=plot)
+    
     def load_wind_u(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('UGRD', start, end, south, north, west, east, plot=plot)
+    
     def load_wind_v(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
         return load_rdwps('VGRD', start, end, south, north, west, east, plot=plot)
-    def load_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
-        return load_rdwps('ICEC', start, end, south, north, west, east, plot=plot)
+    
+#    def load_icecover(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=3), end=datetime.now(), plot=False):
+#        return load_rdwps('ICEC', start, end, south, north, west, east, plot=plot)
 
     def __str__(self):
         info = '\n'.join([
@@ -191,24 +251,4 @@ class Rdwps():
             ])
         args = "(south=-90, north=90, west=-180, east=180, start=datetime(), end=datetime())"
         return fetch_util.str_def(self, info, args)
-
-
-"""
-# mahone bay test area:
-    south =  44.4
-    north =  44.7
-    west  = -64.4
-    east  = -63.8
-
-# global
-    south = -90
-    north = 90
-    west = -180
-    east = 180
-
-ll_2_regionstr(south, north, west, east, rdwps_regions)
-
-time = datetime.now() - timedelta(hours=3)
-"""
-
 

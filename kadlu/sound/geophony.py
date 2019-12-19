@@ -31,6 +31,7 @@ from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.utils import xdist, ydist, XYtoLL
 from tqdm import tqdm
 from scipy.interpolate import interp1d
+from datetime import datetime
 
 
 class Geophony():
@@ -53,7 +54,7 @@ class Geophony():
         self._kewley1990 = interp1d(x=[2.57, 5.14, 10.29, 15.23, 20.58], y=[34, 39, 48, 53, 58], kind='linear', fill_value="extrapolate")
 
 
-    def model(self, frequency, south, north, west, east, time=None):
+    def model(self, frequency, south, north, west, east, start=None, end=None):
 
         lats, lons, x, y = self._create_grid(south, north, west, east)
 
@@ -69,11 +70,13 @@ class Geophony():
             receiver_depth = 0.25 * self.tl.c0 / frequency
 
             # load data and compute transmission loss
-            self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon, source_depth=self.depth, receiver_depth=receiver_depth, time=time)          
+            self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon,
+                    source_depth=self.depth, receiver_depth=receiver_depth,
+                    start=start, end=end)
             TL = self.tl.TL
 
             # source level
-            SL = self._source_level(freq=frequency, grid=self.tl.grid, time=time)
+            SL = self._source_level(freq=frequency, grid=self.tl.grid, start=start, end=end)
 
             # integrate SL-TL to obtain sound pressure level
             p = np.power(10, (SL + TL) / 20)
@@ -94,7 +97,7 @@ class Geophony():
         return SPL, x, y
 
 
-    def _source_level(self, freq, grid, time, method='wind'):
+    def _source_level(self, freq, grid, start, end, method='wind'):
 
         # x,y coordinates
         r = grid.r[1:]
@@ -115,7 +118,7 @@ class Geophony():
         assert method == 'wind', 'The only allowed method is wind'
 
         if method == 'wind':
-            SL = self._wind_source_level_per_area(freq=freq, x=x, y=y, time=time)
+            SL = self._wind_source_level_per_area(freq=freq, x=x, y=y, start=start, end=end)
             SL *= a
 
         SL = np.reshape(SL, newshape=r.shape)
@@ -123,7 +126,7 @@ class Geophony():
         return SL
 
 
-    def _wind_source_level_per_area(self, freq, x, y, time):
+    def _wind_source_level_per_area(self, freq, x, y, start, end):
 
         # interpolate wind speed
         wind_speed = self.tl.ocean.wave(x=x, y=y) 

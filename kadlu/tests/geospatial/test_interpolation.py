@@ -16,7 +16,8 @@ import os
 import numpy as np
 from kadlu.geospatial.geospatial import load_data_from_file
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D
-import kadlu.geospatial.data_sources.chs as chs
+#import kadlu.geospatial.data_sources.chs as chs
+from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
 
 
@@ -319,8 +320,15 @@ def test_can_interpolate_irregular_grid_by_mapping_to_regular_grid():
 
 def test_can_interpolate_geotiff_data():
     # load data and initialize interpolator
-    path = path_to_assets + '/tif/CA2_4300N06000W.tif'
-    bathy, lat, lon = chs.load_chs_file(path)
+    #path = path_to_assets + '/tif/CA2_4300N06000W.tif'
+    south, west = 43, -60
+    north, east = 44, -59
+    bathy, lat, lon = Chs().load_bathymetry(south=south, north=north, west=west, east=east)
+
+    if len(bathy) == 0:
+        Chs().fetch_bathymetry(south=south, north=north, west=west, east=east)
+        bathy, lat, lon = Chs().load_bathymetry(south=south, north=north, west=west, east=east)
+
     ip = Interpolator2D(bathy, lat, lon, method_irreg='nearest')
     # --- 4 latitudes ---
     lats = [43.3, 43.2, 43.7, 43.5]

@@ -7,17 +7,32 @@ import warnings
 import pygrib
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
+import sqlite3
+from datetime import datetime, timedelta
 
 
-def default_storage(msg):
-    storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
-    if not os.path.isdir(storage_location):
-        os.mkdir(storage_location)
-    warnings.warn("%s storage location will be set to %s" % (msg, storage_location))
-    return storage_location
+# database tables
+hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
+chs_table    = 'bathy'
+era5_tables  = ['significant_height_of_combined_wind_waves_and_swell', 'mean_wave_direction', 'mean_wave_period']
+wwiii_tables = ['hs', 'dp', 'tp']
 
 
 def storage_cfg():
+    """ return filepath containing storage configuration string
+
+    first tries to check the config.ini file in kadlu root folder, if there's a 
+    problem defaults to kadlu/storage and issues a warning
+    """
+
+    def default_storage(msg):
+        """ helper function for storage_cfg() """
+        storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
+        if not os.path.isdir(storage_location):
+            os.mkdir(storage_location)
+        warnings.warn(f"{msg} storage location will be set to {storage_location}")
+        return storage_location
+
     cfg = configparser.ConfigParser()       # read .ini into dictionary object
     cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
     try:
@@ -34,7 +49,67 @@ def storage_cfg():
     return storage_location
 
 
+def database_cfg():
+    """ configure and connect to sqlite database """
+    """
+        time is stored as an INT in the database, where each integer
+        is epoch hours since 2000-01-01 00:00
+    """
+    conn = sqlite3.connect(storage_cfg() + "geospatial.db")
+    db = conn.cursor()
+
+    # bathymetry table (CHS)
+    db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}"
+               "(   val     REAL,   "
+               "    lat     REAL,   "
+               "    lon     REAL,   "
+               "    source  TEXT   )") 
+    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+               f"idx_{chs_table} on {chs_table}(lon, lat)")
+
+    # hycom environmental data tables
+    for fetchvar in hycom_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+                    "(  val     INT,    "
+                    "   lat     REAL,   "
+                    "   lon     REAL,   "
+                    "   time    INT,    "
+                    "   depth   INT,    "
+                    "   source  TEXT   )")
+        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
+
+    # wave data tables
+    for fetchvar in era5_tables + wwiii_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+                    "(  val     INT,    "
+                    "   lat     REAL,   "
+                    "   lon     REAL,   "
+                    "   time    INT,    "
+                    "   source  TEXT   )")
+        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
+
+    return conn, db
+
+
+def dt_2_epoch(dt_arr):
+    """ convert datetimes to epoch hours """
+    t0 = datetime(2000, 1, 1, 0, 0, 0)
+    delta = lambda dt : (dt - t0).total_seconds()/60/60
+    dt_arr = np.array([dt_arr]) if np.array([dt_arr]).shape == (1,) else dt_arr
+    return list(map(int, map(delta, dt_arr)))
+
+
+def epoch_2_dt(ep_arr):
+    """ convert epoch hours to datetimes """
+    t0 = datetime(2000, 1, 1)
+    return list(map(lambda ep : t0 + timedelta(hours=ep), ep_arr))
+
+
 class Boundary():
+    """ compute intersecting boundaries using the separating axis theorem """
+
     def __init__(self, south, north, west, east, fetchvar=''):
         self.south, self.north, self.west, self.east, self.fetchvar = south, north, west, east, fetchvar
 
@@ -48,7 +123,8 @@ class Boundary():
 
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
-    """ convert input bounds to region strings """
+    """ convert input bounds to region strings using Boundary() class and separating axis theorem """
+
     if west > east:  # recursive function call if query intersects antimeridian
         return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
                           ll_2_regionstr(south, north, -180, east, regions, default))
@@ -69,8 +145,6 @@ def str_def(self, info, args):
     strlen = list(map(lambda f : len(f), fcns))
     whitespace = ''.join(map(lambda f : ' ', range(0, np.max(strlen) - np.min(strlen))))
     return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
-
-
 
 
 def plot_sample_grib(gribfiles, title_text="A sample plot"):

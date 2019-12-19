@@ -13,7 +13,8 @@
 import numpy as np
 from datetime import datetime, timedelta
 import os
-import urllib.request
+#import urllib.request
+import requests
 import pygrib
 from kadlu.geospatial.data_sources import fetch_util 
 from kadlu.geospatial.data_sources.fetch_util import storage_cfg, Boundary, ll_2_regionstr
@@ -108,7 +109,10 @@ def fetch_rdwps(wavevar, start, end, regions):
             hour = f"{(((datetime.now()-timedelta(hours=3)).hour) // 6 * 6):02d}"
             fetchurl = f"http://dd.weather.gc.ca/model_wave/{directory}/{reg}/grib2/{hour}/{fname}"
             print(f"Downloading {fname} from the Regional Deterministic Wave Prediction System...")
-            urllib.request.urlretrieve(fetchurl, fetchfile)
+            #urllib.request.urlretrieve(fetchurl, fetchfile)
+            grib = requests.get(fetchurl)
+            assert(grib.status_code == 200)
+            with open(fetchfile, 'wb') as f: f.write(grib.content)
             filenames.append(fetchfile)
 
         time += timedelta(hours=3)

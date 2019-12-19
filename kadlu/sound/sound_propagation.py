@@ -40,12 +40,14 @@ from kadlu.sound.pe.grid import Grid
 from kadlu.sound.pe.starter import Starter
 from kadlu.sound.pe.propagator import Propagator
 from kadlu.utils import XYtoLL
+from datetime import datetime
 
 from sys import platform as sys_pf
 if sys_pf == 'darwin' or sys_pf == 'win32':
     import matplotlib
     matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
+            #import time
 
 
 class Seafloor():
@@ -254,12 +256,12 @@ class TLCalculator():
                 print('Sound speed will be updated every {0} steps'.format(self.steps_btw_c_updates))
 
 
-    def _update_source_location_and_time(self, lat, lon, time):
+    def _update_source_location_and_time(self, lat, lon, start, end):
 
         r = self.range['r'] + 10e3
         S, N, W, E = self._bounding_box(lat=lat, lon=lon, r=r)
 
-        self.ocean.load(south=S, north=N, west=W, east=E, time=time)
+        self.ocean.load(south=S, north=N, west=W, east=E, start=start, end=end)
 
         if self._compute_sound_speed:
             self.c = SoundSpeed(self.ocean)
@@ -315,8 +317,8 @@ class TLCalculator():
         return grid
 
 
-    def run(self, frequency, source_lat, source_lon, source_depth, time=None,\
-            receiver_depth=[.1], vertical_slice=False,\
+    def run(self, frequency, source_lat, source_lon, source_depth, start=None,
+            end=None, receiver_depth=[.1], vertical_slice=False,\
             ignore_bathy_gradient=False, ignore_below_seafloor=True):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
@@ -351,8 +353,7 @@ class TLCalculator():
         receiver_depth = self._toarray(receiver_depth)
 
         if self.verbose:
-            import time
-            start = time.time()
+            start = datetime.now()
             print('Begin transmission-loss calculation')
             print('Source depths:', source_depth)
             print('Receiver depths:', receiver_depth)
@@ -364,7 +365,7 @@ class TLCalculator():
         self.seafloor.frequency = frequency
 
         # load data and initialize grid
-        self._update_source_location_and_time(lat=source_lat, lon=source_lon, time=time)
+        self._update_source_location_and_time(lat=source_lat, lon=source_lon, start=start, end=end)
 
         seafloor_depth = np.abs(self.ocean.bathy(x=0, y=0))
 
@@ -427,8 +428,8 @@ class TLCalculator():
 
 
         if self.verbose:
-            end = time.time()
-            print('Calculation completed in {0:.2f} seconds'.format(end - start))
+            end = datetime.now()
+            print(f'Calculation completed in {(end-start).seconds}s')
 
         # store relevant data
         self.grid = grid

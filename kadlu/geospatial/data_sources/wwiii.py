@@ -85,8 +85,10 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
             fname = fetchname(wavevar, time, reg)
             fetchfile = f"{storage_cfg()}{fname}"
             print(f"\ndownloading {fname} from NOAA WaveWatch III...", end="\r")
-            fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/{reg}/{fname}"
-            #fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/gribs/{fname}"
+            if reg == 'glo_30m':
+                fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/gribs/{fname}"
+            else:
+                fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/{reg}/{fname}"
             with requests.get(fetchurl, stream=True) as payload:
                 assert payload.status_code == 200, 'couldn\'t retrieve file'
                 with open(fetchfile, 'wb') as f:

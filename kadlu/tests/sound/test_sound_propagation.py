@@ -16,7 +16,10 @@ import numpy as np
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.geospatial.ocean import Ocean
 from kadlu.utils import XYtoLL
+from datetime import datetime
 
+start = datetime(2019, 1, 1)
+end = datetime(2019, 1, 1)
 
 def test_initialize_seafloor_with_default_args():
     s = Seafloor()
@@ -78,7 +81,7 @@ def test_update_source_location_and_time():
     s = Seafloor()
     o = Ocean()
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1470)
-    tl._update_source_location_and_time(lat=45, lon=80, time=None)
+    tl._update_source_location_and_time(lat=45, lon=80, start=start, end=end)
     tl.ocean.origin.latitude == 45
     tl.ocean.origin.longitude == 80
     lat_max, _ = XYtoLL(x=0, y=60e3, lat_ref=45, lon_ref=80)

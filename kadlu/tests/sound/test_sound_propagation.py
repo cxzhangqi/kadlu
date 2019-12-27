@@ -161,7 +161,7 @@ def test_run_at_same_depth_twice():
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
     tl.run(frequency=10, source_depth=[-9900, -9900], source_lat=45, source_lon=60)
-    for field in tl.TL:
+    for field in [tl.TL[0,0], tl.TL[1,0]]:
         expected = np.array([[-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
             [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
             [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\

@@ -30,7 +30,7 @@ def test_thomson_gives_expected_result():
     grid = Grid(100., 1000., 10.*np.pi/180., 2.*np.pi, 100., 500.)
     starter = Starter(k0=0.04, grid=grid, aperture=86)
     psi = starter.eval(zs=9)
-    psi = np.round(psi[:,:,0], 4)
+    psi = np.round(psi[0,:,:], 4)
     answ = np.array([[0.+0.j],[0.0101-0.0101j],[0.0205-0.0205j],\
         [0.0319-0.0319j],[ 0.0451-0.0451j],[0.+0.j],[-0.0451+0.0451j],\
         [-0.0319+0.0319j],[-0.0205+0.0205j],[-0.0101+0.0101j]])
@@ -44,8 +44,8 @@ def test_thomson_gives_expected_result_with_multiple_depths():
     answ0 = np.array([[0.+0.j],[0.0101-0.0101j],[0.0205-0.0205j],\
         [0.0319-0.0319j],[ 0.0451-0.0451j],[0.+0.j],[-0.0451+0.0451j],\
         [-0.0319+0.0319j],[-0.0205+0.0205j],[-0.0101+0.0101j]])
-    assert np.all(psi[:,:,0] == answ0)
+    assert np.all(psi[0,:,:] == answ0)
     answ1 = np.array([[0.+0.j],[0.1039-0.1039j],[0.1723-0.1723j],\
         [0.1806-0.1806j],[0.1222-0.1222j],[0.+0.j],[-0.1222+0.1222j],\
         [-0.1806+0.1806j],[-0.1723+0.1723j],[-0.1039+0.1039j]])
-    assert np.all(psi[:,:,1] == answ1)
+    assert np.all(psi[1,:,:] == answ1)

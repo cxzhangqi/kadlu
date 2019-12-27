@@ -123,7 +123,7 @@ def test_run_with_flat_seafloor():
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
     tl.run(frequency=10, source_depth=-9900, source_lat=45, source_lon=60)
-    field = tl.TL[0]
+    field = tl.TL[0,0]
     expected = np.array([[-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
         [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535],\
@@ -172,12 +172,17 @@ def test_run_at_same_depth_twice():
             [-164.6453, -170.6553, -176.7944, -172.0352, -182.3293, -176.6379, -176.8878, -183.8019, -177.9633, -181.3535]])
         np.testing.assert_array_almost_equal(field, expected, decimal=3)
 
-def test_ignore_source_below_seafloor():
+def test_run_at_multiple_source_depths():
     s = Seafloor(thickness=2000)
     o = Ocean(bathy=-10000)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
-    tl.run(frequency=10, source_depth=[-9900, -12000], source_lat=45, source_lon=60)
-    assert tl.TL[0] is not None
-    assert tl.TL[1] == None
+    tl.run(frequency=10, source_depth=[-9900], source_lat=45, source_lon=60)
+    f0 = tl.TL[0,0].copy()
+    tl.run(frequency=10, source_depth=[-8800], source_lat=45, source_lon=60)
+    f1 = tl.TL[0,0].copy()
+    tl.run(frequency=10, source_depth=[-9900, -8800], source_lat=45, source_lon=60)
+    fields = tl.TL[:,0]
+    np.testing.assert_array_almost_equal(fields[0], f0, decimal=3)
+    np.testing.assert_array_almost_equal(fields[1], f1, decimal=3)

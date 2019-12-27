@@ -112,9 +112,9 @@ class Starter():
             Returns:
                 psi: numpy array
                     Initial sound pressure field along the vertical 
-                    axis at zero range. Has shape (Nz,1,Ns) where Nz is 
-                    the number of vertical grid points and Ns is the 
-                    number of depth values.
+                    axis at zero range. Has shape (Ns,Nz,1) where Ns 
+                    is the number of depth values and Nz is the number 
+                    of vertical grid points. 
         """
         if self.method is StarterMethod.GAUSSIAN:
             psi = self._gaussian(zs)
@@ -138,7 +138,10 @@ class Starter():
                     Initial sound pressure field
         """
         k0 = self.k0
-        Z = self.grid.Z
+        Z = self.grid.Z[np.newaxis,:,:]
+
+        zs = toarray(zs)
+        zs = zs[:,np.newaxis,np.newaxis]
 
         # compute psi
         psi = np.sqrt(k0) * np.exp( -0.5*k0**2 *(Z - zs)**2 )
@@ -163,7 +166,10 @@ class Starter():
         b = .04201
         c = 3.0512
         k0 = self.k0
-        Z = self.grid.Z
+        Z = self.grid.Z[np.newaxis,:,:]
+
+        zs = toarray(zs)
+        zs = zs[:,np.newaxis,np.newaxis]
 
         # compute psi        
         psi = np.sqrt(k0) * (a - b * k0**2 * (Z - zs)**2) * np.exp(-(k0**2 * (Z - zs)**2) / c )
@@ -185,20 +191,19 @@ class Starter():
                     Initial sound pressure field
         """
         k0 = self.k0
-        kz = self.grid.kz
+        kz = self.grid.kz[np.newaxis,:]
         dz = self.grid.dz
         Nz = self.grid.Nz
 
-        kz = kz[:,np.newaxis]
         zs = toarray(zs)
-        zs = zs[np.newaxis,:]
+        zs = zs[:,np.newaxis]
 
         # compute psi
         psi = np.exp(-1j * np.pi / 4.) * 2 * scimath.sqrt(2 * np.pi) * np.sin(kz * zs) / scimath.sqrt(scimath.sqrt(k0**2 - kz**2))
 
         # normalize the starter
         psi = psi / dz
-        psi[int(Nz/2),:] = 0 
+        psi[:,int(Nz/2)] = 0 
 
         # taper the spectrum to obtain desired angle using Turkey window
         kcut1 = k0 * np.sin(self.aperture / 180 * np.pi) 
@@ -207,8 +212,8 @@ class Starter():
         W[np.abs(kz) >= kcut1] = 0
         W[np.abs(kz) <= kcut0] = 1
         psi = psi * W
-        psi[np.abs(kz[:,0]) >= kcut1,:] = 0
-        psi = psi[:,np.newaxis,:]
+        psi[:,np.abs(kz[0]) >= kcut1] = 0
+        psi = psi[:,:,np.newaxis]
 
         return psi
 

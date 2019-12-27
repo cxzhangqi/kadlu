@@ -137,7 +137,7 @@ class Propagator():
                     Result of the computation
         """
         # initialize output containers
-        self._init_output(receiver_depth, vertical_slice) 
+        self._init_output(psi.shape[0], receiver_depth, vertical_slice) 
 
         # free propagator
         U_fr = self._free_propagation_matrix()
@@ -167,7 +167,7 @@ class Propagator():
                 U = self._propagation_matrix()            
 
             # (2) phase adjustment at r + dr/2            
-            psi = np.fft.fft(U * np.fft.ifft(psi, axis=0), axis=0)    
+            psi = np.fft.fft(U * np.fft.ifft(psi, axis=1), axis=1)    
 
             # (3) r + dr/2 --> r + dr free propagation
             psi = U_fr * psi
@@ -198,6 +198,7 @@ class Propagator():
         U_fr = np.exp(1j * dr / 2 * (scimath.sqrt(k0**2 - kz**2) - k0))
         U_fr = U_fr[:,np.newaxis]
         U_fr = U_fr * np.ones(shape=(1,Nq))
+        U_fr = U_fr[np.newaxis,:,:]
 
         return U_fr
 
@@ -232,9 +233,11 @@ class Propagator():
         U = np.exp(1j * self.grid.dr * self.k0 * (-1 + scimath.sqrt(n2 + self.attenuation +\
             0.5 / self.k0**2 * (d2den / den - 1.5 * (dden / den)**2))))
 
+        U = U[np.newaxis,:,:]
+
         # square root of density matrix
         self.sqrt_den = np.sqrt(den)
-
+        
         return U
 
 
@@ -333,28 +336,29 @@ class Propagator():
             if np.ndim(idx) == 0:
                 idx = np.array([idx])
 
-            A = np.matmul(self.ifft_kernel, psi)
-            B = self.sqrt_den[idx]
+            A = np.matmul(self.ifft_kernel, psi) 
+            B = self.sqrt_den[idx][np.newaxis,:,:]
 
-            self.field_horiz[:,:,step_no] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
+            self.field_horiz[:,:,:,step_no] = A * B * np.exp(1j * self.k0 * dist) / np.sqrt(dist)
 
             if self.vertical_slice:
-                psi = np.fft.ifft(psi, axis=0) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * self.sqrt_den
+                psi = np.fft.ifft(psi, axis=1) * np.exp(1j * self.k0 * dist) / np.sqrt(dist) * self.sqrt_den
 
         else:
             if self.vertical_slice:
-                psi = np.fft.ifft(psi, axis=0)
+                psi = np.fft.ifft(psi, axis=1)
 
         if self.vertical_slice:
             n = int(self.grid.Nz / 2)
-            self.field_vert[:, step_no, :] = psi[:n, :]
+            self.field_vert[:,:,step_no,:] = psi[:, :n, :]
 
 
-    def _init_output(self, receiver_depth, vertical_slice):
+    def _init_output(self, num_source_depth, receiver_depth, vertical_slice):
 
         Nr = self.grid.Nr
         Nq = self.grid.Nq
         Nz = self.grid.Nz
+        Ns = num_source_depth
         Nd = len(receiver_depth)
 
         self.vertical_slice = vertical_slice
@@ -364,7 +368,8 @@ class Propagator():
         # ifft kernel
         kz = self.grid.kz
         self.ifft_kernel = np.exp(1j * np.matmul(self.receiver_depth, kz[np.newaxis,:])) / len(kz)
+        self.ifft_kernel = self.ifft_kernel[np.newaxis,:,:]
 
         # output arrays
-        self.field_vert = np.empty(shape=(int(Nz/2), Nr, Nq), dtype=complex)
-        self.field_horiz = np.empty(shape=(Nd, Nq, Nr), dtype=complex)  # sound intensity values
+        self.field_horiz = np.empty(shape=(Ns, Nd, Nq, Nr), dtype=complex)  # sound intensity values
+        self.field_vert = np.empty(shape=(Ns, int(Nz/2), Nr, Nq), dtype=complex)

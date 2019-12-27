@@ -218,14 +218,14 @@ class Propagator():
             n2[0,itmp] = self.n2_b
 
         # smooth density
-        tanh = np.tanh(0.5 * h / ld)
-        f = 0.5 * (1 + tanh)
+        th = np.tanh(0.5 * h / ld)
+        f = 0.5 * (1 + th)
         den = den_w + (den_b - den_w) * f
         sech2 = 1. / np.cosh(0.5 * h / ld)
         sech2 = sech2**2
         dden =  0.5 * sech2 / ld * np.sqrt(1 + self.gradient**2)
         dden =  0.5 * (den_b - den_w) * dden
-        d2den = -0.5 * sech2 / ld * (tanh / ld * (1 + self.gradient**2))
+        d2den = -0.5 * sech2 / ld * (th / ld * (1 + self.gradient**2))
         d2den = 0.5 * (den_b - den_w) * d2den
 
         # calculate propagation matrix, U

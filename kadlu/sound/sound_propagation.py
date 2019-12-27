@@ -39,7 +39,7 @@ from kadlu.sound.sound_speed import SoundSpeed
 from kadlu.sound.pe.grid import Grid
 from kadlu.sound.pe.starter import Starter
 from kadlu.sound.pe.propagator import Propagator
-from kadlu.utils import XYtoLL
+from kadlu.utils import XYtoLL, toarray
 from datetime import datetime
 
 from sys import platform as sys_pf
@@ -349,8 +349,8 @@ class TLCalculator():
         self.TL = list()
         self.TLv = list()
 
-        source_depth = self._toarray(source_depth)
-        receiver_depth = self._toarray(receiver_depth)
+        source_depth = toarray(source_depth)
+        receiver_depth = toarray(receiver_depth)
 
         if self.verbose:
             start = datetime.now()
@@ -435,8 +435,8 @@ class TLCalculator():
         self.grid = grid
         self.source_depth = source_depth
         self.receiver_depth = receiver_depth
-        self.TL = self._toarray(self.TL)
-        self.TLv = self._toarray(self.TLv)
+        self.TL = toarray(self.TL)
+        self.TLv = toarray(self.TLv)
 
 
     def plot(self, source_depth_index=0, receiver_depth_index=0):
@@ -557,11 +557,3 @@ class TLCalculator():
             plt.plot(self.grid.r, bathy, 'w')
             
         return fig
-
-
-    def _toarray(self, v):
-        if isinstance(v, float) or isinstance(v, int):
-            v = [v]
-        
-        v = np.array(v)
-        return v

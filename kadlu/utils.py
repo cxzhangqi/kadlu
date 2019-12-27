@@ -419,3 +419,11 @@ def create_boolean_array(n, step=1):
     return arr
 
 
+def toarray(x):
+    if isinstance(x, float) or isinstance(x, int):
+        x = [x]
+    
+    if isinstance(x, list):
+        x = np.array(x)
+    
+    return x

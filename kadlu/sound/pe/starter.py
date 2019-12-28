@@ -83,7 +83,7 @@ class Starter():
             >>> # Compute the initial field for a source depth of 9 meters
             >>> psi = starter.eval(zs=9)
             >>> psi = np.round(psi, 4) # round to 4 decimals
-            >>> print(psi[:,:,0])
+            >>> print(psi[0])
             [[ 0.    +0.j    ]
              [ 0.0101-0.0101j]
              [ 0.0205-0.0205j]

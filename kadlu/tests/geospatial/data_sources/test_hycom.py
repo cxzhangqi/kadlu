@@ -21,9 +21,13 @@ bottom =  0
 start = datetime(2000, 1, 2)
 end   = datetime(2000, 1, 2, 1)
 
-# TODO: add start to fcn calls
 start = datetime(2000, 1, 1)
 end = datetime(2000, 1, 12)
+
+# TODO
+# add tests for:
+#   - hycom loading over antimeridian
+#   - hycom nearest time search (loading)
 
 def test_fetch_salinity():
     if not test_fetch: return

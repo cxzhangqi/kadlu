@@ -229,11 +229,6 @@ def load_hycom(var, qry):
 
     # recursive function call for queries spanning antimeridian
     if (west > east): 
-        #return np.hstack(
-            #load_hycom(var, south, north, self.lon[0], east, 
-            #           start, end, top, bottom, limit=kwargs['limit']), 
-            #load_hycom(var, south, north, west, self.lon[-1], 
-            #           start, end, top, bottom, limit=kwargs['limit']))
         qry1 = qry.copy()
         qry2 = qry.copy()
         qry1['west'] = self.lon[0]
@@ -338,49 +333,21 @@ class Hycom():
         self.epoch = load_times()
         self.depth = load_depth()
 
-    def fetch_salinity(self, **qry): return fetch_idx(self, 'salinity', qry)
+    def fetch_salinity(self, **qry):    return fetch_idx(self, 'salinity', qry)
 
-    def fetch_temp    (self, **qry): return fetch_idx(self, 'water_temp', qry)
+    def fetch_temp    (self, **qry):    return fetch_idx(self, 'water_temp', qry)
 
-    def fetch_water_u (self, **qry): return fetch_idx(self, 'water_u', qry)
+    def fetch_water_u (self, **qry):    return fetch_idx(self, 'water_u', qry)
 
-    def fetch_water_v (self, **qry): return fetch_idx(self, 'water_v', qry)
+    def fetch_water_v (self, **qry):    return fetch_idx(self, 'water_v', qry)
 
-    def load_salinity(self, **qry):
-            #south=-90, north=90, west=-180, east=180, 
-            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            #top=0, bottom=5000): 
+    def load_salinity(self, **qry):     return load_hycom('salinity', qry)
 
-        return load_hycom('salinity', qry)
-                #south=south, north=north, west=west, east=east, 
-                #start=start, end=end, top=top, bottom=bottom)
+    def load_temp(self, **qry):         return load_hycom('water_temp', qry)
 
-    def load_temp(self, **qry):
-            #south=-90, north=90, west=-180, east=180,
-            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            #top=0, bottom=5000): 
+    def load_water_u(self, **qry):      return load_hycom('water_u', qry)
 
-        return load_hycom('water_temp', qry)
-                #south=south, north=north, west=west, east=east, 
-                #start=start, end=end, top=top, bottom=bottom)
-
-    def load_water_u(self, **qry):
-            #south=-90, north=90, west=-180, east=180,
-            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            #top=0, bottom=5000): 
-
-        return load_hycom('water_u', qry)
-                #south=south, north=north, west=west, east=east, 
-                #start=start, end=end, top=top, bottom=bottom)
-
-    def load_water_v(self, **qry):
-            #south=-90, north=90, west=-180, east=180,
-            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            #top=0, bottom=5000): 
-
-        return load_hycom('water_v', qry)
-                #south=south, north=north, west=west, east=east, 
-                #start=start, end=end, top=top, bottom=bottom)
+    def load_water_v(self, **qry):      return load_hycom('water_v', qry)
 
     def __str__(self):
         info = '\n'.join([

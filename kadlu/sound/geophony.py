@@ -35,71 +35,130 @@ from datetime import datetime
 
 
 class Geophony():
-    """ Geophony modeling.
+    """ Geophony modeling on a regular 3D grid.
 
         Args:
+            tl_calculator: instance of TLCalculator
+                Transmission loss calculator
+            depth: float or 1d array
+                Depth(s) at which the noise level is computed.
+            xy_res: float
+                Horizontal spacing (in meters) between points at which the 
+                noise level is computed. If None is specified, the spacing 
+                will be set equal to sqrt(2) times the range of the transmission
+                loss calculator.
+            progress_bar: bool
+                Display calculation progress bar. Default is True.
 
         Attributes:
+            tl: instance of TLCalculator
+                Transmission loss calculator
+            south, north: float
+                ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
+            west, east: float
+                xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
+            depth: float or 1d array
+                Depth(s) at which the noise level is computed.
+            xy_res: float
+                Horizontal spacing (in meters) between points at which the 
+                noise level is computed. If None is specified, the spacing 
+                will be set equal to sqrt(2) times the range of the transmission
+                loss calculator.
+            progress_bar: bool
+                Display calculation progress bar. Default is True.
     """
-    def __init__(self, tl_calculator, depth, xy_res=None, time_dependent_tl=False, progress_bar=True):
+    def __init__(self, tl_calculator, south, north, west, east, depth, xy_res=None, progress_bar=True):
 
         self.tl = tl_calculator
-        self.tl.progress_bar = False
-        self.progress_bar = progress_bar
 
-        self.depth = depth
-        self.time_dependent_tl = time_dependent_tl
+        if isinstance(depth, list):
+            depth = np.array(depth)
+        elif isinstance(depth, float) or isinstance(depth, int):
+            depth = np.array([depth])
+
+        self.depth = np.sort(depth)
 
         if xy_res is None:
             self.xy_res = np.sqrt(2) * self.tl.range['r']
         else:
             self.xy_res = xy_res
 
+        self.tl.progress_bar = False
+        self.progress_bar = progress_bar
+
+        # prepare grid
+        self.lats, self.lons, self.x, self.y = self._create_grid(south, north, west, east)
+        self.bathy = self.tl.ocean.bathy(x=self.lons, y=self.lats, geometry='spherical')
+
         # wind source level interpolation table
         self._kewley1990 = interp1d(x=[2.57, 5.14, 10.29, 15.23, 20.58], y=[34, 39, 48, 53, 58], kind='linear', fill_value="extrapolate")
 
+    def compute(self, frequency, start=None, end=None):
+        """ Compute the noise level within a specified geographic 
+            region at a specified date and time.
 
-    def model(self, frequency, south, north, west, east, start=None, end=None):
+            TODO: Allow user to specify time, as an alternative to 
+            start and end.
 
-        lats, lons, x, y = self._create_grid(south, north, west, east)
-
+            Args:
+                frequency: float
+                    Sound frequency in Hz.
+        """
+        N = len(self.lats)
         SPL = None
 
-        N = len(lats)
         for i in tqdm(range(N), disable = not self.progress_bar):
 
-            lat = lats[i]
-            lon = lons[i]
+            lat = self.lats[i]
+            lon = self.lons[i]
+            seafloor_depth = -self.bathy[i]
+            depth = self.depth[self.depth <= seafloor_depth] # ignore depths below seafloor
 
-            # set receiver depth to 1/4 of the characteristic wave length
-            receiver_depth = 0.25 * self.tl.c0 / frequency
+            if len(depth) == 0:
+                dB = np.empty((1,len(self.depth)), dtype=float)
+                dB[:,:] = np.nan
 
-            # load data and compute transmission loss
-            self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon,
-                    source_depth=self.depth, receiver_depth=receiver_depth,
-                    start=start, end=end)
-            TL = self.tl.TL
+            else:
+                # set receiver depth to 1/4 of the characteristic wave length
+                receiver_depth = 0.25 * self.tl.c0 / frequency
 
-            # source level
-            SL = self._source_level(freq=frequency, grid=self.tl.grid, start=start, end=end)
+                # load data and compute transmission loss
+                self.tl.run(frequency=frequency, source_lat=lat, source_lon=lon,
+                        source_depth=depth, receiver_depth=receiver_depth)
 
-            # integrate SL-TL to obtain sound pressure level
-            p = np.power(10, (SL + TL) / 20)
-            p = np.squeeze(np.apply_over_axes(np.sum, p, range(1, p.ndim))) # sum over all but first axis
-            dB = 20 * np.log10(p)
-            if np.ndim(dB) == 0:
-                dB = np.array([dB])
+                TL = self.tl.TL[:,0,:,:]
 
-            dB = dB[np.newaxis, :]
+                # source level
+                SL = self._source_level(freq=frequency, grid=self.tl.grid, start=start, end=end)
+
+                print(TL[0,0,:])
+                print(SL[0,0,:])
+
+                # integrate SL-TL to obtain sound pressure level
+                p = np.power(10, (SL + TL) / 20)
+                p = np.squeeze(np.apply_over_axes(np.sum, p, range(1, p.ndim))) # sum over all but the first axis
+                dB = 20 * np.log10(p)
+
+                if np.ndim(dB) == 0:
+                    dB = np.array([dB])
+
+                # pad, if necessary
+                n = len(self.depth) - len(dB)
+                if n > 0:
+                    pad = np.empty(n)
+                    pad[:] = np.nan
+                    dB = np.concatenate((dB, pad))
+
+                dB = dB[np.newaxis, :]
 
             if SPL is None:
                 SPL = dB
             else:
                 SPL = np.concatenate((SPL, dB), axis=0)
 
-        SPL = np.reshape(SPL, newshape=(len(x), len(y), SPL.shape[1]))
+        SPL = np.reshape(SPL, newshape=(len(self.x), len(self.y), SPL.shape[1]))
             
-        return SPL, x, y
+        return SPL
 
 
     def _source_level(self, freq, grid, start, end, method='wind'):
@@ -127,6 +186,7 @@ class Geophony():
             SL *= a
 
         SL = np.reshape(SL, newshape=r.shape)
+        SL = SL[np.newaxis, :, :]
 
         return SL
 

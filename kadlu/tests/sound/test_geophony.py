@@ -21,28 +21,33 @@ from kadlu.utils import R1_IUGG, deg2rad
 
 def test_initialize_geophony():
     s = Seafloor()
-    o = Ocean()
+    o = Ocean(bathy=-10000, wave=1.0)
     tl = TLCalculator(ocean=o, seafloor=s)
-    geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
+    geo = Geophony(tl_calculator=tl, south=0, north=2, west=60, east=62, depth=[100, 200, 300])
 
-def test_create_grid():
+def test_geophony_has_expected_grid():
     s = Seafloor()
-    o = Ocean()
+    o = Ocean(bathy=-10000, wave=1.0)
     tl = TLCalculator(ocean=o, seafloor=s, radial_range=10E3)
-    geo = Geophony(tl_calculator=tl, depth=[-100], xy_res=1000) # 1km xy grid
-    lats, lons, x, y = geo._create_grid(south=0, north=2, west=60, east=62)
+    geo = Geophony(tl_calculator=tl, south=0, north=2, west=60, east=62, depth=[100], xy_res=1000) # 1km xy grid
+    lats = geo.lats
+    lons = geo.lons
+    x = geo.x
+    y = geo.y
     num_bins = int((2 * deg2rad * R1_IUGG + 20E3)/1000)
     num_bins += num_bins%2
     num_bins += 1
     assert num_bins*num_bins == lats.shape[0]
     assert num_bins*num_bins == lons.shape[0]
 
-def test_model_geophony():
-    s = Seafloor(thickness=2000)
+def test_compute_geophony():
+    s = Seafloor()
     o = Ocean(bathy=-10000, wave=1.0)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1480, radial_bin=100, radial_range=50e3, angular_bin=45, vertical_bin=100)
-    geo = Geophony(tl_calculator=tl, depth=[-100, -2000])
-    spl, x, y = geo.model(frequency=1000, south=44, north=46, west=-60, east=-58)
+    geo = Geophony(tl_calculator=tl, south=44, north=46, west=-60, east=-58, depth=[100, 2000])
+    x = geo.x
+    y = geo.y
+    spl = geo.compute(frequency=1000)
     assert x.shape[0] == 5
     assert y.shape[0] == 5
     assert spl.shape[0] == 5
@@ -51,11 +56,31 @@ def test_model_geophony():
     assert np.all(np.diff(x) == np.sqrt(2) * 50e3)
     assert np.all(np.diff(y) == np.sqrt(2) * 50e3)
 
+def test_compute_geophony_in_canyon(bathy_canyon):
+    s = Seafloor()
+    o = Ocean(bathy=bathy_canyon, wave=1.0)
+    south = np.min(bathy_canyon[1])
+    north = np.max(bathy_canyon[1])
+    west = np.min(bathy_canyon[2])
+    east = np.max(bathy_canyon[2])
+    z = [100, 500, 1000, 1500, 3000]
+    tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1480, radial_bin=100, radial_range=50e3, angular_bin=45, vertical_bin=100)
+    geo = Geophony(tl_calculator=tl, south=south, north=north, west=west, east=east, depth=z)
+    x = geo.x
+    y = geo.y
+    spl = geo.compute(frequency=10)
+    assert spl.shape[0] == x.shape[0]
+    assert spl.shape[1] == y.shape[0]
+    assert spl.shape[2] == 5
+    assert np.all(np.diff(x) == np.sqrt(2) * tl.range['r'])
+    assert np.all(np.diff(y) == np.sqrt(2) * tl.range['r'])
+    # TODO: add some checks of contents of spl array
+
 def test_wind_source_level_per_area():
     s = Seafloor()
-    o = Ocean(wave=5.14)
+    o = Ocean(bathy=-10000, wave=5.14)
     tl = TLCalculator(ocean=o, seafloor=s)
-    geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
+    geo = Geophony(tl_calculator=tl, south=44, north=46, west=-60, east=-58, depth=[100, 200, 300])
     SL_f10 = geo._wind_source_level_per_area(freq=10, x=0, y=0, start=None, end=None)
     SL_f20 = geo._wind_source_level_per_area(freq=10, x=0, y=0, start=None, end=None)
     SL_arr = geo._wind_source_level_per_area(freq=10, x=[0,1,2], y=[0,1,2], start=None, end=None)
@@ -66,9 +91,10 @@ def test_wind_source_level_per_area():
 
 def test_source_level(grid):
     s = Seafloor()
-    o = Ocean(wave=5.14)
+    o = Ocean(bathy=-10000, wave=5.14)
     tl = TLCalculator(ocean=o, seafloor=s)
-    geo = Geophony(tl_calculator=tl, depth=[-100, -200, -300])
+    geo = Geophony(tl_calculator=tl, south=44, north=46, west=-60, east=-58, depth=[100, 200, 300])
     SL = geo._source_level(freq=10, grid=grid, start=None, end=None, method='wind')
-    assert SL.shape[0] == len(grid.q)
-    assert SL.shape[1] == len(grid.r) - 1
+    assert SL.shape[0] == 1
+    assert SL.shape[1] == len(grid.q)
+    assert SL.shape[2] == len(grid.r) - 1

@@ -39,7 +39,7 @@ from kadlu.sound.sound_speed import SoundSpeed
 from kadlu.sound.pe.grid import Grid
 from kadlu.sound.pe.starter import Starter
 from kadlu.sound.pe.propagator import Propagator
-from kadlu.utils import XYtoLL
+from kadlu.utils import XYtoLL, toarray
 from datetime import datetime
 
 from sys import platform as sys_pf
@@ -319,7 +319,7 @@ class TLCalculator():
 
     def run(self, frequency, source_lat, source_lon, source_depth, start=None,
             end=None, receiver_depth=[.1], vertical_slice=False,\
-            ignore_bathy_gradient=False, ignore_below_seafloor=True):
+            ignore_bathy_gradient=False):
         """ Compute the transmission loss at the specified frequency, source depth, 
             and receiver depths.
             
@@ -349,8 +349,8 @@ class TLCalculator():
         self.TL = list()
         self.TLv = list()
 
-        source_depth = self._toarray(source_depth)
-        receiver_depth = self._toarray(receiver_depth)
+        source_depth = toarray(source_depth)
+        receiver_depth = toarray(receiver_depth)
 
         if self.verbose:
             start = datetime.now()
@@ -367,8 +367,6 @@ class TLCalculator():
         # load data and initialize grid
         self._update_source_location_and_time(lat=source_lat, lon=source_lon, start=start, end=end)
 
-        seafloor_depth = np.abs(self.ocean.bathy(x=0, y=0))
-
         # create grid
         grid = self._create_grid(frequency)
 
@@ -376,56 +374,44 @@ class TLCalculator():
         k0 = 2 * np.pi * frequency / self.c0
         starter = Starter(grid=grid, k0=k0, method=self.starter_method, aperture=self.starter_aperture)
 
-        # loop over source depths
-        # TODO: Vectorize the loop over source depths
-        for zs in source_depth:
+        # compute initial field
+        psi = starter.eval(zs=source_depth) * np.ones(shape=(1,1,grid.Nq))
+        if self.verbose:
+            print('Initial field computed')
 
-            # only compute if source is above seafloor
-            if ignore_below_seafloor and (np.abs(zs) > seafloor_depth):
-                self.TL.append(None)
-                self.TLv.append(None)
+        # smoothing lengths
+        smooth_len_den = self.c0 / frequency / 4
+        smooth_len_c = np.finfo(float).eps
 
-            # compute initial field
-            psi = starter.eval(zs=zs) * np.ones(shape=(1,grid.Nq))
-            if self.verbose:
-                print('Initial field computed')
+        # Configure the PE propagator
+        propagator = Propagator(ocean=self.ocean, seafloor=self.seafloor,\
+            c=self.c, c0=self.c0, k0=k0, grid=grid,\
+            smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
+            absorption_layer=self.absorption_layer,\
+            ignore_bathy_gradient=ignore_bathy_gradient,\
+            bathy_step=self.steps_btw_bathy_updates,\
+            c_step=self.steps_btw_c_updates,\
+            verbose=self.verbose, progress_bar=self.progress_bar)
 
-            # smoothing lengths
-            smooth_len_den = self.c0 / frequency / 4
-            smooth_len_c = np.finfo(float).eps
- 
-            # Configure the PE propagator
-            propagator = Propagator(ocean=self.ocean, seafloor=self.seafloor,\
-                c=self.c, c0=self.c0, k0=k0, grid=grid,\
-                smooth_len_den=smooth_len_den, smooth_len_c=smooth_len_c,\
-                absorption_layer=self.absorption_layer,\
-                ignore_bathy_gradient=ignore_bathy_gradient,\
-                bathy_step=self.steps_btw_bathy_updates,\
-                c_step=self.steps_btw_c_updates,\
-                verbose=self.verbose, progress_bar=self.progress_bar)
+        # propagate
+        propagator.run(psi=psi, receiver_depth=receiver_depth, vertical_slice=vertical_slice)
 
-            # propagate
-            propagator.run(psi=psi, receiver_depth=receiver_depth, vertical_slice=vertical_slice)
+        # output
+        fh = propagator.field_horiz
+        fv = propagator.field_vert
 
-            # output
-            fh = propagator.field_horiz
-            fv = propagator.field_vert
+        # transmission loss in dB (horizontal plane)
+        TL = np.fft.fftshift(fh[:,:,:,1:], axes=2)
+        TL = 20 * np.log10(np.abs(TL))
 
-            # transmission loss in dB (horizontal plane)
-            TL = np.fft.fftshift(fh[:,:,1:], axes=1)
-            TL = 20 * np.log10(np.abs(TL))
-            TL = np.squeeze(TL)
+        # transmission loss in dB (vertical plane)  
+        if vertical_slice:
+            TLv = 20 * np.ma.log10(np.abs(fv))  # OBS: this computation is rather slow
+        else:
+            TLv = None
 
-            # transmission loss in dB (vertical plane)  
-            if vertical_slice:
-                TLv = 20 * np.ma.log10(np.abs(fv))  # OBS: this computation is rather slow
-                TLv = np.squeeze(TLv)
-            else:
-                TLv = None
-
-            self.TL.append(TL)
-            self.TLv.append(TLv)
-
+        self.TL = TL
+        self.TLv = TLv
 
         if self.verbose:
             end = datetime.now()
@@ -435,8 +421,6 @@ class TLCalculator():
         self.grid = grid
         self.source_depth = source_depth
         self.receiver_depth = receiver_depth
-        self.TL = self._toarray(self.TL)
-        self.TLv = self._toarray(self.TLv)
 
 
     def plot(self, source_depth_index=0, receiver_depth_index=0):
@@ -460,18 +444,12 @@ class TLCalculator():
 
         assert receiver_depth_index < len(self.receiver_depth), 'Invalid receiver depth index. The index must be < {0}'.format(len(self.receiver_depth))
 
-        TL = self.TL[source_depth_index]
-
         # check that transmission loss has been calculated
         if self.TL is None:
             print("Use the run method to calculate the transmission loss before plotting")
             return None
 
-        if np.ndim(self.TL) == 2:
-            tl = self.TL
-
-        elif np.ndim(self.TL) == 3:
-            tl = self.TL[receiver_depth_index,:,:]
+        tl = self.TL[source_depth_index,receiver_depth_index,:,:]
 
         r = self.grid.r[1:]
         q = np.fft.fftshift(np.squeeze(self.grid.q))
@@ -509,8 +487,6 @@ class TLCalculator():
         """
         assert source_depth_index < len(self.source_depth), 'Invalid source depth index. The index must be < {0}'.format(len(self.source_depth))
 
-        TLv = self.TLv[source_depth_index]
-
         # check that transmission loss has been calculated
         if self.TLv is None:
             print("Use the run method with option vertical_slice set to True to calculate the transmission loss before plotting")
@@ -528,7 +504,7 @@ class TLCalculator():
         idx = np.abs(self.grid.q - q0).argmin()
 
         # transmission loss
-        tl = np.squeeze(self.TL_vertical[:,:,idx])
+        tl = self.TLv[source_depth_index,:,:,idx]
 
         # bathy
         angle_rad = angle * np.pi / 180.
@@ -557,11 +533,3 @@ class TLCalculator():
             plt.plot(self.grid.r, bathy, 'w')
             
         return fig
-
-
-    def _toarray(self, v):
-        if isinstance(v, float) or isinstance(v, int):
-            v = [v]
-        
-        v = np.array(v)
-        return v

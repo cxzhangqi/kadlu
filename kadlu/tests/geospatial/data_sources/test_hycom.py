@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from datetime import datetime, timedelta
 from kadlu import hycom
 from kadlu.geospatial.data_sources.hycom import Hycom
@@ -8,7 +9,7 @@ from os.path import isfile
 
 # disable automated testing of fetching to avoid slamming the API with
 # requests in the automated development pipeline
-test_fetch = True
+test_fetch = False
 
 # gulf st lawrence - small test area
 south =  46 
@@ -29,18 +30,18 @@ def test_fetch_salinity():
     Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_salinity():
-    val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end)
-    return
+    val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
     assert(len(val) == len(lat) == len(lon) == len(time))
     assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
+    assert np.all(lat >= south)
+    assert np.all(lat <= north)
+    assert np.all(lon >= west)
+    assert np.all(lon <= east)
 
 # matt_s 2019-12
 # hycom connection seems to be pretty slow for some reason... im getting ~2kbps download speeds
-# in the meantime i've commented out the other fetch tests to make integrated testing faster, 
-# making the assumption that if we can fetch salinity, we can fetch other data too
-# i think the reason for slowness is related to hycom's server and not the code
-# since it was running quickly before
+# in the meantime i've commented out the other fetch tests to make integrated testing faster
 
 """
 def test_fetch_temp():
@@ -115,3 +116,18 @@ def test_load_water_v():
     
 """
 
+
+"""
+    var = 'salinity'
+    qry = {
+            'south':44,  
+            'north':45,
+            'west':-60,
+            'east':-59,
+            'top':0,
+            'bottom':5000,
+            'start':datetime(2015, 10, 1),
+            'end':datetime(2015, 10, 1, 12)
+        }
+    self = Hycom()
+"""

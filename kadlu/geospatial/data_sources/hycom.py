@@ -9,6 +9,10 @@
     Oliver Kirsebom
     Casey Hilliard
     Matthew Smith 
+
+    NOTES: for the future when writing documentation
+
+        - keyword args must be supplied to fetch and load fcns (not positional)
 """
 
 import numpy as np
@@ -97,7 +101,7 @@ def load_depth():
         900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
 
 
-def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
+def fetch_hycom(*args, year, slices, var, ygrid, xgrid, epoch, depth, **kwargs):
     """ download data from hycom, prepare it, and load into db
 
         args:
@@ -134,6 +138,7 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
         stores data in geospatial database and returns nothing.
         displays status message to standard output
     """
+
     # generate request
     n = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
     assert n > 0, f"{n} records available within query boundaries {slices}"
@@ -163,8 +168,8 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
     grid = np.array([(None, y, x, t, d, 'hycom') 
             for t in epoch[year][slices[0][0] : slices[0][1] +1]
             for d in depth      [slices[1][0] : slices[1][1] +1]
-            for y in lat        [slices[2][0] : slices[2][1] +1]
-            for x in lon        [slices[3][0] : slices[3][1] +1]])
+            for y in ygrid      [slices[2][0] : slices[2][1] +1]
+            for x in xgrid      [slices[3][0] : slices[3][1] +1]])
     grid[:,0] = np.reshape(cube, flatten)
     grid = grid[grid[:,0] > -30000]
 
@@ -187,7 +192,8 @@ def fetch_hycom(*args, year, slices, var, lat, lon, epoch, depth, **kwargs):
     return
 
 
-def load_hycom(*args, var, south, north, west, east, start, end, top, bottom, **kwargs):
+#def load_hycom(*args, var, south, north, west, east, start, end, top, bottom, **kwargs):
+def load_hycom(var, qry):
     """ load hycom data from local database
 
         args:
@@ -213,20 +219,31 @@ def load_hycom(*args, var, south, north, west, east, start, end, top, bottom, **
             depth: array
                 measured in meters
     """
-    south, north, west, east = map(float, [south, north, west, east])
-    assert(south < north)
-    assert(top <= bottom)
-    assert(start < end)
-    if 'limit' not in kwargs.keys() : kwargs['limit'] = '50000;--infinity'
+    south, north, west, east = \
+            map(float, [qry['south'], qry['north'], qry['west'], qry['east']])
+    top, bottom = qry['top'], qry['bottom']
+
+    assert south < north, 'malformed query: south must be less than north'
+    assert top <= bottom, 'malformed query: top depth must be lower than bottom depth'
+    if 'limit' not in qry.keys() : qry['limit'] = '50000;--infinity'
 
     # recursive function call for queries spanning antimeridian
-    if (west > east): return np.hstack(
-            load_hycom(var, south, north, self.lon[0], east, 
-                       start, end, top, bottom, limit=kwargs['limit']), 
-            load_hycom(var, south, north, west, self.lon[-1], 
-                       start, end, top, bottom, limit=kwargs['limit']))
+    if (west > east): 
+        #return np.hstack(
+            #load_hycom(var, south, north, self.lon[0], east, 
+            #           start, end, top, bottom, limit=kwargs['limit']), 
+            #load_hycom(var, south, north, west, self.lon[-1], 
+            #           start, end, top, bottom, limit=kwargs['limit']))
+        qry1 = qry.copy()
+        qry2 = qry.copy()
+        qry1['west'] = self.lon[0]
+        qry2['east'] = self.lon[-1]
+        return np.hstack(load_hycom(qry1), load_hycom(qry2))
 
-    db.execute(' AND '.join([
+    if 'start' and 'end' in qry.keys():
+        start, end = qry['start'], qry['end']
+        assert(start < end)
+        sql = ' AND '.join([
             f"SELECT * FROM {var} WHERE lat >= ?",
                                        "lat <= ?",
                                        "lon >= ?",
@@ -235,15 +252,21 @@ def load_hycom(*args, var, south, north, west, east, start, end, top, bottom, **
                                        "time <= ?",
                                        "depth >= ?",
                                        "depth <= ?",
-                                      f"source == 'hycom' LIMIT {kwargs['limit']}"]),
-            tuple(map(str, 
-                [south, north, west, east, 
-                dt_2_epoch(start)[0], dt_2_epoch(end)[0], 
-                top, bottom]   )     )       )
+                                      f"source == 'hycom' LIMIT {qry['limit']}"])
+        db.execute(sql, tuple(map(str, 
+                    [south, north, west, east, 
+                    dt_2_epoch(start)[0], dt_2_epoch(end)[0], 
+                    top, bottom]
+                )))
+    elif 'time' in qry.keys():
+        # https://stackoverflow.com/questions/592209/find-closest-numeric-value-in-database
+        assert False, "nearest time search not implemented yet"
 
     # transpose grid and convert epochs to datetime
     data = np.array(db.fetchall(), dtype=object).T
     assert len(data[0]) > 0, "no records found"
+    if len(data[0]) > int(qry['limit'].split(";")[0]):
+        warnings.warn(f'query limit exceeded, returning first {qry["limit"].split(";")[0]}')
 
     return data[0:5]
 
@@ -257,13 +280,13 @@ def fetch_idx(self, var, qry):
                              qry['south'], qry['west']])
         needles2 = np.array([dt_2_epoch(qry['end'])[0], qry['bottom'],
                              qry['north'], qry['east']])
-        haystack = np.array([self.epoch[year], self.depth, self.lat, self.lon])
+        haystack = np.array([self.epoch[year], self.depth, self.ygrid, self.xgrid])
         slice1 = map(index, needles1, haystack)
         slice2 = map(index, needles2, haystack)
         slices = list(zip(slice1, slice2))
         
-        return fetch_hycom(slices=slices, var=var, year=year, lat=self.lat,
-                lon=self.lon, epoch=self.epoch, depth=self.depth)
+        return fetch_hycom(slices=slices, var=var, year=year, ygrid=self.ygrid,
+                xgrid=self.xgrid, epoch=self.epoch, depth=self.depth)
 
     south, north, west, east = \
     map(float, [qry['south'], qry['north'], qry['west'], qry['east']])
@@ -311,7 +334,7 @@ class Hycom():
     """
 
     def __init__(self):
-        self.lat, self.lon = load_grid()
+        self.ygrid, self.xgrid= load_grid()
         self.epoch = load_times()
         self.depth = load_depth()
 
@@ -323,41 +346,41 @@ class Hycom():
 
     def fetch_water_v (self, **qry): return fetch_idx(self, 'water_v', qry)
 
-    def load_salinity(self,
-            south=-90, north=90, west=-180, east=180, 
-            start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            top=0, bottom=5000): 
+    def load_salinity(self, **qry):
+            #south=-90, north=90, west=-180, east=180, 
+            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
+            #top=0, bottom=5000): 
 
-        return load_hycom(var='salinity', 
-                south=south, north=north, west=west, east=east, 
-                start=start, end=end, top=top, bottom=bottom)
+        return load_hycom('salinity', qry)
+                #south=south, north=north, west=west, east=east, 
+                #start=start, end=end, top=top, bottom=bottom)
 
-    def load_temp(self,
-            south=-90, north=90, west=-180, east=180,
-            start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            top=0, bottom=5000): 
+    def load_temp(self, **qry):
+            #south=-90, north=90, west=-180, east=180,
+            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
+            #top=0, bottom=5000): 
 
-        return load_hycom(var='water_temp',
-                south=south, north=north, west=west, east=east, 
-                start=start, end=end, top=top, bottom=bottom)
+        return load_hycom('water_temp', qry)
+                #south=south, north=north, west=west, east=east, 
+                #start=start, end=end, top=top, bottom=bottom)
 
-    def load_water_u(self,
-            south=-90, north=90, west=-180, east=180,
-            start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            top=0, bottom=5000): 
+    def load_water_u(self, **qry):
+            #south=-90, north=90, west=-180, east=180,
+            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
+            #top=0, bottom=5000): 
 
-        return load_hycom(var='water_u',
-                south=south, north=north, west=west, east=east, 
-                start=start, end=end, top=top, bottom=bottom)
+        return load_hycom('water_u', qry)
+                #south=south, north=north, west=west, east=east, 
+                #start=start, end=end, top=top, bottom=bottom)
 
-    def load_water_v(self,
-            south=-90, north=90, west=-180, east=180,
-            start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
-            top=0, bottom=5000): 
+    def load_water_v(self, **qry):
+            #south=-90, north=90, west=-180, east=180,
+            #start=datetime(2000, 1, 1), end=datetime(2000, 1, 2),
+            #top=0, bottom=5000): 
 
-        return load_hycom(var='water_v',
-                south=south, north=north, west=west, east=east, 
-                start=start, end=end, top=top, bottom=bottom)
+        return load_hycom('water_v', qry)
+                #south=south, north=north, west=west, east=east, 
+                #start=start, end=end, top=top, bottom=bottom)
 
     def __str__(self):
         info = '\n'.join([

@@ -10,6 +10,7 @@
     License:
 
 """
+
 import numpy as np
 from kadlu.utils import LatLon
 from kadlu.geospatial.data_sources.chs import Chs
@@ -19,7 +20,6 @@ from kadlu.geospatial.data_sources.wwiii import Wwiii
 import kadlu.geospatial.data_sources.gebco as gebco 
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D
 from datetime import datetime
-from collections import Iterable
 
 
 class Ocean():
@@ -70,7 +70,7 @@ class Ocean():
 
 
     def load(self, south=-90, north=90, west=-180, east=180, 
-            start=datetime(2019, 1, 1), end=datetime(2019, 1, 1), 
+            start=datetime(2019, 1, 1), end=datetime(2019, 1, 1, 1), 
             top=0, bottom=5000):
 
         # save south-west and north-east corners as class attributes
@@ -148,8 +148,8 @@ class Ocean():
                 print('Error: Unknown bathymetry source {0}.'.format(bathy))
                 exit(1)
 
-        #elif isinstance(bathy, tuple):
-        elif isinstance(bathy, Iterable) and (bathy[-1][0] == 'chs' or bathy[-1][0] == 'gebco'):
+        elif isinstance(bathy, (np.ndarray, tuple)):
+        #elif isinstance(bathy, Iterable) and (bathy[-1][0] == 'chs' or bathy[-1][0] == 'gebco'):
             self.bathy_data = bathy
             self.bathy_interp = Interpolator2D(
                     values=self.bathy_data[0],
@@ -171,6 +171,8 @@ class Ocean():
 
         elif isinstance(temp, str):
             if temp == "HYCOM":
+                # TODO:
+                # enable hycom nearest time slice loading
                 self.temp_data = Hycom().load_temp(
                         south, north, west, east,
                         start, end, top, bottom)
@@ -179,7 +181,57 @@ class Ocean():
                 num_lons = int(np.ceil((east - west) / 0.001)) + 1
                 lats = np.linspace(south, north, num=num_lats)
                 lons = np.linspace(west, east, num=num_lons)
+
+                Hycom().fetch_temp(
+                        south=south, north=north, west=west, east=east,
+                        start=start, end=end, top=top, bottom=bottom)
                 """
+                """
+                # convert coordinate vectors into matrix 
+                cube = \
+                    np.vstack(
+                        cube = np.array(np.meshgrid(
+                            self.temp_data[0].astype(np.float),
+                            self.temp_data[1].astype(np.float),
+                            self.temp_data[2].astype(np.float),
+                            sparse=True, copy=False
+                        ))
+                    )
+
+                    
+                ydim = reduce(np.subtract, np.nonzero(self.temp_data[1][1:] < self.temp_data[1][:-1])[0][-1:-3:-1])
+                xdim = reduce(np.subtract, np.nonzero(self.temp_data[2][1:] < self.temp_data[2][:-1])[0][-1:-3:-1])
+                zdim = reduce(np.subtract, np.nonzero(self.temp_data[4][1:] > self.temp_data[4][:-1])[0] [-1:-3:-1])
+                len(np.nonzero(self.temp_data[1][1:] < self.temp_data[1][:-1])[0])
+                len(np.nonzero(self.temp_data[2][1:] < self.temp_data[2][:-1])[0])
+                np.reshape(self.temp_data[0], (xdim, 2))
+                reduce(np.subtract, xsplit)
+                """
+
+                # build splindex, reduce 4th dimension to 3D avg, map into grid
+                splidx = np.nonzero(self.temp_data[3][1:] > self.temp_data[3][:-1])[0] + 1
+                if len(splidx) > 0: 
+                    assert (self.temp_data[1][splidx[0]:splidx[1]] == self.temp_data[1][splidx[1]:splidx[2]]).all()
+                    assert (self.temp_data[2][splidx[0]:splidx[1]] == self.temp_data[2][splidx[1]:splidx[2]]).all()
+                    splarr = np.array([self.temp_data[0][splidx[d]:splidx[d+1]] for d in range(0, len(splidx)-1)])
+                    w = (reduce(np.add, splarr) / (len(splidx)-1)).astype(float)
+                    x = self.temp_data[2] [splidx[0] : splidx[1]] .astype(float)
+                    y = self.temp_data[1] [splidx[0] : splidx[1]] .astype(float)
+                    z = self.temp_data[4] [splidx[0] : splidx[1]] .astype(float)
+                    warnings.warn("query data has been averaged across the time dimension for 3D interpolation")
+                else: 
+                    w = self.temp_data[0].astype(float)
+                    x = self.temp_data[2].astype(float)
+                    y = self.temp_data[1].astype(float)
+                    z = self.temp_data[4].astype(float)
+
+                ydim = reduce(np.subtract, np.nonzero(y[1:] < y[:-1])[0][-1:-3:-1])
+                xdim = reduce(np.subtract, np.nonzero(x[1:] > x[:-1])[0][-1:-3:-1])
+                if min(z) == max(z): zdim = 1
+                else:
+                    zdim = reduce(np.subtract, np.nonzero(z[1:] > z[:-1])[0][-1:-3:-1])
+
+                grd = np.meshgrid(z, y, x, copy=False, sparse=True)
 
                 self.temp_interp = Interpolator3D(
                         values=self.temp_data[0],
@@ -192,12 +244,13 @@ class Ocean():
                 exit(1)
 
         #elif isinstance(temp, tuple):
-        elif isinstance(temp, Iterable) and temp[-1][0] == 'hycom':
+        #elif isinstance(temp, Iterable) and temp[-1][0] == 'hycom':
+        elif isinstance(temp, (np.ndarray, tuple)):
             self.temp_data = temp
             self.temp_interp = Interpolator3D(
                     values=self.temp_data[0],
-                    lats=self.temp_data[1], lons=self.temp_data[2],
-                    depths=self.temp_data[4], origin=self.origin,
+                    lats=self.temp_data[1],     lons=self.temp_data[2],
+                    depths=self.temp_data[4],   origin=self.origin,
                     method='linear')
 
         else:
@@ -225,6 +278,8 @@ class Ocean():
                 lons = np.linspace(west, east, num=num_lons)
                 """
 
+                # unflatten array into cube
+
                 self.salinity_interp = Interpolator3D(
                         values=self.salinity_data[0], 
                         lats=self.salinity_data[1], lons=self.salinity_data[2], 
@@ -235,8 +290,8 @@ class Ocean():
                 print('Error: Unknown salinity source {0}.'.format(salinity))
                 exit(1)
 
-        #elif isinstance(salinity, tuple):
-        elif isinstance(salinity, Iterable) and salinity[-1][0] == 'hycom':
+        elif isinstance(salinity, (np.ndarray, tuple)):
+        #elif isinstance(salinity, Iterable) and salinity[-1][0] == 'hycom':
             self.salinity_data = salinity
             self.salinity_interp = Interpolator3D(
                     values=self.salinity_data[0], 
@@ -307,7 +362,7 @@ class Ocean():
                 print('Error: Unknown wave source {0}.'.format(wave))
                 exit(1)
 
-        #elif isinstance(wave, tuple):
+        elif isinstance(wave, (np.ndarray, tuple)):
         elif isinstance(wave, Iterable) and len(wave) == 3:
             self.wave_data = wave
             self.wave_interp = Interpolator2D(

@@ -35,7 +35,12 @@ from datetime import datetime
 
 
 class Geophony():
+    """ Geophony modeling.
 
+        Args:
+
+        Attributes:
+    """
     def __init__(self, tl_calculator, depth, xy_res=None, time_dependent_tl=False, progress_bar=True):
 
         self.tl = tl_calculator

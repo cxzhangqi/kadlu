@@ -167,9 +167,6 @@ class Geophony():
 
                 dB = dB[np.newaxis, :]
 
-            print(lat,lon,self.bathy)
-            print(dB)
-
             if SPL is None:
                 SPL = dB
             else:

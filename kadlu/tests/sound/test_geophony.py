@@ -59,11 +59,11 @@ def test_compute_geophony():
 def test_compute_geophony_in_canyon(bathy_canyon):
     s = Seafloor()
     o = Ocean(bathy=bathy_canyon, wave=1.0)
-    south = 44
+    south = 43
     north = 46
     west = 60
     east = 62
-    z = [100, 500, 1000, 1500, 3000]
+    z = [100, 1500, 3000]
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1480, radial_bin=100, radial_range=50e3, angular_bin=45, vertical_bin=100)
     geo = Geophony(tl_calculator=tl, south=south, north=north, west=west, east=east, depth=z)
     x = geo.x
@@ -71,17 +71,19 @@ def test_compute_geophony_in_canyon(bathy_canyon):
     spl = geo.compute(frequency=10)
     assert spl.shape[0] == x.shape[0]
     assert spl.shape[1] == y.shape[0]
-    assert spl.shape[2] == 5
+    assert spl.shape[2] == len(z)
     assert np.all(np.diff(x) == np.sqrt(2) * tl.range['r'])
     assert np.all(np.diff(y) == np.sqrt(2) * tl.range['r'])    
-    bathy = (-1.) * np.reshape(geo.bathy, newshape=(x.shape[0], y.shape[0]))
-    xyz = np.ones(shape=bathy.shape)[:,:,np.newaxis] * z
-    idx = np.argwhere(xyz > bathy[:,:,np.newaxis])
+    bathy = (-1.) * np.swapaxes(np.reshape(geo.bathy, newshape=(y.shape[0], x.shape[0])), 0, 1)
+    bathy = bathy[:,:,np.newaxis]
+    xyz = np.ones(shape=bathy.shape) * z
+    print(bathy.shape, xyz.shape, spl.shape)
+    idx = np.argwhere(xyz > bathy)
     print(idx)
-    print(spl[:,:,-1])
-    print(spl[:,:,-2])
-    print(spl[:,:,-3])
-    print(spl[:,:,-4])
+#    print(spl[:,:,-1])
+#    print(spl[:,:,-2])
+#    print(spl[:,:,-3])
+#    print(spl[:,:,-4])
 
 #    assert np.all(np.isnan(spl[idx]))
     

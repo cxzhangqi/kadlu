@@ -173,7 +173,8 @@ class Geophony():
                 SPL = np.concatenate((SPL, dB), axis=0)
 
 
-        SPL = np.reshape(SPL, newshape=(len(self.x), len(self.y), SPL.shape[1]))
+        SPL = np.reshape(SPL, newshape=(len(self.y), len(self.x), SPL.shape[1]))
+        SPL = np.swapaxes(SPL, 0, 1)
             
         return SPL
 

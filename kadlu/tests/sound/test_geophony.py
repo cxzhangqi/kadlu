@@ -74,18 +74,14 @@ def test_compute_geophony_in_canyon(bathy_canyon):
     assert spl.shape[2] == len(z)
     assert np.all(np.diff(x) == np.sqrt(2) * tl.range['r'])
     assert np.all(np.diff(y) == np.sqrt(2) * tl.range['r'])    
+    # check that noise is NaN below seafloor and non Nan above
     bathy = (-1.) * np.swapaxes(np.reshape(geo.bathy, newshape=(y.shape[0], x.shape[0])), 0, 1)
     bathy = bathy[:,:,np.newaxis]
     xyz = np.ones(shape=bathy.shape) * z
-    print(bathy.shape, xyz.shape, spl.shape)
-    idx = np.nonzero(xyz > bathy)
-    print(idx)
-    print(spl[:,:,-1])
-    print(spl[:,:,-2])
-    print(spl[:,:,-3])
-    print(spl[:,:,-4])
-
-#    assert np.all(np.isnan(spl[idx]))
+    idx = np.nonzero(xyz >= bathy)
+    assert np.all(np.isnan(spl[idx]))
+    idx = np.nonzero(xyz < bathy)
+    assert np.all(~np.isnan(spl[idx]))
     
 
 def test_wind_source_level_per_area():

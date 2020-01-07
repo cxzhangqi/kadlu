@@ -196,13 +196,12 @@ class TLCalculator():
                 Computational grid
             TL: numpy array
                 Transmission loss in dB on a horizontal plane at the specified depths. 
-                Has shape (Nd, Nq, Nr) where Nd is the number of depths, Nq is number of 
-                angular bins, and Nr is the number of radial steps. If Nd=1, the first dimension
-                is discarded. 
+                Has shape (Ns, Nd, Nq, Nr) where Ns is the number of source depths, Nd is the number of 
+                receiver depths, Nq is number of angular bins, and Nr is the number of radial steps.
             TL_vertical: numpy array
                 Transmission loss in dB on a vertical plane for all angular bins. 
-                Has shape (Nz/2, Nr+1, Nq) where Nz is the number of vertical grid points, Nr is 
-                the number of radial steps, and Nq is number of angular bins. 
+                Has shape (Ns, int(Nz/2), Nr, Nq) where Ns is the number of source depths, Nz is the number of 
+                vertical grid points, Nr is the number of radial steps, and Nq is number of angular bins. 
             receiver_depth: list of floats
                 Depths of receivers. 
             env_input: EnvironmentInput
@@ -300,7 +299,12 @@ class TLCalculator():
         dq = self.bin_size['q'] / 180 * np.pi
 
         # automatic determination of vertical range
-        max_depth = -np.min(self.ocean.bathy())
+        bathy = self.ocean.bathy()
+        if isinstance(bathy, float) or isinstance(bathy, int):
+            max_depth = -bathy
+        else:
+            max_depth = -np.min(bathy[0])
+    
         zmax = (max_depth + self.seafloor.thickness) * (1. + self.absorption_layer)
 
         # create grid

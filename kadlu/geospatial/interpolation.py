@@ -45,7 +45,7 @@
 """
 
 import numpy as np
-from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline, RegularGridInterpolator, interp1d, griddata
+from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, griddata
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
 
 from sys import platform as sys_pf

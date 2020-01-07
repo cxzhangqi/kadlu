@@ -14,3 +14,17 @@ def one():
 def grid():
     grid = Grid(dr=10, rmax=200, dq=5, qmax=2*np.pi, dz=20, zmax=400)
     return grid
+
+@pytest.fixture
+def bathy_canyon():
+    depth = 2e3 #2km
+    sigma = 0.5
+    def canyon_axis(x):
+        y = 45  # + (x - 61) 
+        return y
+
+    x = np.linspace(59, 63, num=200) #lons
+    y = np.linspace(42, 48, num=200) #lats
+    xv, yv = np.meshgrid(x, y)
+    bathy = -depth * np.exp(-(yv - canyon_axis(xv))**2 / (2 * sigma**2))
+    return (bathy, y, x)

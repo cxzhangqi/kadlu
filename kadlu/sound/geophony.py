@@ -45,8 +45,10 @@ _kewley_interp = interp2d(x=[40, 100, 300], y=[2.57, 5.14, 10.29, 15.23, 20.58],
 
 def source_level_kewley(freq, wind_speed):
     """ Compute the wind source level according to the 
-        tabulation of Kewley et al. 1990.
-        (Ocean Ambient Noise p. 114)
+        tabulation of Kewley et al. 1990. (Ocean Ambient Noise p. 114).
+
+        Values outside the tabulation domain are extrapolated via 
+        nearest-neighbor extrapolation.
 
         Args:
             freq: float
@@ -59,7 +61,43 @@ def source_level_kewley(freq, wind_speed):
                 Source level in units of dB re 1 uPa^2 / Hz @ 1m / m^2
     """    
     sl = _kewley_interp(x=freq, y=wind_speed)
+    sl = np.squeeze(sl)
     return sl
+
+
+def source_level(freq, x, y, area, ocean, method, grid=False, geometry='planar'):
+    """ Compute the source levels at the specified frequency and coordinates.
+    
+        Args:
+            frequency: float
+                Sound frequency in Hz.
+            x: float or array
+                x-coordinate(s) or longitude(s)
+            y: float or array
+                y-coordinate(s) or latitude(s)
+            area: float or array
+                Source area in units of meters squared. Must have same shape as x and y.
+            ocean: instance of the Ocean class
+                Ocean environmental data.
+            method: str
+                Method used to compute the source levels.
+            grid: bool
+                Specify how to combine elements of x and y. If x and y have different
+                lengths, specifying grid has no effect as it is automatically set to True.
+            geometry: str
+                Can be either 'planar' (default) or 'spherical'.
+
+        Returns:
+            SL: float or 1d numpy array
+                Source levels in units of dB re 1 uPa^2 / Hz @ 1m.
+    """
+    if method == 'Kewley':
+        wind_speed = ocean.wave(x=x, y=y) 
+        sl = source_level_kewley(freq=freq, wind_speed=wind_speed) # source level per unit area
+        sl += 20 * np.log10(area) # scale by area
+
+    return sl
+
 
 
 class Geophony():
@@ -95,10 +133,12 @@ class Geophony():
                 noise level is computed. If None is specified, the spacing 
                 will be set equal to sqrt(2) times the range of the transmission
                 loss calculator.
+            source_level_method: str
+                Method used to compute the source levels.
             progress_bar: bool
                 Display calculation progress bar. Default is True.
     """
-    def __init__(self, tl_calculator, south, north, west, east, depth, xy_res=None, progress_bar=True, source_level='Kewley'):
+    def __init__(self, tl_calculator, south, north, west, east, depth, xy_res=None, source_level_method='Kewley', progress_bar=True):
 
         self.tl = tl_calculator
 
@@ -117,9 +157,13 @@ class Geophony():
         self.tl.progress_bar = False
         self.progress_bar = progress_bar
 
+        assert source_level_method == 'Kewley', 'Invalid method for computing source levels'
+        self.source_level_method = source_level_method
+
         # prepare grid
         self.lats, self.lons, self.x, self.y = self._create_grid(south, north, west, east)
         self.bathy = self.tl.ocean.bathy(x=self.lons, y=self.lats, geometry='spherical')
+
 
         # wind source level interpolation table
         self._kewley1990 = interp1d(x=[2.57, 5.14, 10.29, 15.23, 20.58], y=[34, 39, 48, 53, 58], kind='linear', fill_value="extrapolate")
@@ -176,7 +220,7 @@ class Geophony():
                 TL = self.tl.TL[:,0,:,:]
 
                 # source level
-                SL = self._source_level(freq=frequency, grid=self.tl.grid, start=start, end=end)
+                SL = self._compute_source_level(freq=frequency)
 
                 # integrate SL-TL to obtain sound pressure level
                 p = np.power(10, (SL + TL) / 20)
@@ -206,8 +250,24 @@ class Geophony():
             
         return SPL
 
+    def _compute_source_level(self, freq):
+        """ Compute the source levels at the specified frequency at each surface 
+            grid point.
 
-    def _source_level(self, freq, grid, start, end, method='wind'):
+            The source levels are computed according to the method prescribed 
+            by the source_level_method attribute.
+
+            Args:
+                frequency: float
+                    Sound frequency in Hz.
+
+            Returns:
+                SL: 3d numpy array
+                    Source levels in units of dB re 1 uPa^2 / Hz @ 1m.
+                    Has shape (1,Nq,Nr) where Nq is the number of angular bins 
+                    and Nr is the number of radial bins in grid.
+        """
+        grid = self.tl.grid
 
         # x,y coordinates
         r = grid.r[1:]
@@ -224,30 +284,12 @@ class Geophony():
         y = y.flatten()
         a = a.flatten()
 
-        # wind source level impirical parametrization
-        assert method == 'wind', 'The only allowed method is wind'
+        # compute source levels
+        sl = source_level(freq=freq, x=x, y=y, area=a, ocean=self.tl.ocean, method=self.source_level_method)
+        sl = np.reshape(sl, newshape=r.shape) # transform to desired shape
+        sl = sl[np.newaxis, :, :]
 
-        if method == 'wind':
-            SL = self._wind_source_level_per_area(freq=freq, x=x, y=y, start=start, end=end)
-            SL += 20 * np.log10(a)
-
-        SL = np.reshape(SL, newshape=r.shape)
-        SL = SL[np.newaxis, :, :]
-
-        return SL
-
-
-    def _wind_source_level_per_area(self, freq, x, y, start, end):
-
-        # interpolate wind speed
-        wind_speed = self.tl.ocean.wave(x=x, y=y) 
-
-        # use parametrization of Kewley 1990
-        # (Ocean Ambient Noise p. 114)
-        WSL = self._kewley1990(x=wind_speed)
-
-        return WSL
-
+        return sl
 
     def _create_grid(self, south, north, west, east):
 

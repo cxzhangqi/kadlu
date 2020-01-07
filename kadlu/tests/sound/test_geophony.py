@@ -13,7 +13,7 @@
 import pytest
 import math
 import numpy as np
-from kadlu.sound.geophony import Geophony, source_level_kewley
+from kadlu.sound.geophony import Geophony, source_level_kewley, source_level
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.geospatial.ocean import Ocean
 from kadlu.utils import R1_IUGG, deg2rad
@@ -28,6 +28,14 @@ def test_source_level_kewley():
     assert sl3 == 44.0
     sl4 = source_level_kewley(freq=100, wind_speed=5.14)
     assert sl4 == 42.5
+
+def test_source_level():
+    o = Ocean(bathy=-10000, wave=5.14)
+    sl = source_level(freq=10, x=0, y=0, area=1, ocean=o, method='Kewley')
+    assert sl == 44.0
+    sl = source_level(freq=100, x=[0,100], y=[0,100], area=[1,2], ocean=o, method='Kewley')
+    assert sl[0] == 42.5
+    assert sl[1] == sl[0] + 20*np.log10(2)
 
 def test_initialize_geophony():
     s = Seafloor()
@@ -92,26 +100,3 @@ def test_compute_geophony_in_canyon(bathy_canyon):
     assert np.all(np.isnan(spl[idx]))
     idx = np.nonzero(xyz < bathy)
     assert np.all(~np.isnan(spl[idx]))
-
-def test_wind_source_level_per_area():
-    s = Seafloor()
-    o = Ocean(bathy=-10000, wave=5.14)
-    tl = TLCalculator(ocean=o, seafloor=s)
-    geo = Geophony(tl_calculator=tl, south=44, north=46, west=-60, east=-58, depth=[100, 200, 300])
-    SL_f10 = geo._wind_source_level_per_area(freq=10, x=0, y=0, start=None, end=None)
-    SL_f20 = geo._wind_source_level_per_area(freq=10, x=0, y=0, start=None, end=None)
-    SL_arr = geo._wind_source_level_per_area(freq=10, x=[0,1,2], y=[0,1,2], start=None, end=None)
-    assert SL_f10 == SL_f20
-    assert SL_f10 == 39.0
-    assert len(SL_arr) == 3
-    assert np.all(SL_arr == 39.0)
-
-def test_source_level(grid):
-    s = Seafloor()
-    o = Ocean(bathy=-10000, wave=5.14)
-    tl = TLCalculator(ocean=o, seafloor=s)
-    geo = Geophony(tl_calculator=tl, south=44, north=46, west=-60, east=-58, depth=[100, 200, 300])
-    SL = geo._source_level(freq=10, grid=grid, start=None, end=None, method='wind')
-    assert SL.shape[0] == 1
-    assert SL.shape[1] == len(grid.q)
-    assert SL.shape[2] == len(grid.r) - 1

@@ -20,11 +20,11 @@ def bathy_canyon():
     depth = 2e3 #2km
     sigma = 0.5
     def canyon_axis(x):
-        y = 45 + (x - 61) 
+        y = 45  # + (x - 61) 
         return y
 
-    x = np.linspace(60, 62, num=100) #lons
-    y = np.linspace(44, 46, num=100) #lats
+    x = np.linspace(59, 63, num=200) #lons
+    y = np.linspace(43, 47, num=200) #lats
     yv, xv = np.meshgrid(y, x)
     bathy = -depth * np.exp(-(yv - canyon_axis(xv))**2 / (2 * sigma**2))
     return (bathy, y, x)

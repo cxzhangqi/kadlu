@@ -59,10 +59,10 @@ def test_compute_geophony():
 def test_compute_geophony_in_canyon(bathy_canyon):
     s = Seafloor()
     o = Ocean(bathy=bathy_canyon, wave=1.0)
-    south = np.min(bathy_canyon[1])
-    north = np.max(bathy_canyon[1])
-    west = np.min(bathy_canyon[2])
-    east = np.max(bathy_canyon[2])
+    south = 44
+    north = 46
+    west = 60
+    east = 62
     z = [100, 500, 1000, 1500, 3000]
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1480, radial_bin=100, radial_range=50e3, angular_bin=45, vertical_bin=100)
     geo = Geophony(tl_calculator=tl, south=south, north=north, west=west, east=east, depth=z)
@@ -73,8 +73,18 @@ def test_compute_geophony_in_canyon(bathy_canyon):
     assert spl.shape[1] == y.shape[0]
     assert spl.shape[2] == 5
     assert np.all(np.diff(x) == np.sqrt(2) * tl.range['r'])
-    assert np.all(np.diff(y) == np.sqrt(2) * tl.range['r'])
-    # TODO: add some checks of contents of spl array
+    assert np.all(np.diff(y) == np.sqrt(2) * tl.range['r'])    
+    bathy = (-1.) * np.reshape(geo.bathy, newshape=(x.shape[0], y.shape[0]))
+    xyz = np.ones(shape=bathy.shape)[:,:,np.newaxis] * z
+    idx = np.argwhere(xyz > bathy[:,:,np.newaxis])
+    print(idx)
+    print(spl[:,:,-1])
+    print(spl[:,:,-2])
+    print(spl[:,:,-3])
+    print(spl[:,:,-4])
+
+#    assert np.all(np.isnan(spl[idx]))
+    
 
 def test_wind_source_level_per_area():
     s = Seafloor()

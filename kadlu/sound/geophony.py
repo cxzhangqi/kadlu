@@ -37,6 +37,9 @@ from datetime import datetime
 class Geophony():
     """ Geophony modeling on a regular 3D grid.
 
+        TODO: Check that the specified region is within the coverage of 
+              of the ocean data. 
+
         Args:
             tl_calculator: instance of TLCalculator
                 Transmission loss calculator
@@ -93,9 +96,12 @@ class Geophony():
         # wind source level interpolation table
         self._kewley1990 = interp1d(x=[2.57, 5.14, 10.29, 15.23, 20.58], y=[34, 39, 48, 53, 58], kind='linear', fill_value="extrapolate")
 
-    def compute(self, frequency, start=None, end=None):
+    def compute(self, frequency, below_seafloor=False, start=None, end=None):
         """ Compute the noise level within a specified geographic 
             region at a specified date and time.
+
+            If below_seafloor is False (default), the noise level is only computed 
+            at grid points above the seafloor, and is set to NaN below.
 
             TODO: Allow user to specify time, as an alternative to 
             start and end.
@@ -103,6 +109,14 @@ class Geophony():
             Args:
                 frequency: float
                     Sound frequency in Hz.
+                below_seafloor: bool
+                    Whether to compute the noise below the seafloor. Default is False.
+
+            Returns:
+                SPL: 3d numpy array
+                    Sound pressure levels, has shape (Nx,Ny,Nz) where Nx is the number 
+                    of west-east (longitude) grid points, Ny is the number of south-north 
+                    (latitude) grid points, and Nz is the number of depths.
         """
         N = len(self.lats)
         SPL = None
@@ -111,8 +125,13 @@ class Geophony():
 
             lat = self.lats[i]
             lon = self.lons[i]
-            seafloor_depth = -self.bathy[i]
-            depth = self.depth[self.depth <= seafloor_depth] # ignore depths below seafloor
+
+            if below_seafloor: # include depths below seafloor
+                depth = self.depth
+
+            else: # ignore depths below seafloor
+                seafloor_depth = -self.bathy[i]
+                depth = self.depth[self.depth <= seafloor_depth] 
 
             if len(depth) == 0:
                 dB = np.empty((1,len(self.depth)), dtype=float)
@@ -131,9 +150,6 @@ class Geophony():
                 # source level
                 SL = self._source_level(freq=frequency, grid=self.tl.grid, start=start, end=end)
 
-                print(TL[0,0,:])
-                print(SL[0,0,:])
-
                 # integrate SL-TL to obtain sound pressure level
                 p = np.power(10, (SL + TL) / 20)
                 p = np.squeeze(np.apply_over_axes(np.sum, p, range(1, p.ndim))) # sum over all but the first axis
@@ -151,10 +167,14 @@ class Geophony():
 
                 dB = dB[np.newaxis, :]
 
+            print(lat,lon,self.bathy)
+            print(dB)
+
             if SPL is None:
                 SPL = dB
             else:
                 SPL = np.concatenate((SPL, dB), axis=0)
+
 
         SPL = np.reshape(SPL, newshape=(len(self.x), len(self.y), SPL.shape[1]))
             
@@ -183,7 +203,7 @@ class Geophony():
 
         if method == 'wind':
             SL = self._wind_source_level_per_area(freq=freq, x=x, y=y, start=start, end=end)
-            SL *= a
+            SL += 20 * np.log10(a)
 
         SL = np.reshape(SL, newshape=r.shape)
         SL = SL[np.newaxis, :, :]

@@ -78,12 +78,12 @@ def test_compute_geophony_in_canyon(bathy_canyon):
     bathy = bathy[:,:,np.newaxis]
     xyz = np.ones(shape=bathy.shape) * z
     print(bathy.shape, xyz.shape, spl.shape)
-    idx = np.argwhere(xyz > bathy)
+    idx = np.nonzero(xyz > bathy)
     print(idx)
-#    print(spl[:,:,-1])
-#    print(spl[:,:,-2])
-#    print(spl[:,:,-3])
-#    print(spl[:,:,-4])
+    print(spl[:,:,-1])
+    print(spl[:,:,-2])
+    print(spl[:,:,-3])
+    print(spl[:,:,-4])
 
 #    assert np.all(np.isnan(spl[idx]))
     

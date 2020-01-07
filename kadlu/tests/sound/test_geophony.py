@@ -13,11 +13,21 @@
 import pytest
 import math
 import numpy as np
-from kadlu.sound.geophony import Geophony
+from kadlu.sound.geophony import Geophony, source_level_kewley
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.geospatial.ocean import Ocean
 from kadlu.utils import R1_IUGG, deg2rad
 
+
+def test_source_level_kewley():
+    sl1 = source_level_kewley(freq=10, wind_speed=0)
+    sl2 = source_level_kewley(freq=40, wind_speed=2.57)
+    assert sl1 == sl2
+    assert sl2 == 40.0
+    sl3 = source_level_kewley(freq=40, wind_speed=5.14)
+    assert sl3 == 44.0
+    sl4 = source_level_kewley(freq=100, wind_speed=5.14)
+    assert sl4 == 42.5
 
 def test_initialize_geophony():
     s = Seafloor()
@@ -82,7 +92,6 @@ def test_compute_geophony_in_canyon(bathy_canyon):
     assert np.all(np.isnan(spl[idx]))
     idx = np.nonzero(xyz < bathy)
     assert np.all(~np.isnan(spl[idx]))
-    
 
 def test_wind_source_level_per_area():
     s = Seafloor()

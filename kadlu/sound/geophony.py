@@ -30,8 +30,36 @@ from kadlu.geospatial.ocean import Ocean
 from kadlu.sound.sound_propagation import TLCalculator, Seafloor
 from kadlu.utils import xdist, ydist, XYtoLL
 from tqdm import tqdm
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, interp2d
 from datetime import datetime
+from scipy.interpolate import RectBivariateSpline
+
+
+# wind source level tabulation of Kewley et al. 1990
+_kewley_table = np.array([[40.0, 44.0, 48.0, 53.0, 58.0],\
+                 [37.5, 42.5, 48.0, 53.0, 58.0],\
+                 [34.0, 39.0, 48.0, 53.0, 58.0]])
+_kewley_table = np.swapaxes(_kewley_table, 0, 1)
+_kewley_interp = interp2d(x=[40, 100, 300], y=[2.57, 5.14, 10.29, 15.23, 20.58], z=_kewley_table, kind='linear')
+
+
+def source_level_kewley(freq, wind_speed):
+    """ Compute the wind source level according to the 
+        tabulation of Kewley et al. 1990.
+        (Ocean Ambient Noise p. 114)
+
+        Args:
+            freq: float
+                Frequency in Hz
+            wind_speed: float or array
+                Wind speed in m/s
+
+        Returns:
+            SL: float or array
+                Source level in units of dB re 1 uPa^2 / Hz @ 1m / m^2
+    """    
+    sl = _kewley_interp(x=freq, y=wind_speed)
+    return sl
 
 
 class Geophony():
@@ -60,7 +88,7 @@ class Geophony():
                 ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
             west, east: float
                 xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
-            depth: float or 1d array
+            depth: float, list, or 1d numpy array
                 Depth(s) at which the noise level is computed.
             xy_res: float
                 Horizontal spacing (in meters) between points at which the 
@@ -70,7 +98,7 @@ class Geophony():
             progress_bar: bool
                 Display calculation progress bar. Default is True.
     """
-    def __init__(self, tl_calculator, south, north, west, east, depth, xy_res=None, progress_bar=True):
+    def __init__(self, tl_calculator, south, north, west, east, depth, xy_res=None, progress_bar=True, source_level='Kewley'):
 
         self.tl = tl_calculator
 
@@ -103,7 +131,7 @@ class Geophony():
             If below_seafloor is False (default), the noise level is only computed 
             at grid points above the seafloor, and is set to NaN below.
 
-            TODO: Allow user to specify time, as an alternative to 
+            TODO: Allow user to specify a single date-time value, as an alternative to 
             start and end.
 
             Args:
@@ -172,7 +200,7 @@ class Geophony():
             else:
                 SPL = np.concatenate((SPL, dB), axis=0)
 
-
+        # transform output array to desired shape
         SPL = np.reshape(SPL, newshape=(len(self.y), len(self.x), SPL.shape[1]))
         SPL = np.swapaxes(SPL, 0, 1)
             

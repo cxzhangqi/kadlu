@@ -300,7 +300,7 @@ class TLCalculator():
 
         # automatic determination of vertical range
         bathy = self.ocean.bathy()
-        if isinstance(bathy, float):
+        if isinstance(bathy, float) or isinstance(bathy, int):
             max_depth = -bathy
         else:
             max_depth = -np.min(bathy[0])

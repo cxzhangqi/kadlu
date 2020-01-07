@@ -119,7 +119,7 @@ class Geophony():
 
         if method == 'wind':
             SL = self._wind_source_level_per_area(freq=freq, x=x, y=y, start=start, end=end)
-            SL *= a
+            SL += 20 * np.log10(a)
 
         SL = np.reshape(SL, newshape=r.shape)
 

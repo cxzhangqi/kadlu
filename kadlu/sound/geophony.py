@@ -64,7 +64,6 @@ def source_level_kewley(freq, wind_speed):
     sl = np.squeeze(sl)
     return sl
 
-
 def source_level(freq, x, y, area, ocean, method, grid=False, geometry='planar'):
     """ Compute the source levels at the specified frequency and coordinates.
     
@@ -98,7 +97,50 @@ def source_level(freq, x, y, area, ocean, method, grid=False, geometry='planar')
 
     return sl
 
+def create_geophony_xy_grid(south, north, west, east, x_res, y_res):
+    """ Create 2D surface grid for the geophony computation.
 
+        Args:
+            south, north: float
+                Latitude range
+            west, east: float
+                Longitude range
+            x_res: float
+                Longitude resolution in meters
+            y_res: float
+                Latitude resolution in meters
+    """
+    # select latitude closest to the equator
+    if np.abs(south) < np.abs(north):
+        lat = south
+    else:
+        lat = north
+
+    # compute x and y range
+    xd = xdist(lon2=east, lon1=west, lat=lat)
+    yd = ydist(lat2=north, lat1=south) 
+
+    # number of bins
+    nx = int(xd / x_res)
+    ny = int(yd / y_res)
+    nx += nx%2 
+    ny += ny%2 
+
+    # create x and y arrays
+    x = np.arange(start=-nx/2, stop=nx/2+1)
+    x *= x_res
+    y = np.arange(start=-ny/2, stop=ny/2+1)
+    y *= y_res
+
+    # convert to lat-lon
+    lat_ref = 0.5 * (north + south)
+    lon_ref = 0.5 * (east + west)
+    lats, lons = XYtoLL(x=x, y=y, lat_ref=lat_ref, lon_ref=lon_ref, grid=True)
+
+    lats = lats.flatten()
+    lons = lons.flatten()
+
+    return lats, lons, x, y
 
 class Geophony():
     """ Geophony modeling on a regular 3D grid.
@@ -109,6 +151,10 @@ class Geophony():
         Args:
             tl_calculator: instance of TLCalculator
                 Transmission loss calculator
+            south, north: float
+                ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
+            west, east: float
+                xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
             depth: float or 1d array
                 Depth(s) at which the noise level is computed.
             xy_res: float
@@ -116,23 +162,22 @@ class Geophony():
                 noise level is computed. If None is specified, the spacing 
                 will be set equal to sqrt(2) times the range of the transmission
                 loss calculator.
+            source_level_method: str
+                Method used to compute the source levels.
             progress_bar: bool
                 Display calculation progress bar. Default is True.
 
         Attributes:
             tl: instance of TLCalculator
                 Transmission loss calculator
-            south, north: float
-                ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
-            west, east: float
-                xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
             depth: float, list, or 1d numpy array
                 Depth(s) at which the noise level is computed.
-            xy_res: float
-                Horizontal spacing (in meters) between points at which the 
-                noise level is computed. If None is specified, the spacing 
-                will be set equal to sqrt(2) times the range of the transmission
-                loss calculator.
+            lats, lons: 1d numpy array
+                Latitude and longitudes of the computational grid
+            x, y: 1d numpy array
+                Planar coordinates of the computational grid
+            bathy: 1d numpy array
+                Bathymetry at each grid point
             source_level_method: str
                 Method used to compute the source levels.
             progress_bar: bool
@@ -150,9 +195,9 @@ class Geophony():
         self.depth = np.sort(depth)
 
         if xy_res is None:
-            self.xy_res = np.sqrt(2) * self.tl.range['r']
+            xy_res = np.sqrt(2) * tl_calculator.range['r']
         else:
-            self.xy_res = xy_res
+            xy_res = xy_res
 
         self.tl.progress_bar = False
         self.progress_bar = progress_bar
@@ -161,12 +206,10 @@ class Geophony():
         self.source_level_method = source_level_method
 
         # prepare grid
-        self.lats, self.lons, self.x, self.y = self._create_grid(south, north, west, east)
+        self.lats, self.lons, self.x, self.y = create_geophony_xy_grid(south, north, west, east, x_res=xy_res, y_res=xy_res)
+
+        # interpolate bathymetry
         self.bathy = self.tl.ocean.bathy(x=self.lons, y=self.lats, geometry='spherical')
-
-
-        # wind source level interpolation table
-        self._kewley1990 = interp1d(x=[2.57, 5.14, 10.29, 15.23, 20.58], y=[34, 39, 48, 53, 58], kind='linear', fill_value="extrapolate")
 
     def compute(self, frequency, below_seafloor=False, start=None, end=None):
         """ Compute the noise level within a specified geographic 
@@ -290,39 +333,3 @@ class Geophony():
         sl = sl[np.newaxis, :, :]
 
         return sl
-
-    def _create_grid(self, south, north, west, east):
-
-        # select latitude closest to the equator
-        if np.abs(south) < np.abs(north):
-            lat = south
-        else:
-            lat = north
-
-        # compute x and y range
-        xd = xdist(lon2=east, lon1=west, lat=lat)
-        xd += 2 * self.tl.range['r']
-        yd = ydist(lat2=north, lat1=south) 
-        yd += 2 * self.tl.range['r']
-
-        # number of bins
-        nx = int(xd / self.xy_res)
-        ny = int(yd / self.xy_res)
-        nx += nx%2 
-        ny += ny%2 
-
-        # create x and y arrays
-        x = np.arange(start=-nx/2, stop=nx/2+1)
-        x *= self.xy_res
-        y = np.arange(start=-ny/2, stop=ny/2+1)
-        y *= self.xy_res
-
-        # convert to lat-lon
-        lat_ref = 0.5 * (north + south)
-        lon_ref = 0.5 * (east + west)
-        lats, lons = XYtoLL(x=x, y=y, lat_ref=lat_ref, lon_ref=lon_ref, grid=True)
-
-        lats = lats.flatten()
-        lons = lons.flatten()
-
-        return lats, lons, x, y

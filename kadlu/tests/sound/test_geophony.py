@@ -52,7 +52,7 @@ def test_geophony_has_expected_grid():
     lons = geo.lons
     x = geo.x
     y = geo.y
-    num_bins = int((2 * deg2rad * R1_IUGG + 20E3)/1000)
+    num_bins = int((2 * deg2rad * R1_IUGG)/1000)
     num_bins += num_bins%2
     num_bins += 1
     assert num_bins*num_bins == lats.shape[0]
@@ -66,9 +66,9 @@ def test_compute_geophony():
     x = geo.x
     y = geo.y
     spl = geo.compute(frequency=1000)
-    assert x.shape[0] == 5
+    assert x.shape[0] == 3
     assert y.shape[0] == 5
-    assert spl.shape[0] == 5
+    assert spl.shape[0] == 3
     assert spl.shape[1] == 5
     assert spl.shape[2] == 2
     assert np.all(np.diff(x) == np.sqrt(2) * 50e3)

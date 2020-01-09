@@ -107,6 +107,12 @@ def epoch_2_dt(ep_arr):
     return list(map(lambda ep : t0 + timedelta(hours=ep), ep_arr))
 
 
+def index(val, sorted_arr):
+    """ converts value in coordinate array to grid index """
+    if val > sorted_arr[-1]: return len(sorted_arr) - 1
+    return np.nonzero(sorted_arr >= val)[0][0]
+  
+
 class Boundary():
     """ compute intersecting boundaries using the separating axis theorem """
 

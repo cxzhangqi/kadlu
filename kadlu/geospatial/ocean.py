@@ -19,6 +19,7 @@ from kadlu.geospatial.data_sources.era5 import Era5
 from kadlu.geospatial.data_sources.wwiii import Wwiii
 import kadlu.geospatial.data_sources.gebco as gebco 
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D
+from kadlu.geospatial.data_sources.fetch_util import index
 from datetime import datetime
 
 
@@ -176,67 +177,92 @@ class Ocean():
                 self.temp_data = Hycom().load_temp(
                         south, north, west, east,
                         start, end, top, bottom)
-                """
-                num_lats = int(np.ceil((north - south) / 0.001)) + 1
-                num_lons = int(np.ceil((east - west) / 0.001)) + 1
-                lats = np.linspace(south, north, num=num_lats)
-                lons = np.linspace(west, east, num=num_lons)
+                """ run this code interactively for testing load_temp and interpolation
 
-                Hycom().fetch_temp(
+                south, west = 46, -60
+                north, east = 48, -58
+                top, bottom = 0, 5000
+                start,  end = datetime(2015, 1, 10), datetime(2015, 1, 10, 12)
+
+                from kadlu.geospatial.data_sources import hycom
+                from importlib import reload
+                reload(hycom)
+                self = Ocean()
+
+                hycom.Hycom().fetch_temp(
                         south=south, north=north, west=west, east=east,
-                        start=start, end=end, top=top, bottom=bottom)
-                """
-                """
-                # convert coordinate vectors into matrix 
-                cube = \
-                    np.vstack(
-                        cube = np.array(np.meshgrid(
-                            self.temp_data[0].astype(np.float),
-                            self.temp_data[1].astype(np.float),
-                            self.temp_data[2].astype(np.float),
-                            sparse=True, copy=False
-                        ))
-                    )
-
-                    
-                ydim = reduce(np.subtract, np.nonzero(self.temp_data[1][1:] < self.temp_data[1][:-1])[0][-1:-3:-1])
-                xdim = reduce(np.subtract, np.nonzero(self.temp_data[2][1:] < self.temp_data[2][:-1])[0][-1:-3:-1])
-                zdim = reduce(np.subtract, np.nonzero(self.temp_data[4][1:] > self.temp_data[4][:-1])[0] [-1:-3:-1])
-                len(np.nonzero(self.temp_data[1][1:] < self.temp_data[1][:-1])[0])
-                len(np.nonzero(self.temp_data[2][1:] < self.temp_data[2][:-1])[0])
-                np.reshape(self.temp_data[0], (xdim, 2))
-                reduce(np.subtract, xsplit)
+                        start=start, end=end, top=top, bottom=bottom
+                        )
+                self.temp_data = hycom.Hycom().load_temp(
+                        south=south, north=north, west=west, east=east,
+                        start=start, end=end, top=top, bottom=bottom
+                        )
                 """
 
-                # build splindex, reduce 4th dimension to 3D avg, map into grid
+                # build split index, reduce 4th dimension to 3D avg
                 splidx = np.nonzero(self.temp_data[3][1:] > self.temp_data[3][:-1])[0] + 1
-                if len(splidx) > 0: 
+                if len(splidx) > 0:  # if fourth dimension exists
+                    """
                     assert (self.temp_data[1][splidx[0]:splidx[1]] == self.temp_data[1][splidx[1]:splidx[2]]).all()
                     assert (self.temp_data[2][splidx[0]:splidx[1]] == self.temp_data[2][splidx[1]:splidx[2]]).all()
+                    """
+                    splidx = np.append(splidx, len(self.temp_data[3]))
                     splarr = np.array([self.temp_data[0][splidx[d]:splidx[d+1]] for d in range(0, len(splidx)-1)])
-                    w = (reduce(np.add, splarr) / (len(splidx)-1)).astype(float)
+                    vals = (reduce(np.add, splarr) / len(splarr)).astype(float)
                     x = self.temp_data[2] [splidx[0] : splidx[1]] .astype(float)
                     y = self.temp_data[1] [splidx[0] : splidx[1]] .astype(float)
                     z = self.temp_data[4] [splidx[0] : splidx[1]] .astype(float)
                     warnings.warn("query data has been averaged across the time dimension for 3D interpolation")
-                else: 
-                    w = self.temp_data[0].astype(float)
+                else:   # if data is already 3 dimensional, just leave as is
+                    vals = self.temp_data[0].astype(float)
                     x = self.temp_data[2].astype(float)
                     y = self.temp_data[1].astype(float)
                     z = self.temp_data[4].astype(float)
 
+                # get size of each dimension and create lat/lon/depth grid arrays
+                # TODO:
+                # fix bug here on xdim, ydim
+                xdim = reduce(np.subtract, np.nonzero(x[1:] != x[:-1])[0][-1:-3:-1])
                 ydim = reduce(np.subtract, np.nonzero(y[1:] < y[:-1])[0][-1:-3:-1])
-                xdim = reduce(np.subtract, np.nonzero(x[1:] > x[:-1])[0][-1:-3:-1])
                 if min(z) == max(z): zdim = 1
-                else:
+                else: 
                     zdim = reduce(np.subtract, np.nonzero(z[1:] > z[:-1])[0][-1:-3:-1])
+                xgrid = x[0::xdim]
+                ygrid = y[0:ydim]
+                zgrid = z[0::zdim]
 
-                grd = np.meshgrid(z, y, x, copy=False, sparse=True)
+                # rows of averaged datapoints with lat/lon/depth coords
+                rowdata = np.array((vals, y, x, z)).T
+
+                # create empty grid with default values, then populate with data
+                """
+                gridspace = np.full((
+                            len(np.unique(self.temp_data.T[:,1])),  # lat
+                            len(np.unique(self.temp_data.T[:,2])),  # lon
+                            len(np.unique(self.temp_data.T[:,4]))   # depth
+                        ), 
+                        fill_value=-30000
+                    )
+                """
+
+                gridspace = np.full((
+                            len(np.unique(rowdata[:,1])),  # lat
+                            len(np.unique(rowdata[:,2])),  # lon
+                            len(np.unique(rowdata[:,3]))   # depth
+                        ), 
+                        fill_value=-30000
+                    )
+
+                for row in rowdata:
+                    y_ix = index(row[1], ygrid)
+                    x_ix = index(row[2], xgrid)
+                    z_ix = index(row[3], zgrid)
+                    gridspace[y_ix, x_ix, z_ix] = row[0]
 
                 self.temp_interp = Interpolator3D(
-                        values=self.temp_data[0],
-                        lats=self.temp_data[1], lons=self.temp_data[2],
-                        depths=self.temp_data[4], origin=self.origin,
+                        values=gridspace,
+                        lats=ygrid, lons=xgrid,
+                        depths=zgrid, origin=self.origin,
                         method='linear')
 
             else: 
@@ -363,7 +389,7 @@ class Ocean():
                 exit(1)
 
         elif isinstance(wave, (np.ndarray, tuple)):
-        elif isinstance(wave, Iterable) and len(wave) == 3:
+        #elif isinstance(wave, Iterable) and len(wave) == 3:
             self.wave_data = wave
             self.wave_interp = Interpolator2D(
                     values=self.wave_data[0], 

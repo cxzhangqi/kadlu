@@ -24,7 +24,7 @@ from os.path import isfile
 import warnings
 
 from kadlu.geospatial.data_sources.fetch_util import \
-storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def
+storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def, index
 
 
 hycom_src = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data"
@@ -37,12 +37,6 @@ def slices_str(var, slices, steps=(1, 1, 1, 1)):
     sliced = ''.join(map(slicer, slices, steps))
     return f"{var}{sliced}"
 
-
-def index(val, sorted_arr):
-    """ converts value in coordinate array to grid index """
-    if val > sorted_arr[-1]: return len(sorted_arr) - 1
-    return np.nonzero(sorted_arr >= val)[0][0]
-  
 
 def fetch_grid():
     """ download lat/lon arrays for grid indexing """
@@ -238,7 +232,7 @@ def load_hycom(var, qry):
     if 'start' and 'end' in qry.keys():
         start, end = qry['start'], qry['end']
         assert(start < end)
-        sql = ' AND '.join([
+        sql = (' AND '.join([
             f"SELECT * FROM {var} WHERE lat >= ?",
                                        "lat <= ?",
                                        "lon >= ?",
@@ -247,7 +241,8 @@ def load_hycom(var, qry):
                                        "time <= ?",
                                        "depth >= ?",
                                        "depth <= ?",
-                                      f"source == 'hycom' LIMIT {qry['limit']}"])
+                                      f"source == 'hycom'"]) 
+            + f" ORDER BY time, lon, lat, depth DESC LIMIT {qry['limit']}")
         db.execute(sql, tuple(map(str, 
                     [south, north, west, east, 
                     dt_2_epoch(start)[0], dt_2_epoch(end)[0], 

@@ -132,3 +132,13 @@ def test_interpolate_uniform_wave():
     wave = o.wave(x, y)
     assert wave.shape[0] == N
     assert np.all(wave == 1.5)
+
+
+""" Interactive testing
+    south, west = 44, -59
+    north, east = 46, -57
+    start, end = datetime(2015, 1, 10), datetime(2015, 1, 10, 12)
+    top, bottom = 0, 5000
+
+
+"""

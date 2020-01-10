@@ -232,17 +232,16 @@ def load_hycom(var, qry):
     if 'start' and 'end' in qry.keys():
         start, end = qry['start'], qry['end']
         assert(start < end)
-        sql = (' AND '.join([
-            f"SELECT * FROM {var} WHERE lat >= ?",
-                                       "lat <= ?",
-                                       "lon >= ?",
-                                       "lon <= ?",
-                                       "time >= ?",
-                                       "time <= ?",
-                                       "depth >= ?",
-                                       "depth <= ?",
-                                      f"source == 'hycom'"]) 
-            + f" ORDER BY time, lon, lat, depth DESC LIMIT {qry['limit']}")
+        sql = (' AND '.join([f"SELECT * FROM {var} WHERE lat >= ?",
+               "lat <= ?",
+               "lon >= ?",
+               "lon <= ?",
+               "time >= ?",
+               "time <= ?",
+               "depth >= ?",
+               "depth <= ?",
+              f"source == 'hycom' "]) 
+            + f"ORDER BY time, depth, lat, lon DESC LIMIT {qry['limit']}")
         db.execute(sql, tuple(map(str, 
                     [south, north, west, east, 
                     dt_2_epoch(start)[0], dt_2_epoch(end)[0], 

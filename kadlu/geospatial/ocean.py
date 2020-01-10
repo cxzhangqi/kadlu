@@ -200,62 +200,42 @@ class Ocean():
                 """
 
                 # build split index, reduce 4th dimension to 3D avg
-                splidx = np.nonzero(self.temp_data[3][1:] > self.temp_data[3][:-1])[0] + 1
-                if len(splidx) > 0:  # if fourth dimension exists
+                splidx = np.append(
+                        np.nonzero(
+                            self.temp_data[3][1:] > self.temp_data[3][:-1]
+                        )[0] + 1, 
+                        len(self.temp_data[3])
+                    )
+                if len(splidx) > 1:  # if fourth dimension exists, take avg and reduce to 3D
                     """
                     assert (self.temp_data[1][splidx[0]:splidx[1]] == self.temp_data[1][splidx[1]:splidx[2]]).all()
                     assert (self.temp_data[2][splidx[0]:splidx[1]] == self.temp_data[2][splidx[1]:splidx[2]]).all()
                     """
-                    splidx = np.append(splidx, len(self.temp_data[3]))
-                    splarr = np.array([self.temp_data[0][splidx[d]:splidx[d+1]] for d in range(0, len(splidx)-1)])
-                    vals = (reduce(np.add, splarr) / len(splarr)).astype(float)
-                    x = self.temp_data[2] [splidx[0] : splidx[1]] .astype(float)
-                    y = self.temp_data[1] [splidx[0] : splidx[1]] .astype(float)
-                    z = self.temp_data[4] [splidx[0] : splidx[1]] .astype(float)
-                    warnings.warn("query data has been averaged across the time dimension for 3D interpolation")
+                    splitd = np.array([self.temp_data[0][splidx[d]:splidx[d+1]] for d in range(0, len(splidx)-1)])
+                    vals = (reduce(np.add, splitd) / len(splitd)).astype(float)
+                    x = self.temp_data[2] [splidx[0] : splidx[1]].astype(float)
+                    y = self.temp_data[1] [splidx[0] : splidx[1]].astype(float)
+                    z = self.temp_data[4] [splidx[0] : splidx[1]].astype(float)
+                    warnings.warn("query data has been averaged across the time dimension for 3D interpolation"
+                            + "\nto avoid this behaviour, use keyword argument 'time' instead of start/end")
                 else:   # if data is already 3 dimensional, just leave as is
                     vals = self.temp_data[0].astype(float)
                     x = self.temp_data[2].astype(float)
                     y = self.temp_data[1].astype(float)
                     z = self.temp_data[4].astype(float)
 
-                # get size of each dimension and create lat/lon/depth grid arrays
-                # TODO:
-                # fix bug here on xdim, ydim
-                xdim = reduce(np.subtract, np.nonzero(x[1:] != x[:-1])[0][-1:-3:-1])
-                ydim = reduce(np.subtract, np.nonzero(y[1:] < y[:-1])[0][-1:-3:-1])
-                if min(z) == max(z): zdim = 1
-                else: 
-                    zdim = reduce(np.subtract, np.nonzero(z[1:] > z[:-1])[0][-1:-3:-1])
-                xgrid = x[0::xdim]
-                ygrid = y[0:ydim]
-                zgrid = z[0::zdim]
+                xgrid = np.unique(x)
+                ygrid = np.unique(y)
+                zgrid = np.unique(z)
 
-                # rows of averaged datapoints with lat/lon/depth coords
+                # reshape row data to 3D array
                 rowdata = np.array((vals, y, x, z)).T
-
-                # create empty grid with default values, then populate with data
-                """
-                gridspace = np.full((
-                            len(np.unique(self.temp_data.T[:,1])),  # lat
-                            len(np.unique(self.temp_data.T[:,2])),  # lon
-                            len(np.unique(self.temp_data.T[:,4]))   # depth
-                        ), 
-                        fill_value=-30000
-                    )
-                """
-
-                gridspace = np.full((
-                            len(np.unique(rowdata[:,1])),  # lat
-                            len(np.unique(rowdata[:,2])),  # lon
-                            len(np.unique(rowdata[:,3]))   # depth
-                        ), 
-                        fill_value=-30000
-                    )
-
+                gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
+                # this could probably be optimized to avoid an index lookup cost
+                # for every value by using a map, but i havent figured out how yet
                 for row in rowdata:
-                    y_ix = index(row[1], ygrid)
                     x_ix = index(row[2], xgrid)
+                    y_ix = index(row[1], ygrid)
                     z_ix = index(row[3], zgrid)
                     gridspace[y_ix, x_ix, z_ix] = row[0]
 

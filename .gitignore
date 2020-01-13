@@ -1,0 +1,10 @@
+__pycache__
+.eggs
+.pytest_cache
+.vscode
+dist
+storage
+docs/build
+kadlu.egg-info
+.ipynb_checkpoints
+profiling/*.prof

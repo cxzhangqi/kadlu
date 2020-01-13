@@ -165,11 +165,20 @@ def load_chs(south, north, west, east):
 class Chs():
     """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
 
+    """
     def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return fetch_chs(south, north, west, east, band_id=1)
 
     def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
         return load_chs(south, north, west, east)
+    """
+    def fetch_bathymetry(self, **kwargs):
+        return fetch_chs(south=kwargs['south'], north=kwargs['north'], 
+              west=kwargs['west'], east=kwargs['east'], band_id=1)
+
+    def load_bathymetry(self, **kwargs):
+        return load_chs(south=kwargs['south'], north=kwargs['north'], 
+              west=kwargs['west'], east=kwargs['east'])
 
     def __str__(self):
         info = "Non-Navigational 100m (NONNA-100) bathymetry dataset from Canadian Hydrographic Datastore"

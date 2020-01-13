@@ -221,7 +221,9 @@ class Interpolator2D():
                 Must be specified for irregular grids if the interpolation method 
                 'regular' is chosen. In all other cases, the argument is ignored.
     """
-    def __init__(self, values, lats, lons, origin=None, method_irreg='cubic', lats_reg=None, lons_reg=None):
+    def __init__(self, values, lats, lons,
+            origin=None, method_irreg='cubic',
+            lats_reg=None, lons_reg=None):
         
         # compute coordinates of origin, if not provided
         if origin is None:

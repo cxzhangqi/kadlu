@@ -8,3 +8,7 @@ docs/build
 kadlu.egg-info
 .ipynb_checkpoints
 profiling/*.prof
+*.swp
+*.pyc
+.cache
+.gitignore

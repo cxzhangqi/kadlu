@@ -60,35 +60,46 @@ def database_cfg():
 
     # bathymetry table (CHS)
     db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}"
-               "(   val     REAL,   "
-               "    lat     REAL,   "
-               "    lon     REAL,   "
-               "    source  TEXT   )") 
+               "(   val     REAL    NOT NULL, "
+               "    lat     REAL    NOT NULL, "
+               "    lon     REAL    NOT NULL, "
+               "    source  TEXT    NOT NULL )") 
+               #"    source  TEXT    NOT NULL, " 
+               #"CONSTRAINT chs_unique  "
+               #"UNIQUE (val, lat, lon, source) )")
     db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-               f"idx_{chs_table} on {chs_table}(lon, lat)")
+               f"idx_{chs_table} on {chs_table}(lon, lat, val, source)")
 
     # hycom environmental data tables
     for fetchvar in hycom_tables:
         db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
-                    "(  val     INT,    "
-                    "   lat     REAL,   "
-                    "   lon     REAL,   "
-                    "   time    INT,    "
-                    "   depth   INT,    "
-                    "   source  TEXT   )")
+                    "( val     INT  NOT NULL, "
+                    "  lat     REAL NOT NULL, "
+                    "  lon     REAL NOT NULL, "
+                    "  time    INT  NOT NULL, "
+                    "  depth   INT  NOT NULL, "
+                    "  source  TEXT NOT NULL )")
+                    #"  source  TEXT NOT NULL, "
+                    #"CONSTRAINT hycom_unique  "
+                    #"UNIQUE (val, lat, lon, time, depth, source))")
+
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat, depth, val, source)")
 
     # wave data tables
     for fetchvar in era5_tables + wwiii_tables:
         db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
-                    "(  val     INT,    "
-                    "   lat     REAL,   "
-                    "   lon     REAL,   "
-                    "   time    INT,    "
-                    "   source  TEXT   )")
+                    "( val     INT     NOT NULL, "
+                    "  lat     REAL    NOT NULL, "
+                    "  lon     REAL    NOT NULL, "
+                    "  time    INT     NOT NULL, "
+                    "  source  TEXT    NOT NULL )") 
+                    #"  source  TEXT    NOT NULL, " 
+                    #"CONSTRAINT wave_unique       "
+                    #"UNIQUE (val, lat, lon, time, source))")
+
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat)")
+                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat, val, source)")
 
     return conn, db
 

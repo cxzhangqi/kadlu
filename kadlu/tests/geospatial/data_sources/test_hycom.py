@@ -9,7 +9,7 @@ from os.path import isfile
 
 # disable automated testing of fetching to avoid slamming the API with
 # requests in the automated development pipeline
-test_fetch = False
+test_fetch = True
 
 # gulf st lawrence - small test area
 south =  46 

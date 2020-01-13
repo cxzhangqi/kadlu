@@ -70,25 +70,29 @@ class Ocean():
             self.load_wave()
 
 
-    def load(self, south=-90, north=90, west=-180, east=180, 
-            start=datetime(2019, 1, 1), end=datetime(2019, 1, 1, 1), 
-            top=0, bottom=5000):
+    #def load(self, south=-90, north=90, west=-180, east=180, 
+    #        start=datetime(2019, 1, 1), end=datetime(2019, 1, 1, 1), 
+    #        top=0, bottom=5000):
+    def load(self, **kwargs):
 
         # save south-west and north-east corners as class attributes
-        self.SW = LatLon(south, west)
-        self.NE = LatLon(north, east)
+        self.SW = LatLon(kwargs['south'], kwargs['west'])
+        self.NE = LatLon(kwargs['north'], kwargs['east'])
 
         # origo of x-y coordinate system
-        lat_ref = 0.5 * (south + north)
-        lon_ref = 0.5 * (west + east)
+        lat_ref = 0.5 * (kwargs['south'] + kwargs['north'])
+        lon_ref = 0.5 * (kwargs['west'] + kwargs['east'])
         self.set_origin(lat_ref, lon_ref)
 
         # load data and initialize interpolation tables
-        self.load_bathy(south, north, west, east)
-        self.load_temp(south, north, west, east, start, end, top, bottom)
-        self.load_salinity(south, north, west, east, start, end, top, bottom)
-        self.load_wave(south, north, west, east, start, end)
-
+        #self.load_bathy(south, north, west, east)
+        #self.load_temp(south, north, west, east, start, end, top, bottom)
+        #self.load_salinity(south, north, west, east, start, end, top, bottom)
+        #self.load_wave(south, north, west, east, start, end)
+        self.load_bathy     (**kwargs)
+        self.load_temp      (**kwargs)
+        self.load_salinity  (**kwargs)
+        self.load_wave      (**kwargs)
 
     def set_origin(self, lat_ref, lon_ref):
 
@@ -114,7 +118,7 @@ class Ocean():
         """
 
 
-    def load_bathy(self, south=None, north=None, west=None, east=None, storage=None):
+    def load_bathy(self, south=None, north=None, west=None, east=None, storage=None, **kwargs):
         bathy = self.data_source['bathy']
 
         if bathy is None:
@@ -125,7 +129,7 @@ class Ocean():
     
             if bathy == "CHS":
                 # load data and make coordinate grid for interpolation
-                self.bathy_data = Chs().load_bathymetry(south, north, west, east)
+                self.bathy_data = Chs().load_bathymetry(south=south, north=north, west=west, east=east)
                 num_lats = int(np.ceil((north - south) / 0.001)) + 1
                 num_lons = int(np.ceil((east - west) / 0.001)) + 1
                 lats = np.linspace(south, north, num=num_lats)
@@ -162,8 +166,9 @@ class Ocean():
             self.bathy_interp = Uniform2D(bathy)
 
 
-    def load_temp(self, south=None, north=None, west=None, east=None,
-            start=None, end=None, top=0, bottom=5000):
+    #def load_temp(self, south=None, north=None, west=None, east=None,
+    #        start=None, end=None, top=0, bottom=5000):
+    def load_temp(self, **kwargs):
         temp = self.data_source['temp']
 
         if temp is None:
@@ -172,11 +177,13 @@ class Ocean():
 
         elif isinstance(temp, str):
             if temp == "HYCOM":
-                # TODO:
-                # enable hycom nearest time slice loading
-                self.temp_data = Hycom().load_temp(
-                        south, north, west, east,
-                        start, end, top, bottom)
+
+                #self.temp_data = Hycom().load_temp(
+                #        south, north, west, east,
+                #        start, end, top, bottom)
+
+                self.temp_data = Hycom().load_temp(**kwargs)
+
                 """ run this code interactively for testing load_temp and interpolation
 
                 south, west = 46, -60
@@ -249,14 +256,12 @@ class Ocean():
                 print('Error: Unknown temperature source {0}.'.format(temp))
                 exit(1)
 
-        #elif isinstance(temp, tuple):
-        #elif isinstance(temp, Iterable) and temp[-1][0] == 'hycom':
         elif isinstance(temp, (np.ndarray, tuple)):
             self.temp_data = temp
             self.temp_interp = Interpolator3D(
                     values=self.temp_data[0],
                     lats=self.temp_data[1],     lons=self.temp_data[2],
-                    depths=self.temp_data[4],   origin=self.origin,
+                    depths=self.temp_data[3],   origin=self.origin,
                     method='linear')
 
         else:

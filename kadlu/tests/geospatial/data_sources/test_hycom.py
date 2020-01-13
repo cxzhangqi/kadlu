@@ -7,31 +7,46 @@ from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 import os
 from os.path import isfile
 
-# disable automated testing of fetching to avoid slamming the API with
-# requests in the automated development pipeline
-test_fetch = True
-
 # gulf st lawrence - small test area
 south =  46 
 north =  47
 west  = -60
 east  = -59
 top   =   0
-bottom =  0
-start = datetime(2000, 1, 2)
-end   = datetime(2000, 1, 2, 1)
+bottom = 100
+#start = datetime(2000, 1, 2)
+#end   = datetime(2000, 1, 2, 1)
 
-start = datetime(2000, 1, 1)
-end = datetime(2000, 1, 12)
-
-# TODO
-# add tests for:
-#   - hycom loading over antimeridian
-#   - hycom nearest time search (loading)
+start = datetime(2000, 1, 10)
+end   = datetime(2000, 1, 10, 12)
 
 def test_fetch_salinity():
-    if not test_fetch: return
-    Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+    #Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+    val, lat, lon, time, depth = Hycom().load_salinity(
+            south=south, north=north, 
+            west=west, east=east, 
+            start=start, end=end, 
+            top=top, bottom=bottom
+        )
+    
+    if len(val) == 0:
+        Hycom().fetch_salinity(
+                south=south, north=north, 
+                west=west, east=east, 
+                start=start, end=end, 
+                top=top, bottom=bottom
+            )
+
+        val, lat, lon, time, depth = Hycom().load_salinity(
+                south=south, north=north, 
+                west=west, east=east, 
+                start=start, end=end, 
+                top=top, bottom=bottom
+            )
+    else:
+        print("found some data in the database, skipping fetching... "
+              "to test explicitly, delete the database and restart")
+    return
 
 def test_load_salinity():
     val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
@@ -42,6 +57,55 @@ def test_load_salinity():
     assert np.all(lat <= north)
     assert np.all(lon >= west)
     assert np.all(lon <= east)
+
+def test_load_nearesttime():
+    # to load nearest time, the 'time' keyword arg is supplied 
+    # instead of 'start' and 'end'
+    val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=start,top=top, bottom=bottom)
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
+    assert np.all(lat >= south)
+    assert np.all(lat <= north)
+    assert np.all(lon >= west)
+    assert np.all(lon <= east)
+
+def test_fetch_load_over_antimeridian():
+    south, west = 44, 179
+    north, east = 45, -179
+    top, bottom = 0, 5000
+
+    val, lat, lon, time, depth = Hycom().load_salinity(
+            south=south, north=north, 
+            west=west, east=east, 
+            start=start, end=end, 
+            top=top, bottom=bottom
+        )
+    
+    if len(val) == 0:
+        Hycom().fetch_salinity(
+                south=south, north=north, 
+                west=west, east=east, 
+                start=start, end=end, 
+                top=top, bottom=bottom
+            )
+
+        val, lat, lon, time, depth = Hycom().load_salinity(
+                south=south, north=north, 
+                west=west, east=east, 
+                start=start, end=end, 
+                top=top, bottom=bottom
+            )
+
+    assert(len(val) > 0)
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
+
+    assert np.all(lat >= south)
+    assert np.all(lat <= north)
+    #assert np.all(lon >= east)
+    #assert np.all(lon <= west)
 
 # matt_s 2019-12
 # hycom connection seems to be pretty slow for some reason... im getting ~2kbps download speeds

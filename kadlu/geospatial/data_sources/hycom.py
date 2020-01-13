@@ -161,23 +161,21 @@ def fetch_hycom(*args, year, slices, var, ygrid, xgrid, epoch, depth, **kwargs):
         a, b, c = [int(x) for x in ix_str[1:-1].split("][")]
         cube[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
-    # build coordinate grid, populate with values, remove null entries
+    # build coordinate grid, populate with values, adjust scaling, remove nulls
     flatten = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
     grid = np.array([(None, y, x, t, d, 'hycom') 
             for t in epoch[year][slices[0][0] : slices[0][1] +1]
             for d in depth      [slices[1][0] : slices[1][1] +1]
             for y in ygrid      [slices[2][0] : slices[2][1] +1]
             for x in xgrid      [slices[3][0] : slices[3][1] +1]])
-    grid[:,0] = np.reshape(cube, flatten)
-    grid = grid[grid[:,0] != -30000]
+    add_offset = 20 if 'salinity' in var or 'water_temp' in var else 0
+    grid[:,0] = np.reshape(cube, flatten) * 0.001 + add_offset
+    grid = grid[grid[:,0] != min(grid[:,0])]
 
     # batch database insertion ignoring duplicates
     n1 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
-    db.executemany(f"INSERT OR IGNORE INTO {var} VALUES (CAST(? AS INTEGER), ?, ?, CAST(? AS INTEGER), CAST(? AS INTEGER), ?)", grid)
+    db.executemany(f"INSERT OR IGNORE INTO {var} VALUES (?,?,?,CAST(? AS INT),CAST(? AS INT),?)", grid)
     n2 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
-    #for row in grid:
-    #    print(row)
-    #    db.execute(f"INSERT INTO {var} VALUES (?,?,?,?,?,?)", row)
     db.execute("COMMIT")
     conn.commit()
 
@@ -193,8 +191,7 @@ def fetch_hycom(*args, year, slices, var, ygrid, xgrid, epoch, depth, **kwargs):
     return
 
 
-#def load_hycom(*args, var, south, north, west, east, start, end, top, bottom, **kwargs):
-def load_hycom(var, kwargs):
+def load_hycom(self, var, kwargs):
     """ load hycom data from local database
 
         args:
@@ -220,21 +217,15 @@ def load_hycom(var, kwargs):
             depth: array
                 measured in meters
     """
-    south, north, west, east = \
-            map(float, [kwargs['south'], kwargs['north'], kwargs['west'], kwargs['east']])
-    top, bottom = kwargs['top'], kwargs['bottom']
-
-    assert south < north, 'malformed query: south must be less than north'
-    assert top <= bottom, 'malformed query: top depth must be lower than bottom depth'
     if 'limit' not in kwargs.keys() : kwargs['limit'] = '500000;--infinity'
 
     # recursive function call for queries spanning antimeridian
-    if (west > east): 
+    if (kwargs['west'] > kwargs['east']): 
         kwargs1 = kwargs.copy()
         kwargs2 = kwargs.copy()
-        kwargs1['west'] = self.lon[0]
-        kwargs2['east'] = self.lon[-1]
-        return np.hstack(load_hycom(kwargs1), load_hycom(kwargs2))
+        kwargs1['west'] = self.xgrid[0]
+        kwargs2['east'] = self.xgrid[-1]
+        return np.hstack((load_hycom(self, var, kwargs1), load_hycom(self, var, kwargs2)))
 
     if 'start' and 'end' in kwargs.keys():
         start, end = kwargs['start'], kwargs['end']
@@ -247,25 +238,29 @@ def load_hycom(var, kwargs):
                "time <= ?",
                "depth >= ?",
                "depth <= ?",
-              f"source == 'hycom' "]) 
+              f"source == 'hycom' "])
             + f"ORDER BY time, depth, lat, lon DESC LIMIT {kwargs['limit']}"
             )
-        db.execute(sql, tuple(map(str, 
-                    [south, north, west, east, 
-                    dt_2_epoch(start)[0], dt_2_epoch(end)[0], 
-                    top, bottom]
-                )))
+        db.execute(sql, tuple(map(str, [
+                kwargs['south'],                kwargs['north'], 
+                kwargs['west'],                 kwargs['east'],
+                dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0],
+                kwargs['top'],                  kwargs['bottom']
+            ])))
     elif 'time' in kwargs.keys():
         # https://stackoverflow.com/questions/592209/find-closest-numeric-value-in-database
         assert False, "nearest time search not implemented yet"
 
     # transpose grid and convert epochs to datetime
-    data = np.array(db.fetchall(), dtype=object).T
-    assert len(data[0]) > 0, "no records found"
-    if len(data[0]) > int(kwargs['limit'].split(";")[0]):
+    rowdata = np.array(db.fetchall(), dtype=object).T
+    #assert len(rowdata[0]) > 0, "no records found"
+    if len(rowdata) == 0:
+        warnings.warn('no records found, returning empty arrays')
+        return np.array([[], [], [], [], []])
+    if len(rowdata[0]) >= int(kwargs['limit'].split(";")[0]):
         warnings.warn(f'query limit exceeded, returning first {kwargs["limit"].split(";")[0]}')
 
-    return data[0:5]
+    return rowdata[0:5]
 
 
 def fetch_idx(self, var, kwargs): 
@@ -282,17 +277,18 @@ def fetch_idx(self, var, kwargs):
         slice2 = map(index, needles2, haystack)
         slices = list(zip(slice1, slice2))
         
-        return fetch_hycom(slices=slices, var=var, year=year, ygrid=self.ygrid,
-                xgrid=self.xgrid, epoch=self.epoch, depth=self.depth)
+        fetch_hycom(
+                slices=slices, var=var, year=year,
+                ygrid=self.ygrid, xgrid=self.xgrid, 
+                epoch=self.epoch, depth=self.depth
+            )
+        return
 
-    south, north, west, east = \
-    map(float, [kwargs['south'], kwargs['north'], kwargs['west'], kwargs['east']])
-
-    assert(south <= north)
+    assert kwargs['south'] <= kwargs['north']
+    assert(kwargs['top']   <= kwargs['bottom'])
     assert(kwargs['start'] >= datetime(1994, 1, 1))
     assert(kwargs['end']   <  datetime(2016, 1, 1))
     assert(kwargs['start'] <= kwargs['end'])
-    assert(kwargs['top']   <= kwargs['bottom'])
 
     # TODO: 
     # if start.year != end.year:
@@ -301,15 +297,17 @@ def fetch_idx(self, var, kwargs):
             "hycom queries spanning multiple years are not supported yet"
     year = str(kwargs['start'].year)
 
-    if west > east:
-        kwargs1, kwargs2 = [kwargs.copy(), kwargs.copy()]
-        kwargs1['east'] = self.lon[-1]
-        kwargs2['west'] = self.lon[0]
-        print('partitioning query boundaries at antimeridian')
-        for qr in [kwargs1, kwargs2]: _idx(self, var, year, qr)
+    if kwargs['west'] > kwargs['east']:
+        print('partitioning query boundaries at antimeridian for fetching')
+        kwargs1, kwargs2 = kwargs.copy(), kwargs.copy()
+        kwargs1['east'] = self.xgrid[-1]
+        kwargs2['west'] = self.xgrid[0]
+        _idx(self, var, year, kwargs1)
+        _idx(self, var, year, kwargs2)
         return
 
-    return _idx(self, var, year, kwargs)
+    _idx(self, var, year, kwargs)
+    return
 
 
 class Hycom():
@@ -335,21 +333,14 @@ class Hycom():
         self.epoch = load_times()
         self.depth = load_depth()
 
-    def fetch_salinity(self, **kwargs):    return fetch_idx(self, 'salinity', kwargs)
-
-    def fetch_temp    (self, **kwargs):    return fetch_idx(self, 'water_temp', kwargs)
-
-    def fetch_water_u (self, **kwargs):    return fetch_idx(self, 'water_u', kwargs)
-
-    def fetch_water_v (self, **kwargs):    return fetch_idx(self, 'water_v', kwargs)
-
-    def load_salinity(self, **kwargs):     return load_hycom('salinity', kwargs)
-
-    def load_temp(self, **kwargs):         return load_hycom('water_temp', kwargs)
-
-    def load_water_u(self, **kwargs):      return load_hycom('water_u', kwargs)
-
-    def load_water_v(self, **kwargs):      return load_hycom('water_v', kwargs)
+    def fetch_salinity(self, **kwargs): return fetch_idx(self,  'salinity',   kwargs)
+    def fetch_temp    (self, **kwargs): return fetch_idx(self,  'water_temp', kwargs)
+    def fetch_water_u (self, **kwargs): return fetch_idx(self,  'water_u',    kwargs)
+    def fetch_water_v (self, **kwargs): return fetch_idx(self,  'water_v',    kwargs)
+    def load_salinity (self, **kwargs): return load_hycom(self, 'salinity',   kwargs)
+    def load_temp     (self, **kwargs): return load_hycom(self, 'water_temp', kwargs)
+    def load_water_u  (self, **kwargs): return load_hycom(self, 'water_u',    kwargs)
+    def load_water_v  (self, **kwargs): return load_hycom(self, 'water_v',    kwargs)
 
     def __str__(self):
         info = '\n'.join([

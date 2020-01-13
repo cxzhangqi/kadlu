@@ -73,7 +73,7 @@ def database_cfg():
     # hycom environmental data tables
     for fetchvar in hycom_tables:
         db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
-                    "( val     INT  NOT NULL, "
+                    "( val     REAL NOT NULL, "
                     "  lat     REAL NOT NULL, "
                     "  lon     REAL NOT NULL, "
                     "  time    INT  NOT NULL, "

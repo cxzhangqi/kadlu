@@ -99,7 +99,8 @@ def load_depth():
         900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
 
 
-def fetch_hycom(*args, year, slices, var, ygrid, xgrid, epoch, depth, **kwargs):
+#def fetch_hycom(*args, year, slices, var, ygrid, xgrid, epoch, depth, **kwargs):
+def fetch_hycom(self, year, slices, var):
     """ download data from hycom, prepare it, and load into db
 
         args:
@@ -162,15 +163,16 @@ def fetch_hycom(*args, year, slices, var, ygrid, xgrid, epoch, depth, **kwargs):
         cube[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
     # build coordinate grid, populate with values, adjust scaling, remove nulls
+    add_offset =  20 if 'salinity' in var or 'water_temp' in var else 0
+    null_value = -10 if 'salinity' in var or 'water_temp' in var else -30
     flatten = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
     grid = np.array([(None, y, x, t, d, 'hycom') 
-            for t in epoch[year][slices[0][0] : slices[0][1] +1]
-            for d in depth      [slices[1][0] : slices[1][1] +1]
-            for y in ygrid      [slices[2][0] : slices[2][1] +1]
-            for x in xgrid      [slices[3][0] : slices[3][1] +1]])
-    add_offset = 20 if 'salinity' in var or 'water_temp' in var else 0
+            for t in self.epoch[year][slices[0][0] : slices[0][1] +1]
+            for d in self.depth      [slices[1][0] : slices[1][1] +1]
+            for y in self.ygrid      [slices[2][0] : slices[2][1] +1]
+            for x in self.xgrid      [slices[3][0] : slices[3][1] +1]])
     grid[:,0] = np.reshape(cube, flatten) * 0.001 + add_offset
-    grid = grid[grid[:,0] != min(grid[:,0])]
+    grid = grid[grid[:,0] != null_value]
 
     # batch database insertion ignoring duplicates
     n1 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
@@ -217,7 +219,7 @@ def load_hycom(self, var, kwargs):
             depth: array
                 measured in meters
     """
-    if 'limit' not in kwargs.keys() : kwargs['limit'] = '500000;--infinity'
+    #if 'limit' not in kwargs.keys() : kwargs['limit'] = '500000;--infinity'
 
     # recursive function call for queries spanning antimeridian
     if (kwargs['west'] > kwargs['east']): 
@@ -245,38 +247,37 @@ def load_hycom(self, var, kwargs):
             ])))
         nearest = epoch_2_dt([db.fetchall()[0][3]])[0]
         kwargs['start'], kwargs['end'] = nearest, nearest
+        print(f"loading data nearest to {kwargs['time']} at time {nearest}")
 
-    # execute query
-    if 'start' and 'end' in kwargs.keys():
-        assert kwargs['start'] <= kwargs['end']
-        sql = (' AND '.join([f"SELECT * FROM {var} WHERE lat >= ?",
-               "lat <= ?",
-               "lon >= ?",
-               "lon <= ?",
-               "time >= ?",
-               "time <= ?",
-               "depth >= ?",
-               "depth <= ?",
-              f"source == 'hycom' "])
-            + f"ORDER BY time, depth, lat, lon DESC LIMIT {kwargs['limit']}"
-            )
-        db.execute(sql, tuple(map(str, [
-                kwargs['south'],                kwargs['north'], 
-                kwargs['west'],                 kwargs['east'],
-                dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0],
-                kwargs['top'],                  kwargs['bottom']
-            ])))
-    else:
-        assert False, "malformed query"
-
-    # transpose grid and convert epochs to datetime
+    # validate and execute query
+    assert 8 == sum(map(lambda kw: kw in kwargs.keys(),
+            ['south', 'north', 'west', 'east',
+             'start', 'end', 'top', 'bottom'])), 'malformed query'
+    assert kwargs['start'] <= kwargs['end']
+    sql = (' AND '.join([f"SELECT * FROM {var} WHERE lat >= ?",
+           "lat <= ?",
+           "lon >= ?",
+           "lon <= ?",
+           "time >= ?",
+           "time <= ?",
+           "depth >= ?",
+           "depth <= ?",
+          f"source == 'hycom' "])
+        + f"ORDER BY time, depth, lat, lon DESC"#LIMIT {kwargs['limit']}"
+        )
+    db.execute(sql, tuple(map(str, [
+            kwargs['south'],                kwargs['north'], 
+            kwargs['west'],                 kwargs['east'],
+            dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0],
+            kwargs['top'],                  kwargs['bottom']
+        ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
     #assert len(rowdata[0]) > 0, "no records found"
     if len(rowdata) == 0:
         warnings.warn('no records found, returning empty arrays')
         return np.array([ [], [], [], [], [] ])
-    if len(rowdata[0]) >= int(kwargs['limit'].split(";")[0]):
-        warnings.warn(f'query limit exceeded, returning first {kwargs["limit"].split(";")[0]}')
+    #if len(rowdata[0]) >= int(kwargs['limit'].split(";")[0]):
+    #    warnings.warn(f'query limit exceeded, returning first {kwargs["limit"].split(";")[0]}')
 
     return rowdata[0:5]
 
@@ -303,11 +304,7 @@ def fetch_idx(self, var, kwargs):
                 map(index, needles2, haystack)
             ))
 
-        fetch_hycom(
-                slices=slices, var=var, year=year,
-                ygrid=self.ygrid, xgrid=self.xgrid, 
-                epoch=self.epoch, depth=self.depth
-            )
+        fetch_hycom(self=self, slices=slices, var=var, year=year)
 
         return
 

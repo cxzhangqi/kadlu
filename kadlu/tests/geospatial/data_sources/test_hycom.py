@@ -7,6 +7,7 @@ from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 import os
 from os.path import isfile
 
+
 # gulf st lawrence - small test area
 south =  46 
 north =  47
@@ -14,11 +15,9 @@ west  = -60
 east  = -59
 top   =   0
 bottom = 100
-#start = datetime(2000, 1, 2)
-#end   = datetime(2000, 1, 2, 1)
-
 start = datetime(2000, 1, 10)
 end   = datetime(2000, 1, 10, 12)
+
 
 def test_fetch_salinity():
     #Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)

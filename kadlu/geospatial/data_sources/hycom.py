@@ -227,9 +227,28 @@ def load_hycom(self, var, kwargs):
         kwargs2['east'] = self.xgrid[-1]
         return np.hstack((load_hycom(self, var, kwargs1), load_hycom(self, var, kwargs2)))
 
+    # perform nearest-time search on values if time keyword arg is supplied
+    if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
+        sql = ' AND '.join([
+            f'SELECT * FROM {var} WHERE lat >= ?',
+             "lat <= ?",
+             "lon >= ?",
+             "lon <= ?",
+             "depth >= ?",
+             "depth <= ?",
+             "source == 'hycom' "]) + 'ORDER BY ABS(time - ?) ASC LIMIT 1'
+        db.execute(sql, tuple(map(str, [
+                kwargs['south'],                kwargs['north'], 
+                kwargs['west'],                 kwargs['east'],
+                kwargs['top'],                  kwargs['bottom'],
+                dt_2_epoch(kwargs['time'])[0]
+            ])))
+        nearest = epoch_2_dt([db.fetchall()[0][3]])[0]
+        kwargs['start'], kwargs['end'] = nearest, nearest
+
+    # execute query
     if 'start' and 'end' in kwargs.keys():
-        start, end = kwargs['start'], kwargs['end']
-        assert(start < end)
+        assert kwargs['start'] <= kwargs['end']
         sql = (' AND '.join([f"SELECT * FROM {var} WHERE lat >= ?",
                "lat <= ?",
                "lon >= ?",
@@ -247,16 +266,15 @@ def load_hycom(self, var, kwargs):
                 dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0],
                 kwargs['top'],                  kwargs['bottom']
             ])))
-    elif 'time' in kwargs.keys():
-        # https://stackoverflow.com/questions/592209/find-closest-numeric-value-in-database
-        assert False, "nearest time search not implemented yet"
+    else:
+        assert False, "malformed query"
 
     # transpose grid and convert epochs to datetime
     rowdata = np.array(db.fetchall(), dtype=object).T
     #assert len(rowdata[0]) > 0, "no records found"
     if len(rowdata) == 0:
         warnings.warn('no records found, returning empty arrays')
-        return np.array([[], [], [], [], []])
+        return np.array([ [], [], [], [], [] ])
     if len(rowdata[0]) >= int(kwargs['limit'].split(";")[0]):
         warnings.warn(f'query limit exceeded, returning first {kwargs["limit"].split(";")[0]}')
 
@@ -265,23 +283,32 @@ def load_hycom(self, var, kwargs):
 
 def fetch_idx(self, var, kwargs): 
     """ convert user query to slices and handle edge cases """
-
     def _idx(self, var, year, kwargs): 
         """ build indices for query and call fetch_hycom """
-        needles1 = np.array([dt_2_epoch(kwargs['start'])[0], kwargs['top'],
-                             kwargs['south'], kwargs['west']])
-        needles2 = np.array([dt_2_epoch(kwargs['end'])[0], kwargs['bottom'],
-                             kwargs['north'], kwargs['east']])
         haystack = np.array([self.epoch[year], self.depth, self.ygrid, self.xgrid])
-        slice1 = map(index, needles1, haystack)
-        slice2 = map(index, needles2, haystack)
-        slices = list(zip(slice1, slice2))
-        
+        needles1 = np.array([
+                dt_2_epoch(kwargs['start'])[0],
+                kwargs['top'], 
+                kwargs['south'],
+                kwargs['west']
+            ])
+        needles2 = np.array([
+                dt_2_epoch(kwargs['end'])[0],
+                kwargs['bottom'],
+                kwargs['north'],
+                kwargs['east']
+            ])
+        slices = list(zip(
+                map(index, needles1, haystack), 
+                map(index, needles2, haystack)
+            ))
+
         fetch_hycom(
                 slices=slices, var=var, year=year,
                 ygrid=self.ygrid, xgrid=self.xgrid, 
                 epoch=self.epoch, depth=self.depth
             )
+
         return
 
     assert kwargs['south'] <= kwargs['north']
@@ -337,6 +364,7 @@ class Hycom():
     def fetch_temp    (self, **kwargs): return fetch_idx(self,  'water_temp', kwargs)
     def fetch_water_u (self, **kwargs): return fetch_idx(self,  'water_u',    kwargs)
     def fetch_water_v (self, **kwargs): return fetch_idx(self,  'water_v',    kwargs)
+
     def load_salinity (self, **kwargs): return load_hycom(self, 'salinity',   kwargs)
     def load_temp     (self, **kwargs): return load_hycom(self, 'water_temp', kwargs)
     def load_water_u  (self, **kwargs): return load_hycom(self, 'water_u',    kwargs)

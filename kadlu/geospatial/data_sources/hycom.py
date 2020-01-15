@@ -99,8 +99,7 @@ def load_depth():
         900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
 
 
-#def fetch_hycom(*args, year, slices, var, ygrid, xgrid, epoch, depth, **kwargs):
-def fetch_hycom(self, year, slices, var):
+def fetch_hycom(self, var, year, slices):
     """ download data from hycom, prepare it, and load into db
 
         args:
@@ -163,9 +162,9 @@ def fetch_hycom(self, year, slices, var):
         cube[a][b][c] = np.array(row_csv.split(", "), dtype=np.int)
 
     # build coordinate grid, populate with values, adjust scaling, remove nulls
+    flatten = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
     add_offset =  20 if 'salinity' in var or 'water_temp' in var else 0
     null_value = -10 if 'salinity' in var or 'water_temp' in var else -30
-    flatten = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
     grid = np.array([(None, y, x, t, d, 'hycom') 
             for t in self.epoch[year][slices[0][0] : slices[0][1] +1]
             for d in self.depth      [slices[1][0] : slices[1][1] +1]
@@ -176,7 +175,8 @@ def fetch_hycom(self, year, slices, var):
 
     # batch database insertion ignoring duplicates
     n1 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
-    db.executemany(f"INSERT OR IGNORE INTO {var} VALUES (?,?,?,CAST(? AS INT),CAST(? AS INT),?)", grid)
+    db.executemany(f"INSERT OR IGNORE INTO {var} VALUES "
+                    "(?, ?, ?, CAST(? AS INT), CAST(? AS INT), ?)", grid)
     n2 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
     db.execute("COMMIT")
     conn.commit()
@@ -232,39 +232,41 @@ def load_hycom(self, var, kwargs):
     # perform nearest-time search on values if time keyword arg is supplied
     if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
         sql = ' AND '.join([
-            f'SELECT * FROM {var} WHERE lat >= ?',
-             "lat <= ?",
-             "lon >= ?",
-             "lon <= ?",
-             "depth >= ?",
-             "depth <= ?",
-             "source == 'hycom' "]) + 'ORDER BY ABS(time - ?) ASC LIMIT 1'
+               f'SELECT * FROM {var} WHERE lat >= ?',
+                'lat <= ?',
+                'lon >= ?',
+                'lon <= ?',
+                'depth >= ?',
+                'depth <= ?',
+                "source == 'hycom' "]
+            ) + 'ORDER BY ABS(time - ?) ASC LIMIT 1'
         db.execute(sql, tuple(map(str, [
-                kwargs['south'],                kwargs['north'], 
-                kwargs['west'],                 kwargs['east'],
-                kwargs['top'],                  kwargs['bottom'],
+                kwargs['south'], kwargs['north'], 
+                kwargs['west'],  kwargs['east'],
+                kwargs['top'],   kwargs['bottom'],
                 dt_2_epoch(kwargs['time'])[0]
             ])))
         nearest = epoch_2_dt([db.fetchall()[0][3]])[0]
         kwargs['start'], kwargs['end'] = nearest, nearest
-        print(f"loading data nearest to {kwargs['time']} at time {nearest}")
+
+        if kwargs['time'] != nearest: 
+            print(f"loading data nearest to {kwargs['time']} at time {nearest}")
 
     # validate and execute query
     assert 8 == sum(map(lambda kw: kw in kwargs.keys(),
             ['south', 'north', 'west', 'east',
              'start', 'end', 'top', 'bottom'])), 'malformed query'
     assert kwargs['start'] <= kwargs['end']
-    sql = (' AND '.join([f"SELECT * FROM {var} WHERE lat >= ?",
-           "lat <= ?",
-           "lon >= ?",
-           "lon <= ?",
-           "time >= ?",
-           "time <= ?",
-           "depth >= ?",
-           "depth <= ?",
-          f"source == 'hycom' "])
-        + f"ORDER BY time, depth, lat, lon DESC"#LIMIT {kwargs['limit']}"
-        )
+    sql = ' AND '.join([f"SELECT * FROM {var} WHERE lat >= ?",
+            'lat <= ?',
+            'lon >= ?',
+            'lon <= ?',
+            'time >= ?',
+            'time <= ?',
+            'depth >= ?',
+            'depth <= ?',
+            "source == 'hycom' "]
+        ) + 'ORDER BY time, depth, lat, lon ASC'
     db.execute(sql, tuple(map(str, [
             kwargs['south'],                kwargs['north'], 
             kwargs['west'],                 kwargs['east'],

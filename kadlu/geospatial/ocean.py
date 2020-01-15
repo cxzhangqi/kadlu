@@ -199,11 +199,13 @@ class Ocean():
                 hycom.Hycom().fetch_temp(
                         south=south, north=north, west=west, east=east,
                         start=start, end=end, top=top, bottom=bottom
-                        )
+                    )
+
                 self.temp_data = hycom.Hycom().load_temp(
                         south=south, north=north, west=west, east=east,
                         start=start, end=end, top=top, bottom=bottom
-                        )
+                    )
+
                 """
 
                 # build split index, reduce 4th dimension to 3D avg
@@ -245,6 +247,17 @@ class Ocean():
                     y_ix = index(row[1], ygrid)
                     z_ix = index(row[3], zgrid)
                     gridspace[y_ix, x_ix, z_ix] = row[0]
+
+                # to remove -30000 values for interpolation:
+                # fill missing depth values with last value in each column
+                # this code block has not been optimized
+                for xi in range(0, gridspace.shape[0]):
+                    for yi in range(0, gridspace.shape[1]):
+                        col = gridspace[xi, yi]
+                        if sum(col == -30000) > 0 and sum(col == -30000) < len(col):
+                            col[col == -30000] = col[col != -30000][-1]
+                            gridspace[xi, yi] = col
+
 
                 self.temp_interp = Interpolator3D(
                         values=gridspace,

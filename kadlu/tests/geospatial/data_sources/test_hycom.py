@@ -45,7 +45,6 @@ def test_fetch_salinity():
     else:
         print("found some data in the database, skipping fetching... "
               "to test explicitly, delete the database and restart")
-    print(val[0], lat[0], lon[0], time[0], depth[0])
     return
 
 def test_load_salinity():

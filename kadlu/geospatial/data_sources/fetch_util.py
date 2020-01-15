@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 chs_table    = 'bathy'
 era5_tables  = ['significant_height_of_combined_wind_waves_and_swell', 'mean_wave_direction', 'mean_wave_period']
-wwiii_tables = ['hs', 'dp', 'tp']
+wwiii_tables = ['hs', 'dp', 'tp', 'wind']
 
 
 def storage_cfg():

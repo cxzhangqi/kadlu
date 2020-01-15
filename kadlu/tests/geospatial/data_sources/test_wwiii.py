@@ -39,10 +39,18 @@ def test_wwiii_ll2regionstr():
     assert(len(globe) == 5)
 
 def test_wwiii_fetch_windwaveheight():
-    filenames = Wwiii().fetch_windwaveheight(south, north, west, east, start, end)
+    Wwiii().fetch_windwaveheight(south=south, north=north, west=west, east=east, start=start, end=end)
 
 def test_wwiii_load_windwaveheight():
     wave, lat, lon, time = Wwiii().load_windwaveheight(south=43, west=-60, north=44, east=-59, start=start, end=end)
+
+
+def test_wwiii_fetch_wind():
+    Wwiii().fetch_wind(south=south, north=north, west=west, east=east, start=start, end=end)
+
+def test_wwiii_load_wind():
+    wave, lat, lon, time = Wwiii().load_wind(south=43, west=-60, north=44, east=-59, start=start, end=end)
+
    
 # matt_s 2019-12
 # fetching and preprocessing is really slow due to wwiii using monthly data files

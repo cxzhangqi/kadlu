@@ -45,11 +45,11 @@ def fetchname(wavevar, time, region):
     return f"multi_1.{region}.{wavevar}.{time.strftime('%Y%m')}.grb2"
 
 
-def fetch_wwiii(wavevar, south, north, west, east, start, end):
+def fetch_wwiii(var, kwargs):
     """ download wwiii data and return associated filepaths
 
         args:
-            wavevar: string
+            var: string
                 the variable short name of desired wave parameter according to WWIII docs
                 the complete list of variable short names can be found here (under 'model output')
                 https://polar.ncep.noaa.gov/waves/implementations.php
@@ -66,23 +66,26 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
             nothing. some status messages are printed to stdout
     """
     """ interactive testing input vars
-        wavevar = 'hs'
+        var = 'hs'
         south, west = 46, -70
         north, east = 52, -56
         start = datetime(2017, 2, 3, 0, 0, 0, 0)
         end   = datetime(2017, 2, 3, 0, 0, 0, 0)
     """
-    regions = ll_2_regionstr(south, north, west, east, wwiii_regions, [str(wwiii_global)])
+    regions = ll_2_regionstr(
+            kwargs['south'], kwargs['north'], kwargs['west'], kwargs['east'], 
+            wwiii_regions, [str(wwiii_global)]
+        )
     if str(wwiii_global) not in regions: regions = np.append(regions, str(wwiii_global))
-    time = datetime(start.year, start.month, 1)
+    time = datetime(kwargs['start'].year, kwargs['start'].month, 1)
     filenames = []
 
     warnings.warn("resolution selection not implemented yet. defaulting to 0.5deg resolution")
     regions = ['glo_30m']
 
-    while time <= end:
+    while time <= kwargs['end']:
         for reg in regions:
-            fname = fetchname(wavevar, time, reg)
+            fname = fetchname(var, time, reg)
             fetchfile = f"{storage_cfg()}{fname}"
             print(f"\ndownloading {fname} from NOAA WaveWatch III...", end="\r")
             if reg == 'glo_30m':
@@ -98,7 +101,7 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
         # on this datasource, data is sorted per month
         # some months have more days than exactly 4 weeks
         time += timedelta(weeks=4)
-        while (fetchname(wavevar, time, reg) == fname): time += timedelta(days=1)
+        while (fetchname(var, time, reg) == fname): time += timedelta(days=1)
 
     for fetchfile in filenames:
         print(f"\npreparing {fetchfile.split('/')[-1]} for the database...")
@@ -107,12 +110,12 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
 
         size = 0
         null = 0
-        n1 = db.execute(f"SELECT COUNT(*) FROM {wavevar}").fetchall()[0][0]
+        n1 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
         for msg in grib:
             print(f"\tprocessing msg {msg.messagenumber} of {grib.messages}",
                   f"monthly messages for {msg.validDate}", end='\r')
-            if msg.validDate < start: continue
-            if msg.validDate > end: break
+            if msg.validDate < kwargs['start']: continue
+            if msg.validDate > kwargs['end']: break
             z, y, x = msg.data()
             src = np.array(['wwiii' for each in z[~z.mask].data])
             grid = list(map(tuple, 
@@ -124,11 +127,11 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
                     src
                 )).T
             ))
-            db.executemany(f"INSERT OR IGNORE INTO {wavevar} VALUES (?,?,?,?,?)", grid)
+            db.executemany(f"INSERT OR IGNORE INTO {var} VALUES (CAST(? AS INT),?,?,CAST(? AS INT),?)", grid)
             null += sum(sum(z.mask))
             size += len(grid)
         
-        n2 = db.execute(f"SELECT COUNT(*) FROM {wavevar}").fetchall()[0][0]
+        n2 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
         db.execute("COMMIT")
         conn.commit()
 
@@ -138,11 +141,12 @@ def fetch_wwiii(wavevar, south, north, west, east, start, end):
 
     return 
 
-def load_wwiii(wavevar, south, north, west, east, start, end):
+#def load_wwiii(wavevar, south, north, west, east, start, end):
+def load_wwiii(var, kwargs):
     """ return downloaded wwiii data for specified wavevar according to given time, lat, lon boundaries
 
     args:
-        wavevar: string
+        var: string
             the variable short name of desired wave parameter according to WWIII docs
             the complete list of variable short names can be found here (under 'model output')
             https://polar.ncep.noaa.gov/waves/implementations.php
@@ -160,14 +164,23 @@ def load_wwiii(wavevar, south, north, west, east, start, end):
         (time is datetime)
     """
 
-    db.execute(' AND '.join([f"SELECT * FROM {wavevar} WHERE lat >= ?",
-                                                            "lat <= ?",
-                                                            "lon >= ?",
-                                                            "lon <= ?",
-                                                           "time >= ?",
-                                                           "time <= ?"]),
-               tuple(map(str, [south, north, west, east, 
-                               dt_2_epoch(start)[0], dt_2_epoch(end)[0]])))
+    assert not 'time' in kwargs.keys(), 'nearest time search not implemented yet'
+
+    assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
+        ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
+
+    db.execute(' AND '.join([f'SELECT * FROM {var} WHERE lat >= ?',
+                                                        'lat <= ?',
+                                                        'lon >= ?',
+                                                        'lon <= ?',
+                                                        'time >= ?',
+                                                        'time <= ?']),
+           tuple(map(str, [
+               kwargs['south'], kwargs['north'],
+               kwargs['west'],  kwargs['east'], 
+               dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]]))
+       )
+
     slices = np.array(db.fetchall(), dtype=object).T
     assert len(slices) == 5, \
             "no data found, try adjusting query bounds or fetching some"
@@ -179,23 +192,15 @@ def load_wwiii(wavevar, south, north, west, east, start, end):
 class Wwiii():
     """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
 
-    def fetch_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return fetch_wwiii('hs', south, north, west, east, start, end)
-    
-    def fetch_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return fetch_wwiii('dp', south, north, west, east, start, end)
-    
-    def fetch_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return fetch_wwiii('tp', south, north, west, east, start, end)
+    def fetch_windwaveheight(self,  **kwargs):  return fetch_wwiii('hs',    kwargs)
+    def fetch_wavedirection(self,   **kwargs):  return fetch_wwiii('dp',    kwargs)
+    def fetch_waveperiod(self,      **kwargs):  return fetch_wwiii('tp',    kwargs)
+    def fetch_wind(self,            **kwargs):  return fetch_wwiii('wind',  kwargs)
 
-    def load_windwaveheight(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return load_wwiii('hs', south, north, west, east, start, end)
-    
-    def load_wavedirection(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return load_wwiii('dp', south, north, west, east, start, end)
-    
-    def load_waveperiod(self, south=-90, north=90, west=-180, east=180, start=datetime.now()-timedelta(hours=24), end=datetime.now()):
-        return load_wwiii('tp', south, north, west, east, start, end)
+    def load_windwaveheight(self,   **kwargs):  return load_wwiii('hs',     kwargs)
+    def load_wavedirection(self,    **kwargs):  return load_wwiii('dp',     kwargs)
+    def load_waveperiod(self,       **kwargs):  return load_wwiii('tp',     kwargs)
+    def load_wind(self,             **kwargs):  return load_wwiii('wind',   kwargs)
 
     def __str__(self):
         info = '\n'.join([ "Wavewatch info goes here" ])

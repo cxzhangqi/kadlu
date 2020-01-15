@@ -5,8 +5,8 @@ from kadlu.geospatial.data_sources import wwiii
 from kadlu.geospatial.data_sources.wwiii import Wwiii, Boundary, wwiii_regions, wwiii_global
 
 
-start = datetime(2017, 2, 3, 0, 0, 0, 0)
-end = datetime(2017, 2, 3, 0, 0, 0, 0)
+start = datetime(2019, 2, 3, 0, 0, 0, 0)
+end = datetime(2019, 2, 3, 0, 0, 0, 0)
 
 # gulf st lawrence
 south, west = 47.1, -70

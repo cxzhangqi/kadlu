@@ -88,7 +88,7 @@ def fetch_wwiii(var, kwargs):
             fname = fetchname(var, time, reg)
             fetchfile = f"{storage_cfg()}{fname}"
             print(f"\ndownloading {fname} from NOAA WaveWatch III...", end="\r")
-            if reg == 'glo_30m':
+            if reg == 'glo_30m' and time.year >= 2018:
                 fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/gribs/{fname}"
             else:
                 fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/{reg}/{fname}"
@@ -110,12 +110,13 @@ def fetch_wwiii(var, kwargs):
 
         size = 0
         null = 0
-        n1 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
+        table = 'windU' if var == 'wind' else var
+        n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
         for msg in grib:
+            if msg.validDate < kwargs['start']: continue
+            if msg.validDate > kwargs['end']:   continue
             print(f"\tprocessing msg {msg.messagenumber} of {grib.messages}",
                   f"monthly messages for {msg.validDate}", end='\r')
-            if msg.validDate < kwargs['start']: continue
-            if msg.validDate > kwargs['end']: break
             z, y, x = msg.data()
             src = np.array(['wwiii' for each in z[~z.mask].data])
             grid = list(map(tuple, 
@@ -127,11 +128,13 @@ def fetch_wwiii(var, kwargs):
                     src
                 )).T
             ))
-            db.executemany(f"INSERT OR IGNORE INTO {var} VALUES (CAST(? AS INT),?,?,CAST(? AS INT),?)", grid)
+            table = f'{var}{msg["name"][0]}' if var == 'wind' else var
+            db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
             null += sum(sum(z.mask))
             size += len(grid)
         
-        n2 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
+        table = 'windU' if var == 'wind' else var
+        n2 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
         db.execute("COMMIT")
         conn.commit()
 
@@ -141,7 +144,6 @@ def fetch_wwiii(var, kwargs):
 
     return 
 
-#def load_wwiii(wavevar, south, north, west, east, start, end):
 def load_wwiii(var, kwargs):
     """ return downloaded wwiii data for specified wavevar according to given time, lat, lon boundaries
 
@@ -164,17 +166,27 @@ def load_wwiii(var, kwargs):
         (time is datetime)
     """
 
+    if var == 'wind':
+        wind_u = load_wwiii('windU', kwargs)
+        wind_v = load_wwiii('windV', kwargs)
+        uv = tuple(zip(wind_u[0], wind_v[0]))
+        wind_uv = wind_u.copy()
+        wind_uv[0] = uv
+        return wind_uv
+
     assert not 'time' in kwargs.keys(), 'nearest time search not implemented yet'
 
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 
-    db.execute(' AND '.join([f'SELECT * FROM {var} WHERE lat >= ?',
-                                                        'lat <= ?',
-                                                        'lon >= ?',
-                                                        'lon <= ?',
-                                                        'time >= ?',
-                                                        'time <= ?']),
+    db.execute(' AND '.join([
+           f'SELECT * FROM {var} WHERE lat >= ?',
+            'lat <= ?',
+            'lon >= ?',
+            'lon <= ?',
+            'time >= ?',
+            'time <= ? ']
+        ) + 'ORDER BY time, lat, lon ASC',
            tuple(map(str, [
                kwargs['south'], kwargs['north'],
                kwargs['west'],  kwargs['east'], 
@@ -186,7 +198,7 @@ def load_wwiii(var, kwargs):
             "no data found, try adjusting query bounds or fetching some"
     val, lat, lon, time, source = slices
 
-    return val, lat, lon, epoch_2_dt(time)
+    return np.array((val, lat, lon, epoch_2_dt(time)))
 
 
 class Wwiii():

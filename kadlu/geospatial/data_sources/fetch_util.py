@@ -12,10 +12,16 @@ from datetime import datetime, timedelta
 
 
 # database tables
-hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 chs_table    = 'bathy'
-era5_tables  = ['significant_height_of_combined_wind_waves_and_swell', 'mean_wave_direction', 'mean_wave_period']
+hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 wwiii_tables = ['hs', 'dp', 'tp', 'windU', 'windV']
+era5_tables  = [
+        'significant_height_of_combined_wind_waves_and_swell',
+        'mean_wave_direction', 
+        'mean_wave_period', 
+        'u_component_of_wind', 
+        'v_component_of_wind'
+    ]
 
 
 def storage_cfg():
@@ -59,7 +65,7 @@ def database_cfg():
     db = conn.cursor()
 
     # bathymetry table (CHS)
-    db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}"
+    db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}  "
                "(   val     REAL    NOT NULL, "
                "    lat     REAL    NOT NULL, "
                "    lon     REAL    NOT NULL, "
@@ -71,8 +77,8 @@ def database_cfg():
                f"idx_{chs_table} on {chs_table}(lon, lat, val, source)")
 
     # hycom environmental data tables
-    for fetchvar in hycom_tables:
-        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+    for var in hycom_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {var}"
                     "( val     REAL NOT NULL, "
                     "  lat     REAL NOT NULL, "
                     "  lon     REAL NOT NULL, "
@@ -82,13 +88,12 @@ def database_cfg():
                     #"  source  TEXT NOT NULL, "
                     #"CONSTRAINT hycom_unique  "
                     #"UNIQUE (val, lat, lon, time, depth, source))")
-
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat, depth, val, source)")
+                   f"idx_{var} on {var}(time, lon, lat, depth, val, source)")
 
     # wave data tables
-    for fetchvar in era5_tables + wwiii_tables:
-        db.execute(f"CREATE TABLE IF NOT EXISTS {fetchvar}"
+    for var in era5_tables + wwiii_tables:
+        db.execute(f"CREATE TABLE IF NOT EXISTS {var}"
                     "( val     REAL    NOT NULL, "
                     "  lat     REAL    NOT NULL, "
                     "  lon     REAL    NOT NULL, "
@@ -97,9 +102,8 @@ def database_cfg():
                     #"  source  TEXT    NOT NULL, " 
                     #"CONSTRAINT wave_unique       "
                     #"UNIQUE (val, lat, lon, time, source))")
-
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{fetchvar} on {fetchvar}(time, lon, lat, val, source)")
+                   f"idx_{var} on {var}(time, lon, lat, val, source)")
 
     return conn, db
 

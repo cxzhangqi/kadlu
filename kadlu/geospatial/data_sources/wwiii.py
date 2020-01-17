@@ -65,13 +65,6 @@ def fetch_wwiii(var, kwargs):
         return:
             nothing. some status messages are printed to stdout
     """
-    """ interactive testing input vars
-        var = 'hs'
-        south, west = 46, -70
-        north, east = 52, -56
-        start = datetime(2017, 2, 3, 0, 0, 0, 0)
-        end   = datetime(2017, 2, 3, 0, 0, 0, 0)
-    """
     regions = ll_2_regionstr(
             kwargs['south'], kwargs['north'], kwargs['west'], kwargs['east'], 
             wwiii_regions, [str(wwiii_global)]
@@ -165,17 +158,7 @@ def load_wwiii(var, kwargs):
         val, lat, lon, time as np arrays
         (time is datetime)
     """
-
-    if var == 'wind':
-        wind_u = load_wwiii('windU', kwargs)
-        wind_v = load_wwiii('windV', kwargs)
-        uv = tuple(zip(wind_u[0], wind_v[0]))
-        wind_uv = wind_u.copy()
-        wind_uv[0] = uv
-        return wind_uv
-
     assert not 'time' in kwargs.keys(), 'nearest time search not implemented yet'
-
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 
@@ -185,8 +168,7 @@ def load_wwiii(var, kwargs):
             'lon >= ?',
             'lon <= ?',
             'time >= ?',
-            'time <= ? ']
-        ) + 'ORDER BY time, lat, lon ASC',
+            'time <= ? ']) + ' ORDER BY time, lat, lon ASC',
            tuple(map(str, [
                kwargs['south'], kwargs['north'],
                kwargs['west'],  kwargs['east'], 
@@ -212,7 +194,13 @@ class Wwiii():
     def load_windwaveheight(self,   **kwargs):  return load_wwiii('hs',     kwargs)
     def load_wavedirection(self,    **kwargs):  return load_wwiii('dp',     kwargs)
     def load_waveperiod(self,       **kwargs):  return load_wwiii('tp',     kwargs)
-    def load_wind(self,             **kwargs):  return load_wwiii('wind',   kwargs)
+    #def load_wind(self,             **kwargs):  return load_wwiii('wind',   kwargs)
+    def load_wind(self, **kwargs):
+        wind_u = load_wwiii('windU', kwargs)
+        wind_v = load_wwiii('windV', kwargs)
+        wind_uv = wind_u.copy()
+        wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
+        return wind_uv
 
     def __str__(self):
         info = '\n'.join([ "Wavewatch info goes here" ])

@@ -40,9 +40,9 @@ wwiii_regions = [
     ]
 
 
-def fetchname(wavevar, time, region):
+def fetchname(var, t, region):
     """ generate filename for given wave variable, time, and region """
-    return f"multi_1.{region}.{wavevar}.{time.strftime('%Y%m')}.grb2"
+    return f"multi_1.{region}.{var}.{t.strftime('%Y%m')}.grb2"
 
 
 def fetch_wwiii(var, kwargs):
@@ -50,8 +50,9 @@ def fetch_wwiii(var, kwargs):
 
         args:
             var: string
-                the variable short name of desired wave parameter according to WWIII docs
-                the complete list of variable short names can be found here (under 'model output')
+                the variable name of desired parameter according to WWIII docs
+                the complete list of variables can be found at the following 
+                URL under 'model output'
                 https://polar.ncep.noaa.gov/waves/implementations.php
             south, north: float
                 ymin, ymax coordinate boundaries (latitude). range: -90, 90
@@ -70,31 +71,28 @@ def fetch_wwiii(var, kwargs):
             wwiii_regions, [str(wwiii_global)]
         )
     if str(wwiii_global) not in regions: regions = np.append(regions, str(wwiii_global))
-    time = datetime(kwargs['start'].year, kwargs['start'].month, 1)
+    t = datetime(kwargs['start'].year, kwargs['start'].month, 1)
     filenames = []
 
-    warnings.warn("resolution selection not implemented yet. defaulting to 0.5deg resolution")
+    warnings.warn("resolution selection not implemented yet. defaulting to 0.5°")
     regions = ['glo_30m']
 
-    while time <= kwargs['end']:
+    while t <= kwargs['end']:
         for reg in regions:
-            fname = fetchname(var, time, reg)
+            fname = fetchname(var, t, reg)
             fetchfile = f"{storage_cfg()}{fname}"
             print(f"\ndownloading {fname} from NOAA WaveWatch III...", end="\r")
-            if reg == 'glo_30m' and time.year >= 2018:
-                fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/gribs/{fname}"
+            if reg == 'glo_30m' and t.year >= 2018:
+                fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/gribs/{fname}"
             else:
-                fetchurl = f"{wwiii_src}{time.strftime('%Y/%m')}/{reg}/{fname}"
+                fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/{reg}/{fname}"
             with requests.get(fetchurl, stream=True) as payload:
                 assert payload.status_code == 200, 'couldn\'t retrieve file'
                 with open(fetchfile, 'wb') as f:
                     shutil.copyfileobj(payload.raw, f)
             filenames.append(fetchfile)
 
-        # on this datasource, data is sorted per month
-        # some months have more days than exactly 4 weeks
-        time += timedelta(weeks=4)
-        while (fetchname(var, time, reg) == fname): time += timedelta(days=1)
+        while (fetchname(var, t, reg) == fname): t += timedelta(days=1)
 
     for fetchfile in filenames:
         print(f"\npreparing {fetchfile.split('/')[-1]} for the database...")
@@ -189,15 +187,18 @@ class Wwiii():
     def fetch_windwaveheight(self,  **kwargs):  return fetch_wwiii('hs',    kwargs)
     def fetch_wavedirection(self,   **kwargs):  return fetch_wwiii('dp',    kwargs)
     def fetch_waveperiod(self,      **kwargs):  return fetch_wwiii('tp',    kwargs)
+    def fetch_wind_u(self,          **kwargs):  return fetch_wwiii('wind',  kwargs)
+    def fetch_wind_v(self,          **kwargs):  return fetch_wwiii('wind',  kwargs)
     def fetch_wind(self,            **kwargs):  return fetch_wwiii('wind',  kwargs)
 
     def load_windwaveheight(self,   **kwargs):  return load_wwiii('hs',     kwargs)
     def load_wavedirection(self,    **kwargs):  return load_wwiii('dp',     kwargs)
     def load_waveperiod(self,       **kwargs):  return load_wwiii('tp',     kwargs)
-    #def load_wind(self,             **kwargs):  return load_wwiii('wind',   kwargs)
-    def load_wind(self, **kwargs):
-        wind_u = load_wwiii('windU', kwargs)
-        wind_v = load_wwiii('windV', kwargs)
+    def load_wind_u(self,           **kwargs):  return load_wwiii('windU',  kwargs)
+    def load_wind_v(self,           **kwargs):  return load_wwiii('windV',  kwargs)
+    def load_wind(self,             **kwargs):
+        wind_u = load_wwiii('windU',  kwargs)
+        wind_v = load_wwiii('windV',  kwargs)
         wind_uv = wind_u.copy()
         wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
         return wind_uv

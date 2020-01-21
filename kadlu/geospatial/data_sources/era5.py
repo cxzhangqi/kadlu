@@ -83,17 +83,6 @@ def fetch_era5(var, kwargs):
             x2 = x.reshape(-1)
 
         # build coordinate grid and insert into db
-        """
-        src = ['era5' for item in z2]
-        grid = np.array(list(map(tuple, np.vstack((
-                z2, 
-                y2, 
-                ((x2 + 180) % 360 ) - 180, 
-                t,
-                src
-            )).T)), dtype=object)
-        """
-
         grid = np.empty((len(z2), 5), dtype=object)
         grid[:,0] = z2
         grid[:,1] = y2
@@ -123,7 +112,7 @@ def load_era5(var, kwargs):
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 
-    table = var[4:] if var[0:4] == '10m_' else var
+    table = var[4:] if var[0:4] == '10m_' else var  # table cant start with int
     sql = ' AND '.join([f"SELECT * FROM {table} WHERE lat >= ?",
         'lat <= ?',
         'lon >= ?',
@@ -169,6 +158,12 @@ class Era5():
     def fetch_waveperiod(self, **kwargs):
         fetch_era5('mean_wave_period', kwargs)
         return
+    def fetch_wind_u(self, **kwargs):
+        fetch_era5('10m_u_component_of_wind', kwargs)
+        return
+    def fetch_wind_v(self, **kwargs):
+        fetch_era5('10m_v_component_of_wind', kwargs)
+        return
     def fetch_wind(self, **kwargs):
         fetch_era5('10m_u_component_of_wind', kwargs)
         fetch_era5('10m_v_component_of_wind', kwargs)
@@ -180,6 +175,10 @@ class Era5():
         return load_era5('mean_wave_direction', kwargs)
     def load_waveperiod(self, **kwargs):
         return load_era5('mean_wave_period', kwargs)
+    def load_wind_u(self, **kwargs):
+        return load_era5('10m_u_component_of_wind', kwargs)
+    def load_wind_v(self, **kwargs):
+        return load_era5('10m_v_component_of_wind', kwargs)
     def load_wind(self, **kwargs):
         wind_u = load_era5('10m_u_component_of_wind', kwargs)
         wind_v = load_era5('10m_v_component_of_wind', kwargs)

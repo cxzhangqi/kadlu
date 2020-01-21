@@ -359,15 +359,24 @@ class Hycom():
         self.epoch = load_times()
         self.depth = load_depth()
 
-    def fetch_salinity(self, **kwargs): return fetch_idx(self,  'salinity',   kwargs)
-    def fetch_temp    (self, **kwargs): return fetch_idx(self,  'water_temp', kwargs)
-    def fetch_water_u (self, **kwargs): return fetch_idx(self,  'water_u',    kwargs)
-    def fetch_water_v (self, **kwargs): return fetch_idx(self,  'water_v',    kwargs)
+    def fetch_salinity(self, **kwargs): fetch_idx(self,  'salinity',   kwargs)
+    def fetch_temp    (self, **kwargs): fetch_idx(self,  'water_temp', kwargs)
+    def fetch_water_u (self, **kwargs): fetch_idx(self,  'water_u',    kwargs)
+    def fetch_water_v (self, **kwargs): fetch_idx(self,  'water_v',    kwargs)
+    def fetch_water   (self, **kwargs): 
+                                        fetch_idx(self,  'water_u',    kwargs)
+                                        fetch_idx(self,  'water_v',    kwargs)
 
     def load_salinity (self, **kwargs): return load_hycom(self, 'salinity',   kwargs)
     def load_temp     (self, **kwargs): return load_hycom(self, 'water_temp', kwargs)
     def load_water_u  (self, **kwargs): return load_hycom(self, 'water_u',    kwargs)
     def load_water_v  (self, **kwargs): return load_hycom(self, 'water_v',    kwargs)
+    def load_water    (self, **kwargs):
+        water_u = load_hycom(self, 'water_u', kwargs)
+        water_v = load_hycom(self, 'water_v', kwargs)
+        water_uv = water_u.copy()
+        water_uv[0] = tuple(zip(water_u[0], water_v[0]))
+        return water_uv
 
     def __str__(self):
         info = '\n'.join([

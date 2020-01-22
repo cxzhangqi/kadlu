@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 from os.path import isfile
 import warnings
 
-from kadlu.geospatial.data_sources.fetch_util import \
+from kadlu.geospatial.data_sources.data_util import \
 storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def, index
 
 

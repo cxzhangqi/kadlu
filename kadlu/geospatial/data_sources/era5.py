@@ -16,7 +16,7 @@ import os
 from datetime import datetime, timedelta
 import warnings
 
-from kadlu.geospatial.data_sources.fetch_util import \
+from kadlu.geospatial.data_sources.data_util import \
 storage_cfg, database_cfg, str_def, plot_sample_grib, dt_2_epoch, epoch_2_dt
 
 

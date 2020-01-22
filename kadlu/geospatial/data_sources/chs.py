@@ -18,7 +18,7 @@ import requests
 from osgeo import gdal
 import warnings
 
-from kadlu.geospatial.data_sources.fetch_util import \
+from kadlu.geospatial.data_sources.data_util import \
 storage_cfg, database_cfg, chs_table, str_def
 
 

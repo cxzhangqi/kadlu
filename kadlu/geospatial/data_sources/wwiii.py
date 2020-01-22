@@ -20,7 +20,7 @@ import shutil
 import pygrib
 import warnings
 
-from kadlu.geospatial.data_sources.fetch_util import \
+from kadlu.geospatial.data_sources.data_util import \
 storage_cfg, database_cfg, Boundary, ll_2_regionstr, dt_2_epoch, epoch_2_dt, str_def
 
 

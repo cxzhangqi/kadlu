@@ -138,7 +138,7 @@ def fetch_chs(south, north, west, east, band_id=1):
         db.execute("COMMIT")
         conn.commit()
 
-        print(f"{filepath.split('/')[-1]} processed and inserted {n2-n1} rows. "
+        print(f"{filepath.split('/')[-1]} processed and inserted {n2-n1} rows.\t"
               f"{len(z1[~z1.mask]) - len(grid)} null values removed, "
               f"{len(grid) - (n2-n1)} duplicate rows ignored")
 

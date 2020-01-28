@@ -9,9 +9,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import sqlite3
 from datetime import datetime, timedelta
+import json
+import pickle
+from functools import reduce
 
 
-# database tables
+# database tables (persisting)
 chs_table    = 'bathy'
 hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 wwiii_tables = ['hs', 'dp', 'tp', 'windU', 'windV']
@@ -108,6 +111,46 @@ def database_cfg():
     return conn, db
 
 
+def temp_db():
+    """ in-memory database for storing serialized objects """
+    conn = sqlite3.connect('file::memory:?cache=shared', uri=True)
+    db = conn.cursor()
+    db.execute('CREATE TABLE IF NOT EXISTS bin'
+                '(  hash    INT  NOT NULL,  '
+                '   bytes   BLOB NOT NULL  )' )
+    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                 f"idx_bin on bin(hash)")
+    return conn, db
+
+
+def serialize(kwargs, obj, salt=''):
+    """ serialize an object and store binary data to in-memory database
+    
+        kwargs:
+            dictionary containing keyword arguments used to generate
+            the object. this will be hashed and used as a database key
+        obj:
+            an arbitrary binary object to keep in memory
+        salt:
+            optionally salt the hash to differentiate objects using the 
+            same kwargs
+    """
+    conn, db = temp_db()
+    key = hash(salt + json.dumps(kwargs, sort_keys=True, default=str))
+    db.execute('INSERT INTO bin VALUES (?, ?)', (key, pickle.dumps(obj)))
+    conn.commit()
+    return 
+
+
+def deserialize(kwargs, salt=''):
+    conn, db = temp_db()
+    key = hash(salt + json.dumps(kwargs, sort_keys=True, default=str))
+    db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
+    res = db.fetchone()
+    if res is None: raise KeyError('no data found for query')
+    return pickle.loads(res[1])
+
+
 def dt_2_epoch(dt_arr):
     """ convert datetimes to epoch hours """
     t0 = datetime(2000, 1, 1, 0, 0, 0)
@@ -158,6 +201,67 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
         return default
 
     return np.unique(matching)
+
+
+def flatten(cols, frame_ix):
+    """ reduce 4D to 3D by averaging over time dimension """
+    assert reduce(lambda a, b: (a==b)*a, frame_ix[1:] - frame_ix[:-1])
+
+    ix = range(0, len(frame_ix) -1)
+    frames = np.array([cols[0][frame_ix[f] : frame_ix[f +1]] for f in ix])
+    vals = (reduce(np.add, frames) / len(frames))
+    _, y, x, _, z = cols[:, frame_ix[0] : frame_ix[1]]
+
+    warnings.warn("query data has been averaged across the time dimension "
+                  "for 3D interpolation.\nto avoid this behaviour, "
+                  "use keyword argument 'time' instead of start/end")
+
+    return vals, y, x, frames, z
+
+
+def reshape_2D(callback, kwargs):
+    """ load 2D data from the database and prepare it for interpolation """
+    pass
+
+
+def reshape_3D(callback, kwargs):
+    """ load 3D data from database and prepare it for interpolation """
+    cols = callback(**kwargs).astype(np.float)
+    frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
+    vals, y, x, _, z = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
+    rows = np.array((vals, y, x, z)).T
+
+    # reshape row data to 3D array
+    xgrid, ygrid, zgrid = np.unique(x), np.unique(y), np.unique(z)
+    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
+    # this could be optimized to avoid an index lookup cost maybe
+    for row in rows:
+        x_ix = index(row[2], xgrid)
+        y_ix = index(row[1], ygrid)
+        z_ix = index(row[3], zgrid)
+        gridspace[y_ix, x_ix, z_ix] = row[0]
+
+    # remove -30000 values for interpolation:
+    # fill missing depth values with last value in each column
+    # this section could be cleaned up
+    for xi in range(0, gridspace.shape[0]):
+        for yi in range(0, gridspace.shape[1]):
+            col = gridspace[xi, yi]
+            if sum(col == -30000) > 0 and sum(col == -30000) < len(col):
+                col[col == -30000] = col[col != -30000][-1]
+                gridspace[xi, yi] = col
+
+    # TODO:
+    # create default values for columns that are entirely null
+
+    return dict(
+            values=gridspace, 
+            lats=ygrid, 
+            lons=xgrid, 
+            depths=zgrid, 
+            origin=kwargs['origin'], 
+            method=kwargs['method']
+        )
 
 
 def str_def(self, info, args):

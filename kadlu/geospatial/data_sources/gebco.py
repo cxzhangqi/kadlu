@@ -14,6 +14,7 @@ import os
 import numpy as np
 from netCDF4 import Dataset
 from kadlu.geospatial.geospatial import crop
+from kadlu.geospatial.data_sources.data_util import storage_cfg
 
 
 def fetch(storage_location, south=-90, north=90, west=-180, east=180):

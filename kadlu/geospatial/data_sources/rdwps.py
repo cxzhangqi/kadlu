@@ -16,8 +16,8 @@ import os
 #import urllib.request
 import requests
 import pygrib
-from kadlu.geospatial.data_sources import fetch_util 
-from kadlu.geospatial.data_sources.fetch_util import storage_cfg, Boundary, ll_2_regionstr
+from kadlu.geospatial.data_sources import data_util
+from kadlu.geospatial.data_sources.data_util import storage_cfg, Boundary, ll_2_regionstr
 import warnings
 
 

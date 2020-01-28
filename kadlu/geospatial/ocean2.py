@@ -1,132 +1,130 @@
 import numpy as np
+import multiprocessing 
 from datetime import datetime
-from kadlu.geospatial.interpolation             import     \
-        Interpolator2D,                                    \
-        Interpolator3D,                                    \
-        Uniform2D,                                         \
+from kadlu.geospatial.interpolation             import      \
+        Interpolator2D,                                     \
+        Interpolator3D,                                     \
+        Uniform2D,                                          \
         Uniform3D
-from kadlu.geospatial.data_sources.data_util    import index
+from kadlu.geospatial.data_sources.data_util    import      \
+        index,                                              \
+        flatten,                                            \
+        reshape_2D,                                         \
+        reshape_3D,                                         \
+        serialize,                                          \
+        deserialize
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
 from kadlu.geospatial.data_sources.wwiii        import Wwiii
+
 #import kadlu.geospatial.data_sources.gebco as gebco 
-#from kadlu.utils import LatLon
-
-
-def flatten(cols, frame_ix):
-    """ reduce 4D to 3D by averaging over time dimension """
-    assert reduce(lambda a, b: (a==b)*a, frame_ix[1:] - frame_ix[:-1])
-
-    ix = range(0, len(frame_ix) -1)
-    frames = np.array([cols[0][frame_ix[f] : frame_ix[f +1]] for f in ix])
-    vals = (reduce(np.add, frames) / len(frames))
-    _, y, x, _, z = cols[:, frame_ix[0] : frame_ix[1]]
-
-    warnings.warn("query data has been averaged across the time dimension "
-                  "for 3D interpolation.\nto avoid this behaviour, "
-                  "use keyword argument 'time' instead of start/end")
-
-    return vals, y, x, frames, z
-
-
-def reshape_3D(callback, **kwargs):
-    """ load 3D data from database and prepare it for interpolation """
-    cols = callback(**kwargs).astype(np.float)
-    frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
-    vals, y, x, _, z = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
-    rows = np.array((vals, y, x, z)).T
-
-    # reshape row data to 3D array
-    xgrid, ygrid, zgrid = np.unique(x), np.unique(y), np.unique(z)
-    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
-    # this could be optimized to avoid an index lookup cost maybe
-    for row in rows:
-        x_ix = index(row[2], xgrid)
-        y_ix = index(row[1], ygrid)
-        z_ix = index(row[3], zgrid)
-        gridspace[y_ix, x_ix, z_ix] = row[0]
-
-    # remove -30000 values for interpolation:
-    # fill missing depth values with last value in each column
-    # this section could be cleaned up
-    for xi in range(0, gridspace.shape[0]):
-        for yi in range(0, gridspace.shape[1]):
-            col = gridspace[xi, yi]
-            if sum(col == -30000) > 0 and sum(col == -30000) < len(col):
-                col[col == -30000] = col[col != -30000][-1]
-                gridspace[xi, yi] = col
-
-    # TODO:
-    # create default values for columns that are entirely null
-
-    return dict(
-            values=gridspace, lats=ygrid, lons=xgrid, depths=zgrid, 
-            origin=kwargs['origin'], method=kwargs['method']
-        )
-                    
-
-def reshape_2D(callback, **kwargs):
-    """ load 2D data from database and prepare it for interpolation """
-    # do something similar to reshape_3D but for 2D 
-    pass
-    
-
-# TODO:
-# add params to output kwargs before passing to interpolator, possibly by
-# configuration in the config.ini file. 
-# this function is a temporary and quick fix
-def default(kwargs):
-    kwargs['water_density']=1.0
-    kwargs['origin'] = 0, 0 #lat_ref, lon_ref ???
-    kwargs['method'] = 'linear'
-    return kwargs
 
 
 class Ocean():
-    def __init__(self):
+    """ class for handling ocean data requests 
+        
+        initialization args are the keyword argmuments to be passed to
+        the load functions. the loaded data will then be used for
+        interpolation
+
+        args:
+            north, south:
+                latitude boundaries (float)
+            east, west:
+                longitude boundaries (float)
+            top, bottom:
+                depth range. only applies to salinity and temperature (float)
+            start, end:
+                time range for data load query (datetime)
+                note that if these kwargs are used, data will be
+                averaged across the time dimension. to avoid this
+                behaviour, use the 'time' arg instead
+            time:
+                specify a single datetime as an alternative to using 
+                the start, end kwargs. the nearest fetched time data 
+                will be loaded 
+    """
+    def __init__(self, **kwargs):
         # later we can define the preferred data sources on class initialization
         # or config.ini. for now, just use these ones
         self.load_bathymetry = Chs().load_bathymetry
         self.load_temp = Hycom().load_temp
         self.load_salinity = Hycom().load_salinity
-        self.load_wave = Era5().load_windwaveswellheight
+        self.load_wavedirection = Era5().load_wavedirection
+        self.load_waveheight = Era5().load_windwaveswellheight
+        self.load_waveperiod = Era5().load_waveperiod
+        
+        #self.set_origin(0, 0)
+        #self.SW = LatLon(-90, -180)
+        #self.NE = LatLon(90, 180)
 
-    def interp_bathy(self, **kwargs):
-        kwargs = default(kwargs)  # temporary fix
-        return Interpolator2D(**reshape_2D(self.load_bathymetry, **kwargs))
+        # temporary placeholder values for testing
+        kwargs['water_density'] = 1.0
+        kwargs['origin']        = (0, 0)  # lat_ref, lon_ref
+        kwargs['method']        = 'linear'
+        #kwargs['geometry']      = 'spherical'
 
-    def interp_temp(self, **kwargs):
-        kwargs = default(kwargs)  # temporary fix
-        return Interpolator3D(**reshape_3D(self.load_temp, **kwargs))
+        """
+        interpolate data and store result
+        note that the reshape_2D function is incomplete
+        the data keys will be updated accordingly when finished
+        """
 
-    def interp_salinity(self, **kwargs):
-        kwargs = default(kwargs)  # temporary fix
-        return Interpolator3D(**reshape_3D(self.load_salinity, **kwargs))
+        #data = reshape_2D(self.load_bathymetry, **kwargs)
+        #serialize(kwargs, (Interpolator2D(**data), data), 'interp_bathy')
+        #self.bathy_data = reshape_2D(self.load_bathymetry, kwargs)
+        #self.bathy_interp = Interpolator2D(**self.bathy_data)
 
-    def interp_wave(self, **kwargs):
-        kwargs = default(kwargs)  # temporary fix
-        return Interpolator2D(**reshape_2D(self.load_wave, **kwargs))
+        #data = reshape_3D(self.load_temp, **kwargs)
+        #serialize(kwargs, (Interpolator3D(**data), data), 'interp_temperature')
+        self.temp_data = reshape_3D(self.load_temp, kwargs)
+        self.temp_interp = Interpolator3D(**self.temp_data)
+        
+        self.salinity_data = reshape_3D(self.load_salinity, kwargs)
+        self.salinity_interp = Interpolator3D(**self.salinity_data)
 
+    def bathy(self, lat, lon, grid=False):
+        #interp, data = deserialize(kwargs, 'interp_bathy')
+        return self.interp_bathy.eval_ll(lat=lat, lon=lon, grid=grid)
 
-    # functions for evaluating the interpolated data go here
-    def bathy():
+    def bathy_gradient(self, lat, lon, axis='x', grid=False):
+        #interp, data = deserialize(kwargs, 'interp_bathy')
+        return self.bathy_interp.eval_ll(
+                lat=lat, 
+                lon=lon, 
+                grid=grid,
+                lat_deriv_order=(axis != 'x'), 
+                lon_deriv_order=(axis == 'x')
+            )
+        
+    def temp(self, lat, lon, z, grid=False):
+        #interp, data = deserialize(kwargs, 'interp_temperature')
+        return self.temp_interp.eval_ll(lat=lat, lon=lon, z=z, grid=grid)
+
+    def salinity(self, lat, lon, z, grid=False):
+        #interp, data = deserialize(kwargs, 'interp_salinity')
+        return self.salinity_interp.eval_ll(lat=lat, lon=lon, z=z, grid=grid)
+
+    def wave_direction(self, lat, lon, grid=False):
+        #data = reshape_2D(self.load_wavedirection, **kwargs)
+        #return Interpolator2D(**data).eval_ll(lat=data['lats'], lon=data['lons'], grid=data['values'])
         pass
 
-    def bathy_gradient():
+    def wave_height():
+        #kwargs = default(kwargs)  # temporary fix
+        #data = reshape_2D(self.load_waveheight, **kwargs)
+        #return Interpolator2D(**data).eval_ll(lat=data['lats'], lon=data['lons'], grid=data['values'])
         pass
 
-    def temp():
-        pass
-
-    def salinity():
-        pass
-
-    def wave():
-        # the wave variable to be used here can be selected in the class 
-        # initialization, or possibly in the config.ini file
+    def wave_period():
+        #kwargs = default(kwargs)  # temporary fix
+        #data = reshape_2D(self.load_waveperiod, **kwargs)
+        #return Interpolator2D(**data).eval_ll(lat=data['lats'], lon=data['lons'], grid=data['values'])
         pass
 
     def wind_speed():
+        # need to think about how to reshape windspeed tuple data...
+        # take square mean before?
         pass
 

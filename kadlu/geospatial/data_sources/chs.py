@@ -159,7 +159,7 @@ def load_chs(south, north, west, east):
        bathy, lat, lon = np.array([]), np.array([]), np.array([])
     else:
        bathy, lat, lon, source = slices
-    return bathy, lat, lon
+    return np.array((bathy, lat, lon))
 
 
 class Chs():

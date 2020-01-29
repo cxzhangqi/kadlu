@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import json
 import pickle
 from functools import reduce
+from hashlib import md5
 
 
 # database tables (persisting)
@@ -111,9 +112,13 @@ def database_cfg():
     return conn, db
 
 
-def temp_db():
-    """ in-memory database for storing serialized objects """
-    conn = sqlite3.connect('file::memory:?cache=shared', uri=True)
+def bin_db():
+    """ database for storing objects serialized as binary """
+    """
+    conn = sqlite3.connect('/home/matt_s/kadlu/storage/interp.db?cache=shared')
+    """
+    #conn = sqlite3.connect('file::memory:?cache=shared', uri=True)
+    conn = sqlite3.connect(storage_cfg() + 'interp.db')
     db = conn.cursor()
     db.execute('CREATE TABLE IF NOT EXISTS bin'
                 '(  hash    INT  NOT NULL,  '
@@ -123,28 +128,43 @@ def temp_db():
     return conn, db
 
 
-def serialize(kwargs, obj, salt=''):
-    """ serialize an object and store binary data to in-memory database
+def hash_key(kwargs, seed):
+    """ compute unique hash and convert to 8-byte int as serialization key """
+    string = seed + json.dumps(kwargs, sort_keys=True, default=str)
+    key = int(md5(string.encode('utf-8')).hexdigest(), 16)
+    return key >> 80
+
+
+def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed=''):
+    """ serialize an object and store binary data to database
     
+        interpfcn:
+            callback function for interpolation
+        reshapefcn:
+            callback function for reshaping row data into matrix format
+            for interpolation
+        loadfcn:
+            callback function for loading data to reshape
         kwargs:
             dictionary containing keyword arguments used to generate
             the object. this will be hashed and used as a database key
-        obj:
-            an arbitrary binary object to keep in memory
-        salt:
-            optionally salt the hash to differentiate objects using the 
-            same kwargs
+        seed:
+            seed the hash to differentiate interpolation variables with
+            the same set of kwargs
     """
-    conn, db = temp_db()
-    key = hash(salt + json.dumps(kwargs, sort_keys=True, default=str))
-    db.execute('INSERT INTO bin VALUES (?, ?)', (key, pickle.dumps(obj)))
+    conn, db = bin_db()
+    key = hash_key(kwargs, seed)
+    db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
+    if db.fetchone() is not None: return
+    obj = interpfcn(**reshapefcn(loadfcn, **kwargs))
+    db.execute('INSERT OR IGNORE INTO bin VALUES (?, ?)', (key, pickle.dumps(obj)))
     conn.commit()
     return 
 
 
-def deserialize(kwargs, salt=''):
-    conn, db = temp_db()
-    key = hash(salt + json.dumps(kwargs, sort_keys=True, default=str))
+def deserialize(kwargs, seed=''):
+    conn, db = bin_db()
+    key = hash_key(kwargs, seed)
     db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
     res = db.fetchone()
     if res is None: raise KeyError('no data found for query')
@@ -204,29 +224,73 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
 
 
 def flatten(cols, frame_ix):
-    """ reduce 4D to 3D by averaging over time dimension """
+    """ dimensional reduction by taking average of time frames """
+    # assert that frames are of equal size
     assert reduce(lambda a, b: (a==b)*a, frame_ix[1:] - frame_ix[:-1])
 
     ix = range(0, len(frame_ix) -1)
     frames = np.array([cols[0][frame_ix[f] : frame_ix[f +1]] for f in ix])
     vals = (reduce(np.add, frames) / len(frames))
-    _, y, x, _, z = cols[:, frame_ix[0] : frame_ix[1]]
 
     warnings.warn("query data has been averaged across the time dimension "
                   "for 3D interpolation.\nto avoid this behaviour, "
                   "use keyword argument 'time' instead of start/end")
 
-    return vals, y, x, frames, z
+    if len(cols) == 4:
+        _, y, x, _ = cols[:, frame_ix[0] : frame_ix[1]]
+        return vals, y, x, frames
+    elif len(cols) == 5:
+        _, y, x, _, z = cols[:, frame_ix[0] : frame_ix[1]]
+        return vals, y, x, frames, z
+    else: 
+        raise IndexError("invalid number of columns to flatten")
 
 
-def reshape_2D(callback, kwargs):
+def reshape_2D(callback, **kwargs):
     """ load 2D data from the database and prepare it for interpolation """
-    pass
+
+    """
+    from kadlu.geospatial.data_sources import era5
+    callback = era5.Era5().load_waveperiod
+    cols = Chs().load_bathymetry(**kwargs)
+    cols = Hycom().load_temp(**kwargs)
+
+    Hycom().fetch_salinity(**kwargs)
+    reshape_3D(Hycom().load_salinity, **kwargs)
+
+    cols = Era5().load_wavedirection(**kwargs)
+    Era5().fetch_windwaveswellheight(**kwargs)
+    Era5().fetch_waveperiod(**kwargs)
+    
+    cols = Era5().load_wind(**kwargs)
+
+    """
+    cols = callback(**kwargs)
+    if len(cols) == 3: cols = np.vstack((cols, [0 for x in cols[0]]))
+    frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
+    vals, y, x, _ = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
+    rows = np.array((vals, y, x)).T
+
+    # reshape row data to 2D array
+    xgrid, ygrid = np.unique(x), np.unique(y)
+    gridspace = np.full((len(ygrid), len(xgrid)), fill_value=-30000)
+
+    # this could potentially be optimized to avoid an index lookup cost 
+    for row in rows:
+        x_ix = index(row[2], xgrid)
+        y_ix = index(row[1], ygrid)
+        gridspace[y_ix, x_ix] = row[0]
+
+    # TODO:
+    #  - replace -30000 values with something more reasonable for interpolation
+    #  - create default values for columns that are entirely null
+
+    return dict(values=gridspace, lats=ygrid, lons=xgrid)
 
 
-def reshape_3D(callback, kwargs):
+def reshape_3D(callback, **kwargs):
     """ load 3D data from database and prepare it for interpolation """
-    cols = callback(**kwargs).astype(np.float)
+    cols = callback(**kwargs)#.astype(np.float)
     frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
     vals, y, x, _, z = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
     rows = np.array((vals, y, x, z)).T
@@ -234,7 +298,7 @@ def reshape_3D(callback, kwargs):
     # reshape row data to 3D array
     xgrid, ygrid, zgrid = np.unique(x), np.unique(y), np.unique(z)
     gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
-    # this could be optimized to avoid an index lookup cost maybe
+    # this could potentially be optimized to avoid an index lookup cost 
     for row in rows:
         x_ix = index(row[2], xgrid)
         y_ix = index(row[1], ygrid)
@@ -254,14 +318,7 @@ def reshape_3D(callback, kwargs):
     # TODO:
     # create default values for columns that are entirely null
 
-    return dict(
-            values=gridspace, 
-            lats=ygrid, 
-            lons=xgrid, 
-            depths=zgrid, 
-            origin=kwargs['origin'], 
-            method=kwargs['method']
-        )
+    return dict(values=gridspace, lats=ygrid, lons=xgrid, depths=zgrid)
 
 
 def str_def(self, info, args):
@@ -327,6 +384,20 @@ def plot_coverage(lat, lon):
     plt.scatter(x, y, 1, marker='.', color='xkcd:ocean blue', zorder=10)
     fig.tight_layout()
     plt.show()
+
+def gen_kwargs():
+    """ some sample fetch/load keyword args for rapid testing """
+    """
+    from datetime import datetime 
+    kwargs = gen_kwargs()
+    self = Ocean(**kwargs)
+    """
+    return dict(
+        start=datetime(2015, 1, 9), end=datetime(2015, 1, 10, 12),
+        south=44,                   west=-64.5, 
+        north=46,                   east=-62.5, 
+        top=0,                      bottom=5000
+    )
 
 """
 print(f"Range: lat {min(lat)}->{max(lat)}\tlon {min(lon)}->{max(lon)}")

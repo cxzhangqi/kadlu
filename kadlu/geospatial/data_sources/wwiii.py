@@ -178,7 +178,7 @@ def load_wwiii(var, kwargs):
             "no data found, try adjusting query bounds or fetching some"
     val, lat, lon, time, source = slices
 
-    return np.array((val, lat, lon, epoch_2_dt(time)))
+    return np.array((val, lat, lon, time), dtype=np.float)
 
 
 class Wwiii():
@@ -200,7 +200,8 @@ class Wwiii():
         wind_u = load_wwiii('windU',  kwargs)
         wind_v = load_wwiii('windV',  kwargs)
         wind_uv = wind_u.copy()
-        wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
+        #wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
+        wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
         return wind_uv
 
     def __str__(self):

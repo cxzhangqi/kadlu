@@ -132,7 +132,8 @@ def load_era5(var, kwargs):
 
     val, lat, lon, epoch, source = rowdata 
 
-    return np.array((val, lat, lon, epoch_2_dt(epoch)), dtype=object)
+    #return np.array((val, lat, lon, epoch_2_dt(epoch)), dtype=object)
+    return np.array((val, lat, lon, epoch), dtype=np.float)
 
 
 class Era5():
@@ -183,7 +184,8 @@ class Era5():
         wind_u = load_era5('10m_u_component_of_wind', kwargs)
         wind_v = load_era5('10m_v_component_of_wind', kwargs)
         wind_uv = wind_u.copy()
-        wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
+        #wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
+        wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
         return wind_uv
 
     def __str__(self):

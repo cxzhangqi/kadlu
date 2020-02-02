@@ -15,7 +15,7 @@ from functools import reduce
 from hashlib import md5
 
 
-# database tables (persisting)
+# database tables for data fetching and loading
 chs_table    = 'bathy'
 hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 wwiii_tables = ['hs', 'dp', 'tp', 'windU', 'windV']
@@ -60,10 +60,16 @@ def storage_cfg():
 
 
 def database_cfg():
-    """ configure and connect to sqlite database """
-    """
-        time is stored as an INT in the database, where each integer
+    """ configure and connect to sqlite database
+
+        time is stored as an integer in the database, where each value
         is epoch hours since 2000-01-01 00:00
+
+        returns:
+            conn:   
+                database connection object
+            db:
+                connection cursor object
     """
     conn = sqlite3.connect(storage_cfg() + "geospatial.db")
     db = conn.cursor()
@@ -74,9 +80,6 @@ def database_cfg():
                "    lat     REAL    NOT NULL, "
                "    lon     REAL    NOT NULL, "
                "    source  TEXT    NOT NULL )") 
-               #"    source  TEXT    NOT NULL, " 
-               #"CONSTRAINT chs_unique  "
-               #"UNIQUE (val, lat, lon, source) )")
     db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                f"idx_{chs_table} on {chs_table}(lon, lat, val, source)")
 
@@ -89,9 +92,6 @@ def database_cfg():
                     "  time    INT  NOT NULL, "
                     "  depth   INT  NOT NULL, "
                     "  source  TEXT NOT NULL )")
-                    #"  source  TEXT NOT NULL, "
-                    #"CONSTRAINT hycom_unique  "
-                    #"UNIQUE (val, lat, lon, time, depth, source))")
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                    f"idx_{var} on {var}(time, lon, lat, depth, val, source)")
 
@@ -103,9 +103,6 @@ def database_cfg():
                     "  lon     REAL    NOT NULL, "
                     "  time    INT     NOT NULL, "
                     "  source  TEXT    NOT NULL )") 
-                    #"  source  TEXT    NOT NULL, " 
-                    #"CONSTRAINT wave_unique       "
-                    #"UNIQUE (val, lat, lon, time, source))")
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                    f"idx_{var} on {var}(time, lon, lat, val, source)")
 
@@ -114,11 +111,8 @@ def database_cfg():
 
 def bin_db():
     """ database for storing objects serialized as binary """
-    """
-    conn = sqlite3.connect('/home/matt_s/kadlu/storage/interp.db?cache=shared')
-    """
     #conn = sqlite3.connect('file::memory:?cache=shared', uri=True)
-    conn = sqlite3.connect(storage_cfg() + 'interp.db')
+    conn = sqlite3.connect(storage_cfg() + 'binary.db')
     db = conn.cursor()
     db.execute('CREATE TABLE IF NOT EXISTS bin'
                 '(  hash    INT  NOT NULL,  '
@@ -133,33 +127,6 @@ def hash_key(kwargs, seed):
     string = seed + json.dumps(kwargs, sort_keys=True, default=str)
     key = int(md5(string.encode('utf-8')).hexdigest(), 16)
     return key >> 80
-
-
-def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed=''):
-    """ serialize an object and store binary data to database
-    
-        interpfcn:
-            callback function for interpolation
-        reshapefcn:
-            callback function for reshaping row data into matrix format
-            for interpolation
-        loadfcn:
-            callback function for loading data to reshape
-        kwargs:
-            dictionary containing keyword arguments used to generate
-            the object. this will be hashed and used as a database key
-        seed:
-            seed the hash to differentiate interpolation variables with
-            the same set of kwargs
-    """
-    conn, db = bin_db()
-    key = hash_key(kwargs, seed)
-    db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
-    if db.fetchone() is not None: return
-    obj = interpfcn(**reshapefcn(loadfcn, **kwargs))
-    db.execute('INSERT OR IGNORE INTO bin VALUES (?, ?)', (key, pickle.dumps(obj)))
-    conn.commit()
-    return 
 
 
 def deserialize(kwargs, seed=''):
@@ -200,14 +167,14 @@ class Boundary():
     def __str__(self): return self.fetchvar
 
     def intersects(self, other):  # separating axis theorem
-        return not (self.east  < other.west or 
-                    self.west  > other.east or 
-                    self.north < other.south or 
+        return not (self.east  < other.west or
+                    self.west  > other.east or
+                    self.north < other.south or
                     self.south > other.north )
 
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
-    """ convert input bounds to region strings using Boundary() class and separating axis theorem """
+    """ convert input bounds to region strings using Boundary class """
 
     if west > east:  # recursive function call if query intersects antimeridian
         return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
@@ -243,27 +210,14 @@ def flatten(cols, frame_ix):
         _, y, x, _, z = cols[:, frame_ix[0] : frame_ix[1]]
         return vals, y, x, frames, z
     else: 
-        raise IndexError("invalid number of columns to flatten")
+        raise ValueError("invalid number of columns to flatten")
 
 
 def reshape_2D(callback, **kwargs):
     """ load 2D data from the database and prepare it for interpolation """
-
     """
-    from kadlu.geospatial.data_sources import era5
-    callback = era5.Era5().load_waveperiod
     cols = Chs().load_bathymetry(**kwargs)
-    cols = Hycom().load_temp(**kwargs)
-
-    Hycom().fetch_salinity(**kwargs)
-    reshape_3D(Hycom().load_salinity, **kwargs)
-
-    cols = Era5().load_wavedirection(**kwargs)
-    Era5().fetch_windwaveswellheight(**kwargs)
-    Era5().fetch_waveperiod(**kwargs)
-    
-    cols = Era5().load_wind(**kwargs)
-
+    bathy_matrix = reshape_2D(Chs().load_bathymetry, **kwargs) 
     """
     cols = callback(**kwargs)
     if len(cols) == 3: cols = np.vstack((cols, [0 for x in cols[0]]))
@@ -274,12 +228,29 @@ def reshape_2D(callback, **kwargs):
     # reshape row data to 2D array
     xgrid, ygrid = np.unique(x), np.unique(y)
     gridspace = np.full((len(ygrid), len(xgrid)), fill_value=-30000)
+    """
+    ###
+    list(product(xgrid, ygrid))
+    list(map(gridspace, vals, index(xgrid), index(ygrid)))
+
+    t1 = datetime.now()
+    xmap = list(map(index, rows.T[2], [xgrid for x in rows.T[2]]))
+    ymap = list(map(index, rows.T[1], [ygrid for y in rows.T[1]]))
+    t2 = datetime.now()
+    print(f'{(t2-t1).seconds} seconds')
+
+    [gridspace[index(row[2], xgrid), index(row[1], ygrid)] = row[0] for row in rows]
+    np.meshgrid(vals, ymap, xmap) 
+
+    ###
+    """
 
     # this could potentially be optimized to avoid an index lookup cost 
     for row in rows:
         x_ix = index(row[2], xgrid)
         y_ix = index(row[1], ygrid)
         gridspace[y_ix, x_ix] = row[0]
+    gridspace
 
     # TODO:
     #  - replace -30000 values with something more reasonable for interpolation
@@ -390,7 +361,7 @@ def gen_kwargs():
     """
     from datetime import datetime 
     kwargs = gen_kwargs()
-    self = Ocean(**kwargs)
+    self = Ocean(**kwargs, load_bathymetry='chs')
     """
     return dict(
         start=datetime(2015, 1, 9), end=datetime(2015, 1, 10, 12),

@@ -1,31 +1,25 @@
 import numpy as np
-from multiprocessing import Process
-from datetime import datetime
 import pickle
+from multiprocessing import Process
 from kadlu.geospatial.interpolation             import      \
         Interpolator2D,                                     \
-        Interpolator3D,                                     \
-        Uniform2D,                                          \
-        Uniform3D
+        Interpolator3D
 from kadlu.geospatial.data_sources.data_util    import      \
-        index,                                              \
-        flatten,                                            \
         reshape_2D,                                         \
         reshape_3D,                                         \
         hash_key,                                           \
         bin_db,                                             \
         deserialize
 from kadlu.geospatial.data_sources.chs          import Chs
+#from kadlu.geospatial.data_sources.gebco        import Gebco
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
 from kadlu.geospatial.data_sources.wwiii        import Wwiii
 
-#import kadlu.geospatial.data_sources.gebco as gebco 
-
 # dictionary for mapping strings to callback functions
 load_map = dict(
-        bathy_chs           = Chs.load_bathymetry,
-        #bathy_gebco        = Gebco.load_bathymetry, 
+        bathy_chs           = Chs().load_bathymetry,
+        #bathy_gebco         = Gebco().load_bathymetry, 
         temp_hycom          = Hycom().load_temp,
         salinity_hycom      = Hycom().load_salinity,
         wavedir_era5        = Era5().load_wavedirection,
@@ -61,15 +55,15 @@ def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed=''):
     key = hash_key(kwargs, seed)
     db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
     if db.fetchone() is not None: return
-    kwargs['vartype'] = seed[7:]
+    kwargs['vartype'] = seed.split('_')[1]
     obj = interpfcn(**reshapefcn(loadfcn, **kwargs))
-    db.execute('INSERT OR IGNORE INTO bin VALUES (?, ?)', (key, pickle.dumps(obj)))
+    db.execute('INSERT INTO bin VALUES (?, ?)', (key, pickle.dumps(obj)))
     conn.commit()
     return 
 
 
 def load_callback(**kwargs):
-    """ used to bootstrap array data into a callable for serialization """
+    """ bootstrap array data into a callable for serialization when loading """
     v = kwargs['vartype'] + '_'
     data = np.array((kwargs[f'{v}val'], kwargs[f'{v}lat'], kwargs[f'{v}lon']))
     if f'{v}depth' not in kwargs.keys(): return data
@@ -130,8 +124,8 @@ class Ocean():
                 kwargs[f'{vartype}_lon'] = loadvar[2]
                 if len(loadvar) == 4: kwargs[f'{vartype}_depth'] = loadvar[3]
                 loadvar = load_callback
-            else:   raise ValueError(f'unknown type for load_{vartype}. '
-                    'valid types include string, array, and callable')
+            else: raise ValueError(f'unknown type for load_{vartype}. '
+                  'valid types include string, array, and callable')
 
         if not cache_results:
             kwargs['vartype']      = 'bathy'
@@ -146,7 +140,7 @@ class Ocean():
             self.interp_waveheight = Interpolator2D(**reshape_2D(load_waveheight, **kwargs))
             kwargs['vartype']      = 'waveperiod'
             self.interp_waveperiod = Interpolator2D(**reshape_2D(load_waveperiod, **kwargs))
-            kwargs['vartype']      = 'wind'
+            kwargs['vartype']      = 'windspeed'
             self.interp_wind       = Interpolator2D(**reshape_2D(load_windspeed,  **kwargs))
         else:
             # compute interpolations in parallel processes
@@ -154,26 +148,26 @@ class Ocean():
             # if it already exists in the database, interpolation will be skipped
             processes = [
                     Process(target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_bathymetry, 
-                              kwargs, 'interp_bathy')),
+                            args=(Interpolator2D, reshape_2D, load_bathymetry, 
+                                  kwargs, 'interp_bathy')),
                     Process(target=serialize_interp, 
-                        args=(Interpolator3D, reshape_3D, load_temp,
-                              kwargs, 'interp_temp')),
+                            args=(Interpolator3D, reshape_3D, load_temp,
+                                  kwargs, 'interp_temp')),
                     Process(target=serialize_interp, 
-                        args=(Interpolator3D, reshape_3D, load_salinity,
-                              kwargs, 'interp_salinity')),
+                            args=(Interpolator3D, reshape_3D, load_salinity,
+                                  kwargs, 'interp_salinity')),
                     Process(target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_wavedir,
-                              kwargs, 'interp_wavedir')), 
+                            args=(Interpolator2D, reshape_2D, load_wavedir,
+                                  kwargs, 'interp_wavedir')), 
                     Process(target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_waveheight,
-                              kwargs, 'interp_waveheight')),
+                            args=(Interpolator2D, reshape_2D, load_waveheight,
+                                  kwargs, 'interp_waveheight')),
                     Process(target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_waveperiod,
-                              kwargs, 'interp_waveperiod')),
+                            args=(Interpolator2D, reshape_2D, load_waveperiod,
+                                  kwargs, 'interp_waveperiod')),
                     Process(target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_windspeed,
-                              kwargs, 'interp_wind'))
+                            args=(Interpolator2D, reshape_2D, load_windspeed,
+                                  kwargs, 'interp_wind'))
                 ]
             for p in processes:
                 p.start()

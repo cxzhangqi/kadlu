@@ -24,23 +24,16 @@ from kadlu.geospatial.data_sources.wwiii        import Wwiii
 
 # dictionary for mapping strings to callback functions
 load_map = dict(
-    # bathymetry
         bathy_chs           = Chs.load_bathymetry,
         #bathy_gebco        = Gebco.load_bathymetry, 
-    # temperature
         temp_hycom          = Hycom().load_temp,
-    # salinity
         salinity_hycom      = Hycom().load_salinity,
-    # wave direction
         wavedir_era5        = Era5().load_wavedirection,
         wavedir_wwiii       = Wwiii().load_wavedirection,
-    # wave height
         waveheight_era5     = Era5().load_windwaveswellheight,
         waveheight_wwiii    = Wwiii().load_windwaveheight,
-    # wave period
         waveperiod_era5     = Era5().load_waveperiod,
         waveperiod_wwiii    = Wwiii().load_waveperiod,
-    # wind speed
         windspeed_era5      = Era5().load_wind,
         windspeed_wwiii     = Wwiii().load_wind
     )
@@ -78,18 +71,9 @@ def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed=''):
 def load_callback(**kwargs):
     """ used to bootstrap array data into a callable for serialization """
     v = kwargs['vartype'] + '_'
-    if 'depth' not in kwargs.keys():
-        return np.array((
-                kwargs[f'{v}val'], 
-                kwargs[f'{v}lat'], 
-                kwargs[f'{v}lon']
-            ))
-    return np.array((
-            kwargs[f'{v}val'], 
-            kwargs[f'{v}lat'], 
-            kwargs[f'{v}lon'], 
-            kwargs[f'{v}depth']
-        ))
+    data = np.array((kwargs[f'{v}val'], kwargs[f'{v}lat'], kwargs[f'{v}lon']))
+    if f'{v}depth' not in kwargs.keys(): return data
+    return np.append(data, kwargs['f{v}depth'])
 
 
 class Ocean():
@@ -127,24 +111,25 @@ class Ocean():
             load_windspeed  = 'era5',
             **kwargs):
 
+        # if load_vars are not callable, convert string or array to callable
         for vartype, loadvar in zip(
                 ['bathy', 'temp', 'salinity', 'wavedir', 
                     'waveheight', 'waveperiod', 'windspeed'], 
                 [load_bathymetry, load_temp, load_salinity, load_wavedir, 
                     load_waveheight, load_waveperiod, load_windspeed]):
-            if callable(loadvar): continue
-            elif isinstance(loadvar, str):
+            if callable(loadvar): continue                 # load from callable
+            elif isinstance(loadvar, str):                 # load from string
                 loadvar = load_map[f'{vartype}_{loadvar.lower()}']
-            elif isinstance(loadvar, (list, np.ndarray)):
+            elif isinstance(loadvar, (list, np.ndarray)):  # load from array
+                if len(loadvar) not in (3, 4): 
+                    raise ValueError(f'invalid array shape for load_{vartype}. '
+                    'arrays must be ordered by [val, lat, lon] for 2D data, or '
+                    '[val, lat, lon, depth] for 3D data')
                 kwargs[f'{vartype}_val'] = loadvar[0]
                 kwargs[f'{vartype}_lat'] = loadvar[1]
                 kwargs[f'{vartype}_lon'] = loadvar[2]
                 if len(loadvar) == 4: kwargs[f'{vartype}_depth'] = loadvar[3]
                 loadvar = load_callback
-                if len(loadvar) not in (3, 4): 
-                    raise ValueError(f'invalid array shape for load_{vartype}. '
-                    'arrays must be ordered by [val, lat, lon] for 2D data, or '
-                    '[val, lat, lon, depth] for 3D data')
             else:   raise ValueError(f'unknown type for load_{vartype}. '
                     'valid types include string, array, and callable')
 
@@ -168,40 +153,32 @@ class Ocean():
             # the resulting binary will be serialized to database for caching
             # if it already exists in the database, interpolation will be skipped
             processes = [
-                    Process(
-                        target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_bathymetry, kwargs, 'interp_bathy')
-                    ),
-                    Process(
-                        target=serialize_interp, 
-                        args=(Interpolator3D, reshape_3D, load_temp,       kwargs, 'interp_temp')
-                    ),
-                    Process(
-                        target=serialize_interp, 
-                        args=(Interpolator3D, reshape_3D, load_salinity,   kwargs, 'interp_salinity')
-                    ),
-                    Process(
-                        target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_wavedir,    kwargs, 'interp_wavedir')
-                    ),
-                    Process(
-                        target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_waveheight, kwargs, 'interp_waveheight')
-                    ),
-                    Process(
-                        target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_waveperiod, kwargs, 'interp_waveperiod')
-                    ),
-                    Process(
-                        target=serialize_interp, 
-                        args=(Interpolator2D, reshape_2D, load_windspeed,  kwargs, 'interp_wind')
-                    )
+                    Process(target=serialize_interp, 
+                        args=(Interpolator2D, reshape_2D, load_bathymetry, 
+                              kwargs, 'interp_bathy')),
+                    Process(target=serialize_interp, 
+                        args=(Interpolator3D, reshape_3D, load_temp,
+                              kwargs, 'interp_temp')),
+                    Process(target=serialize_interp, 
+                        args=(Interpolator3D, reshape_3D, load_salinity,
+                              kwargs, 'interp_salinity')),
+                    Process(target=serialize_interp, 
+                        args=(Interpolator2D, reshape_2D, load_wavedir,
+                              kwargs, 'interp_wavedir')), 
+                    Process(target=serialize_interp, 
+                        args=(Interpolator2D, reshape_2D, load_waveheight,
+                              kwargs, 'interp_waveheight')),
+                    Process(target=serialize_interp, 
+                        args=(Interpolator2D, reshape_2D, load_waveperiod,
+                              kwargs, 'interp_waveperiod')),
+                    Process(target=serialize_interp, 
+                        args=(Interpolator2D, reshape_2D, load_windspeed,
+                              kwargs, 'interp_wind'))
                 ]
             for p in processes:
                 p.start()
             for p in processes:
                 p.join()
-
             self.interp_bathy      = deserialize(kwargs, 'interp_bathy')
             self.interp_temp       = deserialize(kwargs, 'interp_temp')
             self.interp_salinity   = deserialize(kwargs, 'interp_salinity')

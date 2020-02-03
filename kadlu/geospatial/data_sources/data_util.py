@@ -136,8 +136,8 @@ def deserialize(kwargs, persisting=True, seed=''):
     res = db.fetchone()
     if res is None: raise KeyError('no data found for query')
     if not persisting: 
-        db.execute('DELETE * FROM bin WHERE hash == ?' (key,))
-        #conn.commit()
+        db.execute('DELETE FROM bin WHERE hash == ?', (key,))
+        conn.commit()
     return pickle.loads(res[1])
 
 

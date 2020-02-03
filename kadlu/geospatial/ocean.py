@@ -33,7 +33,7 @@ load_map = dict(
     )
 
 
-def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed=''):
+def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed):
     """ serialize an interpolation and store binary data to database.
         used for caching results
     
@@ -63,7 +63,7 @@ def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed=''):
 
 
 def load_callback(**kwargs):
-    """ bootstrap array data into a callable for serialization when loading """
+    """ bootstrap array data into callable for serialization when loading """
     v = kwargs['var'] + '_'
     data = np.array((kwargs[f'{v}val'], kwargs[f'{v}lat'], kwargs[f'{v}lon']))
     if f'{v}depth' not in kwargs.keys(): return data
@@ -72,29 +72,62 @@ def load_callback(**kwargs):
 
 class Ocean():
     """ class for handling ocean data requests 
+
+        data will be loaded using the given data sources and boundaries
+        from arguments. an interpolation for each variable will be computed in 
+        parallel
         
-        initialization args are the keyword argmuments to be passed to
-        the load functions. the loaded data will then be used for
-        interpolation
+        any of the below load_args may also accept a callback function instead
+        of a string or array value if you wish to write your own data loading
+        function. the boundary arguments supplied here will be passed to the 
+        callable, i.e. north, south, west, east, top, bottom, start, end
+
+        callables or array arguments must be ordered by [val, lat, lon] for 2D 
+        data, or [val, lat, lon, depth] for 3D data
 
         args:
+            cache:
+                if True, resulting interpolations will be stored as binary
+                to be reused later (boolean). caching is True by default
+            load_bathymetry: 
+                source of bathymetry data. can be 'chs' to load previously 
+                fetched data, or array ordered by [val, lat, lon]
+            load_temp:
+                source of temperature data. can be 'hycom' to load previously
+                fetched data, or array ordered by [val, lat, lon, depth]
+            load_salinity:
+                source of salinity data. can be 'hycom' to load previously
+                fetched data, or array ordered by [val, lat, lon, depth]
+            load_wavedir:
+                source of wave direction data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
+            load_waveheight:
+                source of wave height data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
+            load_waveperiod:
+                source of wave period data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
+            load_wind:
+                source of wind speed data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
             north, south:
                 latitude boundaries (float)
-            east, west:
+            west, east:
                 longitude boundaries (float)
             top, bottom:
-                depth range. only applies to salinity and temperature (float)
+                depth range in metres (float)
+                only applies to salinity and temperature
             start, end:
                 time range for data load query (datetime)
-                note that if these kwargs are used, data will be
-                averaged across the time dimension. to avoid this
-                behaviour, use the 'time' arg instead
+                if multiple times exist within range, they will be averaged
+                before computing interpolation
             time:
                 specify a single datetime as an alternative to using 
                 the start, end kwargs. the nearest fetched time data 
                 will be loaded 
     """
     def __init__(self, 
+            cache           = True,
             load_bathymetry = 'chs',
             load_temp       = 'hycom',
             load_salinity   = 'hycom',
@@ -102,8 +135,12 @@ class Ocean():
             load_waveheight = 'era5',
             load_waveperiod = 'era5',
             load_windspeed  = 'era5',
-            cache           = True,
             **kwargs):
+
+        if 'start' in kwargs.keys() and 'end' in kwargs.keys(): 
+            raise RuntimeWarning('data will be averaged over time frames for interpolation')
+                #.\nto avoid this behaviour, use the \'time\' '
+                #'keyword argument instead of start/end')
 
         vartypes = ['bathy', 'temp', 'salinity', 
                 'wavedir', 'waveheight', 'waveperiod', 'windspeed']
@@ -128,7 +165,7 @@ class Ocean():
                 if len(load_arg) == 4: kwargs[f'{var}_depth'] = load_arg[3]
                 load_args[ix] = load_callback
 
-            else: raise TypeError(f'unknown type for load_{var}. '
+            else: raise TypeError(f'invalid type for load_{var}. '
                   'valid types include string, array, and callable')
 
         # compute interpolations in parallel processes
@@ -150,7 +187,6 @@ class Ocean():
                 Process(target=serialize_interp, 
                         args=(Interpolator2D, reshape_2D, load_args[6], kwargs, 'interp_wind'))
             ]
-
         for i in interpolations: i.start()
         for i in interpolations: i.join()
 

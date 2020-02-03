@@ -15,8 +15,6 @@
 
     TODO:
         - support queries ranging more than one year
-        - support single time slice kwarg in user query
-
 """
 
 import numpy as np

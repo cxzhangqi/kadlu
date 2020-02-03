@@ -125,17 +125,18 @@ def bin_db():
 def hash_key(kwargs, seed):
     """ compute unique hash and convert to 8-byte int as serialization key """
     string = seed + json.dumps(kwargs, sort_keys=True, default=str)
-    key = int(md5(string.encode('utf-8')).hexdigest(), 16)
-    return key >> 80
+    key = int(md5(string.encode('utf-8')).hexdigest(), base=16)
+    return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
 
 
 def deserialize(kwargs, persisting=True, seed=''):
+    """ read binary from the database and load it as python object """
     conn, db = bin_db()
     key = hash_key(kwargs, seed)
     db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
     res = db.fetchone()
     if res is None: raise KeyError('no data found for query')
-    if not persisting: 
+    if not persisting:
         db.execute('DELETE FROM bin WHERE hash == ?', (key,))
         conn.commit()
     return pickle.loads(res[1])
@@ -161,38 +162,6 @@ def index(val, sorted_arr):
     return np.nonzero(sorted_arr >= val)[0][0]
   
 
-class Boundary():
-    """ compute intersecting boundaries using the separating axis theorem """
-
-    def __init__(self, south, north, west, east, fetchvar=''):
-        self.south, self.north, self.west, self.east, self.fetchvar = south, north, west, east, fetchvar
-
-    def __str__(self): return self.fetchvar
-
-    def intersects(self, other):  # separating axis theorem
-        return not (self.east  < other.west or
-                    self.west  > other.east or
-                    self.north < other.south or
-                    self.south > other.north )
-
-
-def ll_2_regionstr(south, north, west, east, regions, default=[]):
-    """ convert input bounds to region strings using Boundary class """
-
-    if west > east:  # recursive function call if query intersects antimeridian
-        return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
-                          ll_2_regionstr(south, north, -180, east, regions, default))
-
-    query = Boundary(south, north, west, east)
-    matching = [str(reg) for reg in regions if query.intersects(reg)]
-
-    if len(matching) == 0: 
-        warnings.warn(f"No regions matched for query. Defaulting to {default} ({len(default)} regions)")
-        return default
-
-    return np.unique(matching)
-
-
 def flatten(cols, frame_ix):
     """ dimensional reduction by taking average of time frames """
     # assert that frames are of equal size
@@ -201,10 +170,6 @@ def flatten(cols, frame_ix):
     ix = range(0, len(frame_ix) -1)
     frames = np.array([cols[0][frame_ix[f] : frame_ix[f +1]] for f in ix])
     vals = (reduce(np.add, frames) / len(frames))
-
-    warnings.warn("query data has been averaged across the time dimension "
-                  "for 3D interpolation.\nto avoid this behaviour, "
-                  "use keyword argument 'time' instead of start/end")
 
     if len(cols) == 4:
         _, y, x, _ = cols[:, frame_ix[0] : frame_ix[1]]
@@ -303,6 +268,38 @@ def str_def(self, info, args):
     return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
 
 
+class Boundary():
+    """ compute intersecting boundaries with separating axis theorem """
+    def __init__(self, south, north, west, east, fetchvar=''):
+        self.south, self.north, self.west, self.east, self.fetchvar = \
+                south, north, west, east, fetchvar
+
+    def __str__(self): return self.fetchvar
+
+    def intersects(self, other):  # separating axis theorem
+        return not (self.east  < other.west or
+                    self.west  > other.east or
+                    self.north < other.south or
+                    self.south > other.north )
+
+
+def ll_2_regionstr(south, north, west, east, regions, default=[]):
+    """ convert input bounds to region strings using Boundary class """
+
+    if west > east:  # recursive function call if query intersects antimeridian
+        return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
+                          ll_2_regionstr(south, north, -180, east, regions, default))
+
+    query = Boundary(south, north, west, east)
+    matching = [str(reg) for reg in regions if query.intersects(reg)]
+
+    if len(matching) == 0: 
+        warnings.warn(f"No regions matched for query. Defaulting to {default} ({len(default)} regions)")
+        return default
+
+    return np.unique(matching)
+
+
 def plot_sample_grib(gribfiles, title_text="A sample plot"):
 
     #fig, axs = plt.subplots(2, int(len(gribfiles)/2))
@@ -362,12 +359,12 @@ def plot_coverage(lat, lon):
 def gen_kwargs():
     """ some sample fetch/load keyword args for rapid testing """
     """
-    from datetime import datetime 
     kwargs = gen_kwargs()
     self = Ocean(**kwargs)
     """
     return dict(
         start=datetime(2015, 1, 9), end=datetime(2015, 1, 10, 12),
+        #time=datetime(2015, 1, 9),
         south=44,                   west=-64.5, 
         north=46,                   east=-62.5, 
         top=0,                      bottom=5000

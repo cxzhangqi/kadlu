@@ -129,12 +129,15 @@ def hash_key(kwargs, seed):
     return key >> 80
 
 
-def deserialize(kwargs, seed=''):
+def deserialize(kwargs, persisting=True, seed=''):
     conn, db = bin_db()
     key = hash_key(kwargs, seed)
     db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
     res = db.fetchone()
     if res is None: raise KeyError('no data found for query')
+    if not persisting: 
+        db.execute('DELETE * FROM bin WHERE hash == ?' (key,))
+        #conn.commit()
     return pickle.loads(res[1])
 
 
@@ -361,7 +364,7 @@ def gen_kwargs():
     """
     from datetime import datetime 
     kwargs = gen_kwargs()
-    self = Ocean(**kwargs, load_bathymetry='chs')
+    self = Ocean(**kwargs)
     """
     return dict(
         start=datetime(2015, 1, 9), end=datetime(2015, 1, 10, 12),
@@ -369,9 +372,4 @@ def gen_kwargs():
         north=46,                   east=-62.5, 
         top=0,                      bottom=5000
     )
-
-"""
-print(f"Range: lat {min(lat)}->{max(lat)}\tlon {min(lon)}->{max(lon)}")
-plot_coverage(lat, lon)
-"""
 

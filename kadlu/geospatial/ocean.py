@@ -17,6 +17,21 @@ from kadlu.geospatial.data_sources.era5         import Era5
 from kadlu.geospatial.data_sources.wwiii        import Wwiii
 
 # dictionary for mapping strings to callback functions
+fetch_map = dict(
+        bathy_chs           = Chs().fetch_bathymetry,
+        #bathy_gebco         = Gebco().fetch_bathymetry, 
+        temp_hycom          = Hycom().fetch_temp,
+        salinity_hycom      = Hycom().fetch_salinity,
+        wavedir_era5        = Era5().fetch_wavedirection,
+        wavedir_wwiii       = Wwiii().fetch_wavedirection,
+        waveheight_era5     = Era5().fetch_windwaveswellheight,
+        waveheight_wwiii    = Wwiii().fetch_windwaveheight,
+        waveperiod_era5     = Era5().fetch_waveperiod,
+        waveperiod_wwiii    = Wwiii().fetch_waveperiod,
+        windspeed_era5      = Era5().fetch_wind,
+        windspeed_wwiii     = Wwiii().fetch_wind
+    )
+
 load_map = dict(
         bathy_chs           = Chs().load_bathymetry,
         #bathy_gebco         = Gebco().load_bathymetry, 
@@ -128,6 +143,7 @@ class Ocean():
     """
     def __init__(self, 
             cache           = True,
+            fetch           = False,
             load_bathymetry = 'chs',
             load_temp       = 'hycom',
             load_salinity   = 'hycom',
@@ -136,6 +152,7 @@ class Ocean():
             load_waveperiod = 'era5',
             load_windspeed  = 'era5',
             **kwargs):
+
 
         if 'start' in kwargs.keys() and 'end' in kwargs.keys(): 
             print('WARNING: data will be averaged over time frames for interpolation')
@@ -152,7 +169,9 @@ class Ocean():
             if callable(load_arg): continue
 
             elif isinstance(load_arg, str):
-                load_args[ix] = load_map[f'{var}_{load_arg.lower()}']
+                key = f'{var}_{load_arg.lower()}'
+                if fetch == True: fetch_map[key](**kwargs)
+                load_args[ix] = load_map[key]
 
             elif isinstance(load_arg, (list, tuple, np.ndarray)):
                 if len(load_arg) not in (3, 4):

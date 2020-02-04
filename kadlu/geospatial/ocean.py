@@ -76,7 +76,7 @@ class Ocean():
         data will be loaded using the given data sources and boundaries
         from arguments. an interpolation for each variable will be computed in 
         parallel
-        
+
         any of the below load_args may also accept a callback function instead
         of a string or array value if you wish to write your own data loading
         function. the boundary arguments supplied here will be passed to the 
@@ -87,8 +87,8 @@ class Ocean():
 
         args:
             cache:
-                if True, resulting interpolations will be stored as binary
-                to be reused later (boolean). caching is True by default
+                boolean. if True, resulting interpolations will be stored as 
+                binary to be reused later. caching is True by default
             load_bathymetry: 
                 source of bathymetry data. can be 'chs' to load previously 
                 fetched data, or array ordered by [val, lat, lon]
@@ -138,7 +138,7 @@ class Ocean():
             **kwargs):
 
         if 'start' in kwargs.keys() and 'end' in kwargs.keys(): 
-            raise RuntimeWarning('data will be averaged over time frames for interpolation')
+            print('WARNING: data will be averaged over time frames for interpolation')
                 #.\nto avoid this behaviour, use the \'time\' '
                 #'keyword argument instead of start/end')
 
@@ -148,14 +148,14 @@ class Ocean():
                 load_wavedir, load_waveheight, load_waveperiod, load_windspeed]
 
         # if load_args are not callable, convert string or array to callable
-        for var, load_arg, ix in zip(vartypes, load_args, range(0, len(vartypes))):
+        for var, load_arg, ix in zip(vartypes, load_args, range(len(vartypes))):
             if callable(load_arg): continue
 
             elif isinstance(load_arg, str):
                 load_args[ix] = load_map[f'{var}_{load_arg.lower()}']
 
             elif isinstance(load_arg, (list, tuple, np.ndarray)):
-                if len(load_arg) not in (3, 4): 
+                if len(load_arg) not in (3, 4):
                     raise ValueError(f'invalid array shape for load_{var}. '
                     'arrays must be ordered by [val, lat, lon] for 2D data, or '
                     '[val, lat, lon, depth] for 3D data')

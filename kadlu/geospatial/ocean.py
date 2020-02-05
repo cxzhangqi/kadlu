@@ -70,6 +70,9 @@ def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed):
     """
     conn, db = bin_db()
     key = hash_key(kwargs, seed)
+
+    print('ser key: ', key)
+
     db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
     if db.fetchone() is not None: return
     kwargs['var'] = seed.split('_')[1]

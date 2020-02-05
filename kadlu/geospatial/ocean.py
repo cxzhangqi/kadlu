@@ -225,11 +225,9 @@ class Ocean():
         # compute interpolations in parallel processes
         # child processes will serialize the result for parent to deserialize
         # if cache=False, the serialized binary will be removed from database
-        interpolations = []
-        for i in range(len(interp_fcn)):
-            proc = Process(target=serialize_interp, 
-                           args=(interp_fcn[i], reshape_fcn[i], load_args[i], kwargs, 'interp_{0}'.format(vartypes[i])))
-            interpolations.append(proc)
+        interpolations = [Process(target=serialize_interp, 
+                                  args=(interp_fcn[i], reshape_fcn[i], load_args[i], kwargs, 'interp_{0}'.format(vartypes[i]))) 
+                          for i in range(len(interp_fcn))]
 
 #                Process(target=serialize_interp, 
 #                        args=(Interpolator2D, reshape_2D, load_args[0], kwargs, 'interp_bathy')),

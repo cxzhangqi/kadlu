@@ -53,6 +53,8 @@ from matplotlib import pyplot as plt
 class Seafloor():
     """ Properties of the sea floor.
 
+        TODO: Consider renaming loss to attenuation
+
         Args:
             c: float
                 Uniform and isotropic sound speed in m/s

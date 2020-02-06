@@ -61,9 +61,6 @@ def test_chs_bathy():
     assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
     assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
 
-
-
-
 def test_array_bathy():
     """ Test that ocean can be initialized with bathymetry data 
         from arrays"""
@@ -73,7 +70,15 @@ def test_array_bathy():
     lons = np.array([-60.1, -59.5])
     o = Ocean(default=False, cache=False, fetch=True,
         load_bathymetry=(bathy,lats,lons))
-    assert (bathy,lats,lons) == o.bathy()
+    (b,la,lo) = o.bathy()
+    assert np.all(b == bathy)
+    assert np.all(la == lats)
+    assert np.all(lo == lons)
+    res = o.bathy(lat=44.5, lon=-60.1)
+    assert res == -100
+    res = o.bathy(lat=44.5, lon=-59.8)
+    assert pytest.approx(res == -150., abs=1e-6)
+
 
 
 

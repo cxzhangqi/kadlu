@@ -238,13 +238,37 @@ class Ocean():
         self.origin = LatLon(lat_ref, lon_ref)
 
         # load data and create interpolation objects for each variable
-        self.add_var_2D('bathy',      self.load_args[0], kwargs)
+        if self.load_args[0] == 'chs' or self.load_args[0] == load_map['bathy_chs']:            
+            self.add_bathy_chs(kwargs)
+        else:
+            self.add_var_2D('bathy',   self.load_args[0], kwargs)
+        
         self.add_var_3D('temp',       self.load_args[1], kwargs)
         self.add_var_3D('salinity',   self.load_args[2], kwargs)
         self.add_var_2D('wavedir',    self.load_args[3], kwargs)
         self.add_var_2D('waveheight', self.load_args[4], kwargs)
         self.add_var_2D('waveperiod', self.load_args[5], kwargs)
         self.add_var_2D('windspeed',  self.load_args[6], kwargs)
+
+
+    def add_bathy_chs(self, kwargs):
+        """ Add CHS bathymetry to the ocean.
+        """
+        def chs_reshape(load_fcn, **kwargs):
+            bin_size = 0.001#degrees
+            (bathy,lats,lons) = load_fcn(**kwargs)            
+            N = self.NE.latitude
+            S = self.SW.latitude
+            E = self.NE.longitude
+            W = self.SW.longitude
+            num_lats = int(np.ceil((N - S) / bin_size)) + 1
+            num_lons = int(np.ceil((E - W) / bin_size)) + 1
+            lats_reg = np.linspace(S, N, num=num_lats)
+            lons_reg = np.linspace(W, E, num=num_lons)
+            return dict(values=bathy, lats=lats, lons=lons, 
+                method_irreg='regular', lats_reg=lats_reg, lons_reg=lons_reg)
+
+        self._add_var('bathy', 'chs', interp_2D, chs_reshape, kwargs)
 
 
     def add_var_2D(self, var, load_arg, kwargs):

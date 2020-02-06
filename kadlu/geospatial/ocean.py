@@ -243,7 +243,7 @@ class Ocean():
         elif isinstance(load_arg, str):
             key = f'{var}_{load_arg.lower()}'
             if self.fetch == True: fetch_map[key](**kwargs)
-            load_args[ix] = load_map[key]
+            load_arg = load_map[key]
 
         elif isinstance(load_arg, (list, tuple, np.ndarray)):
             if len(load_arg) not in (3, 4):
@@ -281,24 +281,72 @@ class Ocean():
 
 
     def get_var(self, var, grid=False, **kwargs):
+        """ Get data associated with a given variable.
+
+            Coordinates may be specified via the keyword arguments x,y,z 
+            (planar geometry) or lat,lon,z (spherical geometry).
+
+            If coordinates are specified, the methods returns the 
+            interpolated data values at the specified coordinates.
+
+            If no coordinates are specified, the method returns the 
+            full underlying data array. 
+
+            Args:
+                var: str
+                    Variable name
+                x,y,z: array-like
+                    Coordinate in planar geometry with values given in meters.
+                lat,lon: array-like
+                    Coordinate in spherical geometry with values given in degrees.
+                grid: bool
+                    Specify how to combine elements of coordinate arrays.
+
+            Returns:
+                : array-like
+                Interpolated data at specified coordinates, or underlying data array
+        """
         assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
 
         is_3d = ('z' in kwargs.keys())
         is_xy = ('x' in kwargs.keys() and 'y' in kwargs.keys())
         is_ll = ('lat' in kwargs.keys() and 'lon' in kwargs.keys())
 
+        if is_3d: z = kwargs['z']
+
         if is_xy:
+            x, y = kwargs['x'], kwargs['y']
             if is_3d: return self.interp[var].eval_xy(x, y, z, grid)
             else:     return self.interp[var].eval_xy(x, y, grid)
         elif is_ll:
+            lat, lon = kwargs['lat'], kwargs['lon']
             if is_3d: return self.interp[var].eval_ll(lat, lon, z, grid)
             else:     return self.interp[var].eval_ll(lat, lon, grid)
         else:
-            print('x,y or lat,lon must be specified')
-            exit(1)    
-
+            return self.interp[var].get_nodes()
 
     def get_deriv(self, var, axis, grid=False, **kwargs):
+        """ Get the derivative of a given variable.
+
+            Coordinates must be specified via the keyword arguments x,y,z 
+            (planar geometry) or lat,lon,z (spherical geometry).
+
+            Args:
+                var: str
+                    Variable name
+                axis: str
+                    Axis along which to compute the derivative. 
+                x,y,z: array-like
+                    Coordinate in planar geometry with values given in meters.
+                lat,lon: array-like
+                    Coordinate in spherical geometry with values given in degrees.
+                grid: bool
+                    Specify how to combine elements of coordinate arrays.
+
+            Returns:
+                : array-like
+                    Derivative
+        """
         assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
 
         is_xy = ('x' in kwargs.keys() and 'y' in kwargs.keys())
@@ -307,36 +355,42 @@ class Ocean():
         if is_xy:
             assert axis in ('x','y'), 'if x,y are specified, axis must be either x or y'
 
+            x, y = kwargs['x'], kwargs['y']
             return self.interp[var].eval_xy(x, y, grid,
                 x_deriv_order=(axis=='x'), y_deriv_order=(axis=='y'))
 
         elif is_ll:
             assert axis in ('lat','lon'), 'if lat,lon are specified, axis must be either lat or lon'
 
+            lat, lon = kwargs['lat'], kwargs['lon']
             return self.interp[var].eval_ll(lat, lon, grid,
                 lat_deriv_order=(axis=='lat'), lon_deriv_order=(axis=='lon'))
 
+        else:
+            print('x,y or lat,lon must be specified')
+            exit(1)
+
 
     def bathy(self, grid=False, **kwargs):
-        return get_var('bathy', grid, kwargs)
+        return self.get_var('bathy', grid, **kwargs)
 
-    def bathy_deriv(self, grid=False, **kwargs):
-        return get_deriv('bathy', grid, kwargs)
+    def bathy_deriv(self, axis, grid=False, **kwargs):
+        return self.get_deriv('bathy', axis, grid, **kwargs)
 
     def temp(self, grid=False, **kwargs):
-        return get_var('temp', grid, kwargs)
+        return self.get_var('temp', grid, **kwargs)
 
     def salinity(self, grid=False, **kwargs):
-        return get_var('salinity', grid, kwargs)
+        return self.get_var('salinity', grid, **kwargs)
 
     def wavedir(self, grid=False, **kwargs):
-        return get_var('wavedir', grid, kwargs)
+        return self.get_var('wavedir', grid, **kwargs)
 
     def waveheight(self, grid=False, **kwargs):
-        return get_var('waveheight', grid, kwargs)
+        return self.get_var('waveheight', grid, **kwargs)
 
     def waveperiod(self, grid=False, **kwargs):
-        return get_var('waveperiod', grid, kwargs)
+        return self.get_var('waveperiod', grid, **kwargs)
 
     def windspeed(self, grid=False, **kwargs):
-        return get_var('windspeed', grid, kwargs)
+        return self.get_var('windspeed', grid, **kwargs)

@@ -298,6 +298,9 @@ class Interpolator2D():
         self.lon_nodes = lons
         self.values = values
 
+    def get_nodes(self):
+        return (self.values, self.lat_nodes, self.lon_nodes)
+
     def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
         """ Interpolate using planar coordinate system (xy).
 
@@ -464,6 +467,9 @@ class Interpolator3D():
         self.depth_nodes = depths
         self.values = values
 
+    def get_nodes(self):
+        return (self.values, self.lat_nodes, self.lon_nodes, self.depth_nodes)
+
     def eval_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).
 
@@ -590,7 +596,10 @@ class Uniform2D():
 
     def __init__(self, value):
         self.value = value
-    
+
+    def get_nodes(self):
+        return self.value
+
     def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
 
         z = self.eval_ll(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
@@ -632,7 +641,10 @@ class Uniform3D():
 
     def __init__(self, value):
         self.value = value
-    
+
+    def get_nodes(self):
+        return self.value
+
     def eval_xy(self, x, y, z, grid=False):
 
         v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
@@ -689,6 +701,9 @@ class DepthInterpolator3D():
         # store interpolation data
         self.depth_nodes = depths
         self.values = values
+
+    def get_nodes(self):
+        return (self.values, self.depth_nodes)
 
     def eval_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).

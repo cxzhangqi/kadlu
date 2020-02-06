@@ -13,25 +13,71 @@
 import pytest
 import os
 import numpy as np
+import datetime
 from kadlu.geospatial.ocean import Ocean
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+now = datetime.datetime.now()
 
-def test_init_null_ocean():
+def test_null_ocean():
+    """ Test that ocean is initialized with all variables set to 
+        null (0) when default=False"""
     o = Ocean(default=False, cache=False)
+    assert o.bathy() == 0
+    assert o.temp() == 0
+    assert o.salinity() == 0
+    assert o.wavedir() == 0
+    assert o.waveheight() == 0
+    assert o.waveperiod() == 0
+    assert o.windspeed() == 0
 
-def test_load_bathymetry_from_a_single_chs_file():
-    o = Ocean(bathy="CHS")
-    storage = os.path.join(path_to_assets, 'tif')
-    o.load_bathy(south=43, west=-60, north=44, east=-59, storage=storage)
-    bathy_data = o.bathy_data
-    bathy = bathy_data[0]
-    lats = bathy_data[1]
-    lons = bathy_data[2]
-    #assert np.ma.min(bathy) == pytest.approx(-3257.100, abs=0.001)
-    #assert np.ma.max(bathy) == pytest.approx(1.645, abs=0.001)
-    assert bathy.shape[0] == lats.shape[0]
-    assert bathy.shape[0] == lons.shape[0]
+def test_uniform_bathy():
+    """ Test that ocean can be initialized with uniform bathymetry"""
+    o = Ocean(default=False, cache=False, load_bathymetry=-500.5)
+    assert o.bathy() == -500.5
+    assert o.temp() == 0
+
+def test_interp_uniform_temp():
+    """ Test that we can interpolate a uniform ocean temperature 
+        on any set of coordinates"""
+    o = Ocean(default=False, cache=False, load_temp=16.1)
+    assert o.temp(x=1, y=2.2, z=-3.0) == 16.1
+    assert o.temp(lat=41.2, lon=-66.0, z=-33.0) == 16.1
+    assert np.all(o.temp(x=[5,20], y=[0,10], z=[-300,-400]) == [16.1, 16.1])
+
+def test_uniform_bathy_deriv():
+    """ Test that uniform bathy has derivative zero"""
+    o = Ocean(default=False, cache=False, load_bathymetry=-500.5)
+    assert o.bathy_deriv(x=1,y=17,axis='x') == 0
+
+def test_chs_bathy():
+    """ Test that ocean can be initialized with bathymetry data 
+        from a CHS file with automatic fetching enabled"""
+    o = Ocean(default=False, cache=False, fetch=True,
+        load_bathymetry='chs', south=43.1, west=-59.8, 
+        north=43.8, east=-59.2)
+    (bathy,lats,lons) = o.bathy()
+    assert len(bathy) > 0 #check that some data was retrieved
+    assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
+    assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
+
+
+
+
+def test_array_bathy():
+    """ Test that ocean can be initialized with bathymetry data 
+        from arrays"""
+    bathy = np.array([[-100., -200.],
+                      [-100., -200.]])
+    lats = np.array([44.5, 44.7])
+    lons = np.array([-60.1, -59.5])
+    o = Ocean(default=False, cache=False, fetch=True,
+        load_bathymetry=(bathy,lats,lons))
+    assert (bathy,lats,lons) == o.bathy()
+
+
+
+## old tests below ...
 
 def test_interpolate_chs_bathymetry():
     o = Ocean(bathy="CHS")

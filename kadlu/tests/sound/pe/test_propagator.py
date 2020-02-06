@@ -20,7 +20,7 @@ from kadlu.geospatial.ocean import Ocean
 
 
 def test_can_initialize_propapagator(grid):
-    o = Ocean()
+    o = Ocean(default=False, cache=False)
     s = Seafloor()
     s.frequency=10
     s.c0 = 1500

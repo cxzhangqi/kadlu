@@ -175,20 +175,7 @@ class Ocean():
         self.cache = cache
         self.fetch = fetch
         self.interp = {}
-
-        # south-west and north-east corners
-        if 'south' not in kwargs.keys(): kwargs['south'] =  -90
-        if 'north' not in kwargs.keys(): kwargs['north'] =   90
-        if 'west'  not in kwargs.keys(): kwargs['west']  = -180
-        if 'east'  not in kwargs.keys(): kwargs['east']  =  180
-        self.SW = LatLon(kwargs['south'], kwargs['west'])
-        self.NE = LatLon(kwargs['north'], kwargs['east'])
-
-        # origo of planar (x,y) coordinate system
-        lat_ref = 0.5 * (self.SW.latitude + self.NE.latitude)
-        lon_ref = 0.5 * (self.SW.longitude + self.NE.longitude)
-        self.origin = LatLon(lat_ref, lon_ref)
-
+        
         # set default data sources
         if default:
             if load_bathymetry == 0: load_bathymetry = 'chs'
@@ -199,14 +186,63 @@ class Ocean():
             if load_waveperiod == 0: load_waveperiod = 'era5'
             if load_windspeed == 0:  load_windspeed = 'era5'
 
-        # add variables
-        self.add_var_2D('bathy',      load_bathymetry, kwargs)
-        self.add_var_3D('temp',       load_temp, kwargs)
-        self.add_var_3D('salinity',   load_salinity, kwargs)
-        self.add_var_2D('wavedir',    load_wavedir, kwargs)
-        self.add_var_2D('waveheight', load_waveheight, kwargs)
-        self.add_var_2D('waveperiod', load_waveperiod, kwargs)
-        self.add_var_2D('windspeed',  load_windspeed, kwargs)
+        # collect load args for later use
+        self.load_args = [load_bathymetry,
+                          load_temp,
+                          load_salinity,
+                          load_wavedir,
+                          load_waveheight,
+                          load_waveperiod,
+                          load_windspeed]
+
+        # load ocean data
+        self.load(**kwargs)
+
+
+    def load(self, **kwargs):
+        """ Load data for the specified region and time period.
+
+            Args:
+                north, south:
+                    latitude boundaries (float)
+                west, east:
+                    longitude boundaries (float)
+                top, bottom:
+                    depth range in metres (float)
+                    only applies to salinity and temperature
+                start, end:
+                    time range for data load query (datetime)
+                    if multiple times exist within range, they will be averaged
+                    before computing interpolation
+                time:
+                    specify a single datetime as an alternative to using 
+                    the start, end kwargs. the nearest fetched time data 
+                    will be loaded 
+        """
+        # assume water density to be 1.0 g/cm^3 everywhere
+        self.water_density = 1.0
+
+        # south-west and north-east corners of the region considered
+        if 'south' not in kwargs.keys(): kwargs['south'] =  -90
+        if 'north' not in kwargs.keys(): kwargs['north'] =   90
+        if 'west'  not in kwargs.keys(): kwargs['west']  = -180
+        if 'east'  not in kwargs.keys(): kwargs['east']  =  180
+        self.SW = LatLon(kwargs['south'], kwargs['west'])
+        self.NE = LatLon(kwargs['north'], kwargs['east'])
+
+        # place origin of planar (x,y) coordinate system at the center
+        lat_ref = 0.5 * (self.SW.latitude + self.NE.latitude)
+        lon_ref = 0.5 * (self.SW.longitude + self.NE.longitude)
+        self.origin = LatLon(lat_ref, lon_ref)
+
+        # load data and create interpolation objects for each variable
+        self.add_var_2D('bathy',      self.load_args[0], kwargs)
+        self.add_var_3D('temp',       self.load_args[1], kwargs)
+        self.add_var_3D('salinity',   self.load_args[2], kwargs)
+        self.add_var_2D('wavedir',    self.load_args[3], kwargs)
+        self.add_var_2D('waveheight', self.load_args[4], kwargs)
+        self.add_var_2D('waveperiod', self.load_args[5], kwargs)
+        self.add_var_2D('windspeed',  self.load_args[6], kwargs)
 
 
     def add_var_2D(self, var, load_arg, kwargs):

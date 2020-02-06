@@ -50,14 +50,14 @@ def test_compute_nsq():
 
 def test_initialize_tlcalculator_with_default_args():
     s = Seafloor()
-    o = Ocean()
+    o = Ocean(default=False, cache=False)
     tl = TLCalculator(ocean=o, seafloor=s)
     assert tl._compute_sound_speed == True
     assert tl.steps_btw_c_updates == 1
 
 def test_initialize_tlcalculator_with_uniform_sound_speed():
     s = Seafloor()
-    o = Ocean()
+    o = Ocean(default=False, cache=False)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1488)
     assert tl._compute_sound_speed == False
     assert tl.c.data == 1488
@@ -65,7 +65,7 @@ def test_initialize_tlcalculator_with_uniform_sound_speed():
 
 def test_initialize_tlcalculator_with_ssp():
     s = Seafloor()
-    o = Ocean()
+    o = Ocean(default=False, cache=False)
     z = np.array([-10, -100, -250, -900])
     c = np.array([1488, 1489, 1490, 1491])
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=(c,z))
@@ -79,7 +79,7 @@ def test_initialize_tlcalculator_with_ssp():
 
 def test_update_source_location_and_time():
     s = Seafloor()
-    o = Ocean()
+    o = Ocean(default=False, cache=False)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1470)
     tl._update_source_location_and_time(lat=45, lon=80, start=start, end=end)
     tl.ocean.origin.latitude == 45
@@ -95,7 +95,7 @@ def test_update_source_location_and_time():
 
 def test_bounding_box():
     s = Seafloor()
-    o = Ocean()
+    o = Ocean(default=False, cache=False)
     tl = TLCalculator(ocean=o, seafloor=s)
     s,n,w,e = tl._bounding_box(lat=45, lon=80, r=60e3)
     lat_max, _ = XYtoLL(x=0, y=60e3, lat_ref=45, lon_ref=80)
@@ -109,7 +109,7 @@ def test_bounding_box():
 
 def test_create_grid():
     s = Seafloor(thickness=800)
-    o = Ocean(bathy=-1000)
+    o = Ocean(default=False, cache=False, load_bathymetry=-1000)
     dz = 10
     tl = TLCalculator(ocean=o, seafloor=s, absorption_layer=0.2, vertical_bin=dz)
     g = tl._create_grid(frequency=10)
@@ -118,7 +118,7 @@ def test_create_grid():
 
 def test_run_with_flat_seafloor():
     s = Seafloor(thickness=2000)
-    o = Ocean(bathy=-10000)
+    o = Ocean(default=False, cache=False, load_bathymetry=-10000)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
@@ -136,7 +136,7 @@ def test_run_with_flat_seafloor():
 
 def test_run_with_realistic_bathymetry():
     s = Seafloor(thickness=2000)
-    o = Ocean(bathy="CHS")
+    o = Ocean(default=False, cache=False, load_bathymetry='chs')
     # initialize calculator
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
@@ -146,7 +146,7 @@ def test_run_with_realistic_bathymetry():
 
 def test_run_with_uniform_temp_and_salinity():
     s = Seafloor(thickness=2000)
-    o = Ocean(bathy="CHS", temp=4, salinity=35)
+    o = Ocean(default=False, cache=False, load_bathymetry='chs', load_temp=4, load_salinity=35)
     # initialize calculator
     tl = TLCalculator(ocean=o, seafloor=s,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
@@ -156,7 +156,7 @@ def test_run_with_uniform_temp_and_salinity():
 
 def test_run_at_same_depth_twice():
     s = Seafloor(thickness=2000)
-    o = Ocean(bathy=-10000)
+    o = Ocean(default=False, cache=False, load_bathymetry=-10000)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)
@@ -174,7 +174,7 @@ def test_run_at_same_depth_twice():
 
 def test_run_at_multiple_source_depths():
     s = Seafloor(thickness=2000)
-    o = Ocean(bathy=-10000)
+    o = Ocean(default=False, cache=False, load_bathymetry=-10000)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
         verbose=True, progress_bar=False)

@@ -269,8 +269,8 @@ class Propagator():
             gradient = np.zeros(x.shape)
 
         else:
-            dfdx = self.ocean.bathy_gradient(x=x, y=y, axis='x')
-            dfdy = self.ocean.bathy_gradient(x=x, y=y, axis='y')
+            dfdx = self.ocean.bathy_deriv(x=x, y=y, axis='x')
+            dfdy = self.ocean.bathy_deriv(x=x, y=y, axis='y')
             gradient = self.costheta * dfdx + self.sintheta * dfdy
             gradient *= (-1.)
 

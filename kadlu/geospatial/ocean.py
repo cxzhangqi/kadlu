@@ -223,10 +223,12 @@ class Ocean():
         self.water_density = 1.0
 
         # south-west and north-east corners of the region considered
-        if 'south' not in kwargs.keys(): kwargs['south'] =  -90
-        if 'north' not in kwargs.keys(): kwargs['north'] =   90
-        if 'west'  not in kwargs.keys(): kwargs['west']  = -180
-        if 'east'  not in kwargs.keys(): kwargs['east']  =  180
+        if 'south'  not in kwargs.keys(): kwargs['south']  =   -90
+        if 'north'  not in kwargs.keys(): kwargs['north']  =    90
+        if 'west'   not in kwargs.keys(): kwargs['west']   =  -180
+        if 'east'   not in kwargs.keys(): kwargs['east']   =   180
+        if 'top'    not in kwargs.keys(): kwargs['top']    =    10
+        if 'bottom' not in kwargs.keys(): kwargs['bottom'] = 15000
         self.SW = LatLon(kwargs['south'], kwargs['west'])
         self.NE = LatLon(kwargs['north'], kwargs['east'])
 

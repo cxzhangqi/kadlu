@@ -213,7 +213,7 @@ class TLCalculator():
     """
     def __init__(self, ocean, seafloor, sound_speed=None, ref_sound_speed=1500,\
             radial_bin=None, radial_range=50e3,\
-            angular_bin=10, angular_range=2*np.pi,\
+            angular_bin=10, angular_range=360,\
             vertical_bin=10, vertical_range=None,\
             absorption_layer=1/6.,\
             starter_method='THOMSON', starter_aperture=88,\
@@ -289,7 +289,7 @@ class TLCalculator():
 
         dz = self.bin_size['z']
         rmax = self.range['r']
-        qmax = self.range['q']
+        qmax = self.range['q'] / 180 * np.pi
 
         # automatic determination of radial step size
         if self.bin_size['r'] is None:
@@ -512,16 +512,16 @@ class TLCalculator():
         # transmission loss
         tl = self.TLv[source_depth_index,:,:,idx]
 
-        # bathy
-        angle_rad = angle * np.pi / 180.
-        x = np.cos(angle_rad) * self.grid.r
-        y = np.sin(angle_rad) * self.grid.r
-        bathy = self.ocean.bathy(x=x, y=y)
-        bathy *= (-1.)
-
         # min and max transmission loss (excluding sea surface bin)
         tl_min = np.min(tl[1:,:])
         tl_max = np.max(tl[1:,:])
+
+        # compute bathymetry
+        angle_rad = angle * np.pi / 180.
+        xx = np.cos(angle_rad) * self.grid.r
+        yy = np.sin(angle_rad) * self.grid.r
+        bathy = self.ocean.bathy(x=xx, y=yy)
+        bathy *= (-1.)
 
         fig = plt.figure()
         fig = plt.contourf(x, y, tl, 100, vmin=tl_min, vmax=tl_max)

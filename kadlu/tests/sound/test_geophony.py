@@ -30,22 +30,22 @@ def test_source_level_kewley():
     assert sl4 == 42.5
 
 def test_source_level():
-    o = Ocean(bathy=-10000, wave=5.14)
-    sl = source_level(freq=10, x=0, y=0, area=1, ocean=o, method='Kewley')
+    o = Ocean(default=False, cache=False, load_bathymetry=-10000, load_windspeed=5.14)
+    sl = source_level(freq=10, x=0, y=0, area=1, ocean=o, method='kewley')
     assert sl == 44.0
-    sl = source_level(freq=100, x=[0,100], y=[0,100], area=[1,2], ocean=o, method='Kewley')
+    sl = source_level(freq=100, x=[0,100], y=[0,100], area=[1,2], ocean=o, method='kewley')
     assert sl[0] == 42.5
     assert sl[1] == sl[0] + 20*np.log10(2)
 
 def test_initialize_geophony():
     s = Seafloor()
-    o = Ocean(bathy=-10000, wave=1.0)
+    o = Ocean(default=False, cache=False, load_bathymetry=-10000, load_windspeed=1.0)
     tl = TLCalculator(ocean=o, seafloor=s)
     geo = Geophony(tl_calculator=tl, south=0, north=2, west=60, east=62, depth=[100, 200, 300])
 
 def test_geophony_has_expected_grid():
     s = Seafloor()
-    o = Ocean(bathy=-10000, wave=1.0)
+    o = Ocean(default=False, cache=False, load_bathymetry=-10000, load_windspeed=1.0)
     tl = TLCalculator(ocean=o, seafloor=s, radial_range=10E3)
     geo = Geophony(tl_calculator=tl, south=0, north=2, west=60, east=62, depth=[100], xy_res=1000) # 1km xy grid
     lats = geo.lats
@@ -60,7 +60,7 @@ def test_geophony_has_expected_grid():
 
 def test_compute_geophony():
     s = Seafloor()
-    o = Ocean(bathy=-10000, wave=1.0)
+    o = Ocean(default=False, cache=False, load_bathymetry=-10000, load_windspeed=1.0)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1480, radial_bin=100, radial_range=50e3, angular_bin=45, vertical_bin=100)
     geo = Geophony(tl_calculator=tl, south=44, north=46, west=-60, east=-58, depth=[100, 2000])
     x = geo.x
@@ -76,7 +76,7 @@ def test_compute_geophony():
 
 def test_compute_geophony_in_canyon(bathy_canyon):
     s = Seafloor()
-    o = Ocean(bathy=bathy_canyon, wave=1.0)
+    o = Ocean(default=False, cache=False, load_bathymetry=bathy_canyon, load_windspeed=1.0)
     south = 43
     north = 46
     west = 60

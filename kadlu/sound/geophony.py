@@ -92,7 +92,7 @@ def source_level(freq, x, y, area, ocean, method, grid=False, geometry='planar')
                 Source levels in units of dB re 1 uPa^2 / Hz @ 1m.
     """
     if method == 'kewley':
-        wind_speed = ocean.wave(x=x, y=y) 
+        wind_speed = ocean.windspeed(x=x, y=y) 
         sl = source_level_kewley(freq=freq, wind_speed=wind_speed) # source level per unit area
         sl += 20 * np.log10(area) # scale by area
 
@@ -210,7 +210,7 @@ class Geophony():
         self.lats, self.lons, self.x, self.y = create_geophony_xy_grid(south, north, west, east, x_res=xy_res, y_res=xy_res)
 
         # interpolate bathymetry
-        self.bathy = self.tl.ocean.bathy(x=self.lons, y=self.lats, geometry='spherical')
+        self.bathy = self.tl.ocean.bathy(lat=self.lats, lon=self.lons)
 
     def compute(self, frequency, below_seafloor=False, start=None, end=None):
         """ Compute the noise level within a specified geographic 

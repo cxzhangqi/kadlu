@@ -5,8 +5,8 @@ from kadlu.geospatial.interpolation             import      \
         Interpolator2D,                                     \
         Interpolator3D,                                     \
         Uniform2D,                                          \
-        Uniform3D,
-        interp_2D,
+        Uniform3D,                                          \
+        interp_2D,                                          \
         interp_3D
 from kadlu.geospatial.data_sources.data_util    import      \
         reshape_2D,                                         \
@@ -185,15 +185,15 @@ class Ocean():
             if load_windspeed == 0:  load_windspeed = 'era5'
 
         # add variables
-        add_var_2D('bathy',      load_bathymetry, kwargs)
-        add_var_3D('temp',       load_temp, kwargs)
-        add_var_3D('salinity',   load_salinity, kwargs)
-        add_var_2D('wavedir',    load_wavedir, kwargs)
-        add_var_2D('waveheight', load_waveheight, kwargs)
-        add_var_2D('waveperiod', load_waveperiod, kwargs)
-        add_var_2D('windspeed',  load_windspeed, kwargs)
+        self.add_var_2D('bathy',      load_bathymetry, kwargs)
+        self.add_var_3D('temp',       load_temp, kwargs)
+        self.add_var_3D('salinity',   load_salinity, kwargs)
+        self.add_var_2D('wavedir',    load_wavedir, kwargs)
+        self.add_var_2D('waveheight', load_waveheight, kwargs)
+        self.add_var_2D('waveperiod', load_waveperiod, kwargs)
+        self.add_var_2D('windspeed',  load_windspeed, kwargs)
 
-    def add_var_2D(self, var, load_arg, **kwargs):
+    def add_var_2D(self, var, load_arg, kwargs):
         """ Add 2D variable to the ocean.
 
             Args:
@@ -204,9 +204,9 @@ class Ocean():
                     fetched data, or array ordered by [val, lat, lon], 
                     or float
         """
-        self._add_var(var, load_arg, interp_2D, reshap_2D, kwargs)
+        self._add_var(var, load_arg, interp_2D, reshape_2D, kwargs)
 
-    def add_var_3D(self, var, load_arg, **kwargs):
+    def add_var_3D(self, var, load_arg, kwargs):
         """ Add 3D variable to the ocean.
 
             Args:
@@ -217,9 +217,9 @@ class Ocean():
                     fetched data, or array ordered by [val, lat, lon, depth], 
                     or float
         """
-        self._add_var(var, load_arg, interp_3D, reshap_3D, kwargs)
+        self._add_var(var, load_arg, interp_3D, reshape_3D, kwargs)
 
-    def _add_var(self, name, load_arg, interp_fcn, reshape_fcn, **kwargs)
+    def _add_var(self, var, load_arg, interp_fcn, reshape_fcn, kwargs):
         """ Add variable to the ocean.
 
             Args:
@@ -234,7 +234,7 @@ class Ocean():
                 reshape_fcn:
                     Reshaping function.
         """
-        if callable(load_arg): continue
+        if callable(load_arg): pass
 
         elif isinstance(load_arg, str):
             key = f'{var}_{load_arg.lower()}'
@@ -274,24 +274,36 @@ class Ocean():
     def get_var(self, var, grid=False, **kwargs):
         assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
 
-        is_3d = ('z' in kwargs.keys()):
+        is_3d = ('z' in kwargs.keys())
         is_xy = ('x' in kwargs.keys() and 'y' in kwargs.keys())
+        is_ll = ('lat' in kwargs.keys() and 'lon' in kwargs.keys())
 
-        if 
-            return self.interp[var].eval_xy(x=x, y=y, grid=grid)
-
-        elif 'lat' in kwargs.keys() and 'lon' in kwargs.keys():
-            return self.interp[var].eval_ll(lat=y, lon=x, grid=grid)
+        if is_xy:
+            if is_3d: return self.interp[var].eval_xy(x, y, z, grid)
+            else:     return self.interp[var].eval_xy(x, y, grid)
+        elif is_ll:
+            if is_3d: return self.interp[var].eval_ll(lat, lon, z, grid)
+            else:     return self.interp[var].eval_ll(lat, lon, grid)
+        else:
+            print('x,y or lat,lon must be specified')
+            exit(1)    
 
     def get_deriv(self, var, axis, grid=False, **kwargs):
         assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
 
-        if axis in ('x','y'):
-            return self.interp[var].eval_xy(x=x, y=y, grid=grid,
+        is_xy = ('x' in kwargs.keys() and 'y' in kwargs.keys())
+        is_ll = ('lat' in kwargs.keys() and 'lon' in kwargs.keys())
+
+        if is_xy:
+            assert axis in ('x','y'), 'if x,y are specified, axis must be either x or y'
+
+            return self.interp[var].eval_xy(x, y, grid,
                 x_deriv_order=(axis=='x'), y_deriv_order=(axis=='y'))
 
-        elif axis in ('lat','lon'):
-            return self.interp[var].eval_ll(lat=y, lon=x, grid=grid,
+        elif is_ll:
+            assert axis in ('lat','lon'), 'if lat,lon are specified, axis must be either lat or lon'
+
+            return self.interp[var].eval_ll(lat, lon, grid,
                 lat_deriv_order=(axis=='lat'), lon_deriv_order=(axis=='lon'))
 
     def bathy(self, grid=False, **kwargs):
@@ -300,38 +312,20 @@ class Ocean():
     def bathy_deriv(self, grid=False, **kwargs):
         return get_deriv('bathy', grid, kwargs)
 
+    def temp(self, grid=False, **kwargs):
+        return get_var('temp', grid, kwargs)
 
+    def salinity(self, grid=False, **kwargs):
+        return get_var('salinity', grid, kwargs)
 
-## old get methods ...
+    def wavedir(self, grid=False, **kwargs):
+        return get_var('wavedir', grid, kwargs)
 
-    def bathy(self, lat, lon, grid=False):
-        return self.interp['bathy'].eval_ll(lat=lat, lon=lon, grid=grid)
-#        return self.interp_bathy.eval_ll(lat=lat, lon=lon, grid=grid)
+    def waveheight(self, grid=False, **kwargs):
+        return get_var('waveheight', grid, kwargs)
 
-    def bathy_gradient(self, lat, lon, axis='x', grid=False):
-        assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
-        return self.interp['bathy'].eval_ll(
-                lat=lat, lon=lon, grid=grid,
-                lat_deriv_order=(axis != 'x'), lon_deriv_order=(axis == 'x'))
-#        return self.interp_bathy.eval_ll(
-#                lat=lat, lon=lon, grid=grid,
-#                lat_deriv_order=(axis != 'x'), lon_deriv_order=(axis == 'x'))
+    def waveperiod(self, grid=False, **kwargs):
+        return get_var('waveperiod', grid, kwargs)
 
-    def temp(self, lat, lon, z, grid=False):
-        return self.interp_temp.eval_ll(lat=lat, lon=lon, z=z, grid=grid)
-
-    def salinity(self, lat, lon, z, grid=False):
-        return self.interp_salinity.eval_ll(lat=lat, lon=lon, z=z, grid=grid)
-
-    def wavedir(self, lat, lon, grid=False):
-        return self.interp_wavedir.eval_ll(lat=lat, lon=lon, grid=grid)
-
-    def waveheight(self, lat, lon, grid=False):
-        return self.interp_waveheight.eval_ll(lat=lat, lon=lon, grid=grid)
-
-    def waveperiod(self, lat, lon, grid=False):
-        return self.interp_waveperiod.eval_ll(lat=lat, lon=lon, grid=grid)
-
-    def windspeed(self, lat, lon, grid=False):
-        return self.interp_wind.eval_ll(lat=lat, lon=lon, grid=grid)
-
+    def windspeed(self, grid=False, **kwargs):
+        return get_var('windspeed', grid, kwargs)

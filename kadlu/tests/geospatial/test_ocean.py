@@ -17,7 +17,7 @@ from kadlu.geospatial.ocean import Ocean
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
 
-def test_can_create_an_empty_ocean():
+def test_init_null_ocean():
     o = Ocean(default=False, cache=False)
 
 def test_load_bathymetry_from_a_single_chs_file():

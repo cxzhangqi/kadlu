@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 from multiprocessing import Process
+from kadlu.utils import LatLon
 from kadlu.geospatial.interpolation             import      \
         Interpolator2D,                                     \
         Interpolator3D,                                     \
@@ -166,14 +167,27 @@ class Ocean():
             load_windspeed  = 0,
             **kwargs):
 
-        self.cache = cache
-        self.fetch = fetch
-        self.interp = {}
-
         if 'start' in kwargs.keys() and 'end' in kwargs.keys(): 
             print('WARNING: data will be averaged over time frames for interpolation')
                 #.\nto avoid this behaviour, use the \'time\' '
                 #'keyword argument instead of start/end')
+
+        self.cache = cache
+        self.fetch = fetch
+        self.interp = {}
+
+        # south-west and north-east corners
+        if 'south' not in kwargs.keys(): kwargs['south'] =  -90
+        if 'north' not in kwargs.keys(): kwargs['north'] =   90
+        if 'west'  not in kwargs.keys(): kwargs['west']  = -180
+        if 'east'  not in kwargs.keys(): kwargs['east']  =  180
+        self.SW = LatLon(kwargs['south'], kwargs['west'])
+        self.NE = LatLon(kwargs['north'], kwargs['east'])
+
+        # origo of planar (x,y) coordinate system
+        lat_ref = 0.5 * (self.SW.latitude + self.NE.latitude)
+        lon_ref = 0.5 * (self.SW.longitude + self.NE.longitude)
+        self.origin = LatLon(lat_ref, lon_ref)
 
         # set default data sources
         if default:
@@ -295,6 +309,7 @@ class Ocean():
         interp.join()
 
         self.interp[var] = deserialize(kwargs, self.cache, f'interp_{var}')
+        self.interp[var].origin = self.origin
 
 
     def get_var(self, var, grid=False, **kwargs):

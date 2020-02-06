@@ -41,8 +41,9 @@ def test_ocean_or_ssp_must_be_specified():
 
 def test_sound_speed_from_uniform_data():
     # environment data provider
-    o = Ocean(bathy=-1000, temp=4, salinity=3)
-    o.load(south=44, north=45, west=60, east=61)
+    o = Ocean(default=False, cache=False,
+              load_bathymetry=-1000, load_temp=4, load_salinity=3,
+              south=44, north=45, west=60, east=61)
     # instance of sound speed class 
     _ = SoundSpeed(o, num_depths=50, rel_err=None)
 

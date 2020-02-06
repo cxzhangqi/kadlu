@@ -14,6 +14,7 @@ import pytest
 import os
 import numpy as np
 import datetime
+from kadlu.utils import LatLon
 from kadlu.geospatial.ocean import Ocean
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
@@ -30,6 +31,9 @@ def test_null_ocean():
     assert o.waveheight() == 0
     assert o.waveperiod() == 0
     assert o.windspeed() == 0
+    assert o.origin == LatLon(0,0)
+    assert o.SW == LatLon(-90,-180)
+    assert o.NE == LatLon(90,180)
 
 def test_uniform_bathy():
     """ Test that ocean can be initialized with uniform bathymetry"""
@@ -60,6 +64,14 @@ def test_chs_bathy():
     assert len(bathy) > 0 #check that some data was retrieved
     assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
     assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
+    b = o.bathy(x=1, y=2)
+    assert isinstance(b, float)
+    b = o.bathy(lat=[43.2,43.7], lon=[-59.3, -59.4])
+    assert len(b) == 2
+    # also check boundaries and origin
+    assert o.origin == LatLon(43.45,-59.5)
+    assert o.SW == LatLon(43.1,-59.8)
+    assert o.NE == LatLon(43.8,-59.2)
 
 def test_array_bathy():
     """ Test that ocean can be initialized with bathymetry data 
@@ -80,119 +92,9 @@ def test_array_bathy():
     assert pytest.approx(res == -150., abs=1e-6)
 
 
-
-
-## old tests below ...
-
-def test_interpolate_chs_bathymetry():
-    o = Ocean(bathy="CHS")
-    storage = os.path.join(path_to_assets, 'tif')
-    o.load_bathy(south=43, west=-60, north=44, east=-59, storage=storage)
-    N = 10
-    x = y = np.arange(N) + 1
-    o.bathy(x,y)
-    o.bathy_gradient(x,y,axis='x')
-    o.bathy_gradient(x,y,axis='y')
-
-def test_interpolate_uniform_bathymetry():
-    o = Ocean(bathy=-2000)
-    N = 10
-    x = y = np.arange(N) + 1
-    b = o.bathy(x,y)
-    assert np.all(b == -2000)
-    bx = o.bathy_gradient(x,y,axis='x')
-    assert np.all(bx == 0)
-    by = o.bathy_gradient(x,y,axis='y')
-    assert np.all(by == 0)
-
-def test_query_for_bathymetry_uniform_data():
-    o = Ocean(bathy=-2000)
-    b = o.bathy()
-    assert b == -2000
-
-def test_query_for_bathymetry_grid_data():
-    lat = np.array([44, 45, 46, 47, 48])
-    lon = np.array([60, 61, 62, 63])
-    bathy = np.random.rand(len(lat),len(lon))
-    o = Ocean(bathy=(bathy,lat,lon))
-    b = o.bathy()
-    assert isinstance(b, tuple)
-    assert np.all(b[0] == bathy)
-    assert np.all(b[1] == lat)
-    assert np.all(b[2] == lon)
-
-def test_query_for_temperature_uniform_data():
-    o = Ocean(temp=4)
-    t = o.temp()
-    assert t == 4
-
-def test_query_for_temp_grid_data():
-    lat = np.array([44, 45, 46, 47, 48])
-    lon = np.array([60, 61, 62, 63])
-    z = np.array([1000, 2000])
-    temp = np.random.rand(len(lat),len(lon),len(z))
-    o = Ocean(temp=(temp,lat,lon,z))
-    b = o.temp()
-    assert isinstance(b, tuple)
-    assert np.all(b[0] == temp)
-    assert np.all(b[1] == lat)
-    assert np.all(b[2] == lon)
-    assert np.all(b[3] == z)
-
-
-def test_interpolate_uniform_temperature():
-    o = Ocean(temp=4)
-    N = 10
-    x = y = z = np.arange(N) + 1
-    temp = o.temp(x, y, z)
-    assert temp.shape[0] == N
-    assert np.all(temp == 4)
-
-def test_interpolate_uniform_temperature_on_grid():
-    o = Ocean(temp=8)
-    x = np.arange(10) + 1
-    y = np.arange(11) + 1
-    z = np.arange(12) + 1
-    # planar coordinates
-    temp = o.temp(x=x, y=y, z=z, grid=True)
-    assert temp.shape[0] == 10
-    assert temp.shape[1] == 11
-    assert temp.shape[2] == 12
-    assert np.all(temp == 8)
-    # spherical coordinates
-    lat = np.arange(10)
-    lon = np.arange(11)
-    temp = o.temp(x=lon, y=lat, z=z, grid=True, geometry='spherical')
-    assert temp.shape[0] == 10
-    assert temp.shape[1] == 11
-    assert temp.shape[2] == 12
-    assert np.all(temp == 8)
-
-def test_interpolate_uniform_salinity():
-    o = Ocean(salinity=35)
-    N = 10
-    x = y = z = np.arange(N) + 1
-    x = x * 10000
-    y = y * 10000
-    z = z * 100
-    salinity = o.salinity(x, y, z)
-    assert salinity.shape[0] == N
-    assert np.all(salinity == 35)
-
-def test_interpolate_uniform_wave():
-    o = Ocean(wave=1.5)
-    N = 10
-    x = y = np.arange(N) + 1
-    wave = o.wave(x, y)
-    assert wave.shape[0] == N
-    assert np.all(wave == 1.5)
-
-
 """ Interactive testing
     south, west = 44, -59
     north, east = 46, -57
     start, end = datetime(2015, 1, 10), datetime(2015, 1, 10, 12)
     top, bottom = 0, 5000
-
-
 """

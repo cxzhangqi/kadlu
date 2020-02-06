@@ -221,6 +221,8 @@ class TLCalculator():
             verbose=False, progress_bar=True):
 
         self.ocean = ocean
+        self.ocean.fetch = False
+
         self.seafloor = seafloor
         self.c0 = ref_sound_speed
 

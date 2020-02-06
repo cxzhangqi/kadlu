@@ -55,6 +55,24 @@ if sys_pf == 'darwin':
 from matplotlib import pyplot as plt
 
 
+def interp_2D(values, lats=None, lons=None, origin=None, 
+            method_irreg='cubic',lats_reg=None, lons_reg=None):
+
+        if isinstance(values, (float, int)):
+            return Uniform2D(values)
+        
+        else:
+            return Interpolator2D(values, lats, lons, origin, method_irreg, lats_reg, lons_reg)
+
+def interp_3D(values, lats=None, lons=None, depths=None, origin=None, method='linear'):
+
+        if isinstance(values, (float, int)):
+            return Uniform3D(values)
+        
+        else:
+            return Interpolator3D(values, lats, lons, depths, origin, method)
+
+
 class GridData2D():
     """ Interpolation of data on a two-dimensional irregular grid.
     

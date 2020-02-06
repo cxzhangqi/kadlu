@@ -5,7 +5,9 @@ from kadlu.geospatial.interpolation             import      \
         Interpolator2D,                                     \
         Interpolator3D,                                     \
         Uniform2D,                                          \
-        Uniform3D
+        Uniform3D,
+        interp_2D,
+        interp_3D
 from kadlu.geospatial.data_sources.data_util    import      \
         reshape_2D,                                         \
         reshape_3D,                                         \
@@ -158,115 +160,162 @@ class Ocean():
             cache           = True,
             fetch           = False,
             default         = True,
-            load_bathymetry = None,
-            load_temp       = None,
-            load_salinity   = None,
-            load_wavedir    = None,
-            load_waveheight = None,
-            load_waveperiod = None,
-            load_windspeed  = None,
+            load_bathymetry = 0,
+            load_temp       = 0,
+            load_salinity   = 0,
+            load_wavedir    = 0,
+            load_waveheight = 0,
+            load_waveperiod = 0,
+            load_windspeed  = 0,
             **kwargs):
-
-        # default data sources
-        default_sources = {'bathy':'chs', 'temp':'hycom', 'salinity':'hycom',
-                'wavedir':'era5', 'waveheight':'era5', 'waveperiod':'era5', 'windspeed':'era5'}
 
         if 'start' in kwargs.keys() and 'end' in kwargs.keys(): 
             print('WARNING: data will be averaged over time frames for interpolation')
                 #.\nto avoid this behaviour, use the \'time\' '
                 #'keyword argument instead of start/end')
 
-        vardims = [2, 3, 3, 2, 2, 2, 2]
-        vartypes = ['bathy', 'temp', 'salinity', 
-                'wavedir', 'waveheight', 'waveperiod', 'windspeed']
-        load_args = [load_bathymetry, load_temp, load_salinity, 
-                load_wavedir, load_waveheight, load_waveperiod, load_windspeed]
+        # default data sources
+        if default:
+            if load_bathymetry == 0: load_bathymetry = 'chs'
+            if load_temp == 0:       load_temp = 'hycom'
+            if load_salinity == 0:   load_salinity = 'hycom'
+            if load_wavedir == 0:    load_wavedir = 'era5'
+            if load_waveheight == 0: load_waveheight = 'era5'
+            if load_waveperiod == 0: load_waveperiod = 'era5'
+            if load_windspeed == 0:  load_windspeed = 'era5'
 
-        interp_opt = {2: Interpolator2D, 3: Interpolator3D} #interpolation options
-        reshape_opt = {2: reshape_2D, 3: reshape_3D}        #reshape options
-        interp_uni_opt = {2: Uniform2D, 3: Uniform3D}       #interpolation options for uniform data
+        # add variables
+        add_var_2D('bathy',      load_bathymetry, kwargs)
+        add_var_3D('temp',       load_temp, kwargs)
+        add_var_3D('salinity',   load_salinity, kwargs)
+        add_var_2D('wavedir',    load_wavedir, kwargs)
+        add_var_2D('waveheight', load_waveheight, kwargs)
+        add_var_2D('waveperiod', load_waveperiod, kwargs)
+        add_var_2D('windspeed',  load_windspeed, kwargs)
 
-        interp_fcn = [interp_opt[dim] for dim in vardims]
-        reshape_fcn = [interp_opt[dim] for dim in vardims]
+    def add_var_2D(self, var, load_arg, **kwargs):
+        """ Add 2D variable to the ocean.
 
-        # if default=False, replace None's with 0
-        # otherwise, replace None's with default data sources
-        for i in range(len(load_args)):
-            if load_args[i] is None:
-                if default == False: load_args[i] = 0
-                else: load_args[i] = default_sources[vartypes[i]]
+            Args:
+                var: str
+                    Variable name
+                load_arg: 
+                    Data source. Can be str to load previously 
+                    fetched data, or array ordered by [val, lat, lon], 
+                    or float
+        """
+        self._add_var(var, load_arg, interp_2D, reshap_2D, kwargs)
 
-        # if load_args are not callable, convert string or array to callable
-        for var, dim, load_arg, ix in zip(vartypes, vardims, load_args, range(len(vartypes))):
-            if callable(load_arg): continue
+    def add_var_3D(self, var, load_arg, **kwargs):
+        """ Add 3D variable to the ocean.
 
-            elif isinstance(load_arg, str):
-                key = f'{var}_{load_arg.lower()}'
-                if fetch == True: fetch_map[key](**kwargs)
-                load_args[ix] = load_map[key]
+            Args:
+                var: str
+                    Variable name
+                load_arg: 
+                    Data source. Can be str to load previously 
+                    fetched data, or array ordered by [val, lat, lon, depth], 
+                    or float
+        """
+        self._add_var(var, load_arg, interp_3D, reshap_3D, kwargs)
 
-            elif isinstance(load_arg, (list, tuple, np.ndarray)):
-                if len(load_arg) not in (3, 4):
-                    raise ValueError(f'invalid array shape for load_{var}. '
-                    'arrays must be ordered by [val, lat, lon] for 2D data, or '
-                    '[val, lat, lon, depth] for 3D data')
-                kwargs[f'{var}_val'] = load_arg[0]
-                kwargs[f'{var}_lat'] = load_arg[1]
-                kwargs[f'{var}_lon'] = load_arg[2]
-                if len(load_arg) == 4: kwargs[f'{var}_depth'] = load_arg[3]
-                load_args[ix] = load_callback
+    def _add_var(self, name, load_arg, interp_fcn, reshape_fcn, **kwargs)
+        """ Add variable to the ocean.
 
-            elif isinstance(load_arg, (int, float)):
-                kwargs[f'{var}_val'] = load_arg
-                load_args[ix] = lambda x: x
-                interp_fcn[ix] = interp_opt[dim]
-                reshape_fcn[ix] = lambda x: x
+            Args:
+                var: str
+                    Variable name
+                load_arg: 
+                    Data source. Can be str to load previously 
+                    fetched data, or array ordered by [val, lat, lon, depth], 
+                    or float
+                interp_fcn: 
+                    Interpolation object.
+                reshape_fcn:
+                    Reshaping function.
+        """
+        if callable(load_arg): continue
 
-            else: raise TypeError(f'invalid type for load_{var}. '
-                  'valid types include string, array, and callable')
+        elif isinstance(load_arg, str):
+            key = f'{var}_{load_arg.lower()}'
+            if fetch == True: fetch_map[key](**kwargs)
+            load_args[ix] = load_map[key]
+
+        elif isinstance(load_arg, (list, tuple, np.ndarray)):
+            if len(load_arg) not in (3, 4):
+                raise ValueError(f'invalid array shape for load_{var}. '
+                'arrays must be ordered by [val, lat, lon] for 2D data, or '
+                '[val, lat, lon, depth] for 3D data')
+            kwargs[f'{var}_val'] = load_arg[0]
+            kwargs[f'{var}_lat'] = load_arg[1]
+            kwargs[f'{var}_lon'] = load_arg[2]
+            if len(load_arg) == 4: kwargs[f'{var}_depth'] = load_arg[3]
+            load_arg = load_callback
+
+        elif isinstance(load_arg, (int, float)):
+            kwargs[f'{var}_val'] = load_arg
+            load_arg = lambda x: x
+            reshape_fcn = lambda x: x
+
+        else: raise TypeError(f'invalid type for load_{var}. '
+            'valid types include string, array, and callable')
 
         # compute interpolations in parallel processes
         # child processes will serialize the result for parent to deserialize
         # if cache=False, the serialized binary will be removed from database
-        interpolations = [Process(target=serialize_interp, 
-                                  args=(interp_fcn[i], reshape_fcn[i], load_args[i], kwargs, 'interp_{0}'.format(vartypes[i]))) 
-                          for i in range(len(interp_fcn))]
+        interp = Process(target=serialize_interp, 
+                        args=(interp_fcn, reshape_fcn, load_arg, kwargs, f'interp_{var}'))
 
-#                Process(target=serialize_interp, 
-#                        args=(Interpolator2D, reshape_2D, load_args[0], kwargs, 'interp_bathy')),
-#                Process(target=serialize_interp, 
-#                        args=(Interpolator3D, reshape_3D, load_args[1], kwargs, 'interp_temp')),
-#                Process(target=serialize_interp, 
-#                        args=(Interpolator3D, reshape_3D, load_args[2], kwargs, 'interp_salinity')),
-#                Process(target=serialize_interp, 
-#                        args=(Interpolator2D, reshape_2D, load_args[3], kwargs, 'interp_wavedir')), 
-#                Process(target=serialize_interp, 
-#                        args=(Interpolator2D, reshape_2D, load_args[4], kwargs, 'interp_waveheight')),
-#                Process(target=serialize_interp, 
-#                        args=(Interpolator2D, reshape_2D, load_args[5], kwargs, 'interp_waveperiod')),
-#                Process(target=serialize_interp, 
-#                        args=(Interpolator2D, reshape_2D, load_args[6], kwargs, 'interp_windspeed'))
-#            ]
-        for i in interpolations: i.start()
-        for i in interpolations: i.join()
+        interp.start()
+        interp.join()
 
-        self.interp_bathy      = deserialize(kwargs, cache, 'interp_bathy')
-        self.interp_temp       = deserialize(kwargs, cache, 'interp_temp')
-        self.interp_salinity   = deserialize(kwargs, cache, 'interp_salinity')
-        self.interp_wavedir    = deserialize(kwargs, cache, 'interp_wavedir')
-        self.interp_waveheight = deserialize(kwargs, cache, 'interp_waveheight')
-        self.interp_waveperiod = deserialize(kwargs, cache, 'interp_waveperiod')
-        self.interp_wind       = deserialize(kwargs, cache, 'interp_windspeed')
+        self.interp[var] = deserialize(kwargs, cache, f'interp_{var}')
 
+    def get_var(self, var, grid=False, **kwargs):
+        assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
+
+        is_3d = ('z' in kwargs.keys()):
+        is_xy = ('x' in kwargs.keys() and 'y' in kwargs.keys())
+
+        if 
+            return self.interp[var].eval_xy(x=x, y=y, grid=grid)
+
+        elif 'lat' in kwargs.keys() and 'lon' in kwargs.keys():
+            return self.interp[var].eval_ll(lat=y, lon=x, grid=grid)
+
+    def get_deriv(self, var, axis, grid=False, **kwargs):
+        assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
+
+        if axis in ('x','y'):
+            return self.interp[var].eval_xy(x=x, y=y, grid=grid,
+                x_deriv_order=(axis=='x'), y_deriv_order=(axis=='y'))
+
+        elif axis in ('lat','lon'):
+            return self.interp[var].eval_ll(lat=y, lon=x, grid=grid,
+                lat_deriv_order=(axis=='lat'), lon_deriv_order=(axis=='lon'))
+
+    def bathy(self, grid=False, **kwargs):
+        return get_var('bathy', grid, kwargs)
+
+    def bathy_deriv(self, grid=False, **kwargs):
+        return get_deriv('bathy', grid, kwargs)
+
+
+
+## old get methods ...
 
     def bathy(self, lat, lon, grid=False):
-        return self.interp_bathy.eval_ll(lat=lat, lon=lon, grid=grid)
+        return self.interp['bathy'].eval_ll(lat=lat, lon=lon, grid=grid)
+#        return self.interp_bathy.eval_ll(lat=lat, lon=lon, grid=grid)
 
     def bathy_gradient(self, lat, lon, axis='x', grid=False):
         assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
-        return self.interp_bathy.eval_ll(
+        return self.interp['bathy'].eval_ll(
                 lat=lat, lon=lon, grid=grid,
                 lat_deriv_order=(axis != 'x'), lon_deriv_order=(axis == 'x'))
+#        return self.interp_bathy.eval_ll(
+#                lat=lat, lon=lon, grid=grid,
+#                lat_deriv_order=(axis != 'x'), lon_deriv_order=(axis == 'x'))
 
     def temp(self, lat, lon, z, grid=False):
         return self.interp_temp.eval_ll(lat=lat, lon=lon, z=z, grid=grid)

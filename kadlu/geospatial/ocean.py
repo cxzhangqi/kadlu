@@ -245,6 +245,10 @@ class Ocean():
             if self.fetch == True: fetch_map[key](**kwargs)
             load_arg = load_map[key]
 
+        # TODO: handling of tuples and flots/ints with dummy_load 
+        #       and dummy_reshape functions is VERY clumsy. A more 
+        #       elegant and simple implementation would be desirable.
+
         elif isinstance(load_arg, (list, tuple, np.ndarray)):
             if len(load_arg) not in (3, 4):
                 raise ValueError(f'invalid array shape for load_{var}. '
@@ -254,7 +258,20 @@ class Ocean():
             kwargs[f'{var}_lat'] = load_arg[1]
             kwargs[f'{var}_lon'] = load_arg[2]
             if len(load_arg) == 4: kwargs[f'{var}_depth'] = load_arg[3]
-            load_arg = load_callback
+            #load_arg = load_callback
+            def dummy_load(**kwargs):
+                if f'{var}_depth' in kwargs.keys():
+                    return (kwargs[f'{var}_val'], kwargs[f'{var}_lat'], kwargs[f'{var}_lon'])
+                else:
+                    return (kwargs[f'{var}_val'], kwargs[f'{var}_lat'], kwargs[f'{var}_lon'])
+            def dummy_reshape(load_fcn, **kwargs):
+                t = load_fcn(**kwargs)
+                if len(t) == 3:
+                    return dict(values=t[0], lats=t[1], lons=t[2])
+                elif len(t) == 4:
+                    return dict(values=t[0], lats=t[1], lons=t[2], depths=t[3])
+            load_arg = dummy_load
+            reshape_fcn = dummy_reshape
 
         elif isinstance(load_arg, (int, float)):
             kwargs[f'{var}_val'] = load_arg

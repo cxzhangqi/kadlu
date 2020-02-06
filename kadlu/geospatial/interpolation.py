@@ -45,7 +45,7 @@
 """
 
 import numpy as np
-from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, griddata
+from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, interp2d, griddata
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
 
 from sys import platform as sys_pf
@@ -268,7 +268,15 @@ class Interpolator2D():
 
         # initialize lat-lon interpolator
         if reggrid:
-            self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
+            if len(lats) > 2 and len(lons) > 2:
+                self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
+            elif len(lats) > 1 and len(lons) > 1:
+                z = np.swapaxes(values, 0, 1)
+                self.interp_ll = interp2d(x=lats_rad, y=lons_rad, z=z, kind='linear')
+            elif len(lats) == 1:
+                self.interp_ll = interp1d(x=lons_rad, y=np.squeeze(values), kind='linear')
+            elif len(lons) == 1:
+                self.interp_ll = interp1d(x=lats_rad, y=np.squeeze(values), kind='linear')
 
         else:
             if method_irreg == 'regular':
@@ -397,7 +405,19 @@ class Interpolator2D():
         lat_rad, lon_rad = torad(lat, lon)
         lon_rad += self._lon_corr
 
-        zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
+        if isinstance(self.interp_ll, interp2d):
+            zi = self.interp_ll.__call__(x=lat_rad, y=lon_rad, dx=lat_deriv_order, dy=lon_deriv_order)
+            if grid: zi = np.swapaxes(zi, 0, 1)
+            if not grid and np.ndim(zi) == 2: zi = np.diagonal(zi)
+
+        elif isinstance(self.interp_ll, interp1d):
+            if len(self.lat_nodes) > 1:
+                zi = self.interp_ll(x=lat_rad)
+            elif len(self.lon_nodes) > 1:
+                zi = self.interp_ll(x=lon_rad)
+
+        else:
+            zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
         if squeeze:
             zi = np.squeeze(zi)

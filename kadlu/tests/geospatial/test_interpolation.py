@@ -15,7 +15,7 @@ import pytest
 import os
 import numpy as np
 from kadlu.geospatial.geospatial import load_data_from_file
-from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D
+from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D, interp_2D, interp_3D
 #import kadlu.geospatial.data_sources.chs as chs
 from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
@@ -24,6 +24,31 @@ from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
 
 
+def test_interp_2x2_grid():
+    values = np.array([[0, 2],
+                       [0, 2]])
+    lats = np.array([0, 1])
+    lons = np.array([0, 1])
+    ip = Interpolator2D(values=values, lats=lats, lons=lons)
+    assert ip.eval_ll(0,0) == 0
+    assert ip.eval_ll(1,1) == 2
+    res = ip.eval_ll(0,0.5)
+    assert np.abs(res - 1.) < 1e-6
+    res = ip.eval_ll([0.5,0.5], [0.2,0.3])
+    assert np.all(np.abs(res - [0.4, 0.6]) < 1e-6)
+    res = ip.eval_ll([0.5,0.6,0.7], [0.2,0.3], grid=True)
+    assert np.all(np.abs(res - [0.4, 0.6]) < 1e-6)
+
+def test_interp_1x2_grid():
+    values = np.array([[0, 2]])
+    lats = np.array([0])
+    lons = np.array([0, 1])
+    ip = Interpolator2D(values=values, lats=lats, lons=lons)
+    assert ip.eval_ll(0,0) == 0
+    assert ip.eval_ll(1,1) == 2
+    res = ip.eval_ll(0,0.5)
+    assert np.abs(res - 1.) < 1e-6
+ 
 def test_interpolate_bathymetry_using_latlon_coordinates():
     
     # load bathy data

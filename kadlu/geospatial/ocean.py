@@ -72,9 +72,6 @@ def serialize_interp(interpfcn, reshapefcn, loadfcn, kwargs, seed):
     """
     conn, db = bin_db()
     key = hash_key(kwargs, seed)
-
-    print('ser key: ', key)
-
     db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
     if db.fetchone() is not None: return
     kwargs['var'] = seed.split('_')[1]
@@ -89,7 +86,7 @@ def load_callback(**kwargs):
     v = kwargs['var'] + '_'
     data = np.array((kwargs[f'{v}val'], kwargs[f'{v}lat'], kwargs[f'{v}lon']))
     if f'{v}depth' not in kwargs.keys(): return data
-    return np.append(data, kwargs['f{v}depth'])
+    return np.append(data, kwargs[f'{v}depth'])
 
 
 class Ocean():
@@ -169,12 +166,16 @@ class Ocean():
             load_windspeed  = 0,
             **kwargs):
 
+        self.cache = cache
+        self.fetch = fetch
+        self.interp = {}
+
         if 'start' in kwargs.keys() and 'end' in kwargs.keys(): 
             print('WARNING: data will be averaged over time frames for interpolation')
                 #.\nto avoid this behaviour, use the \'time\' '
                 #'keyword argument instead of start/end')
 
-        # default data sources
+        # set default data sources
         if default:
             if load_bathymetry == 0: load_bathymetry = 'chs'
             if load_temp == 0:       load_temp = 'hycom'
@@ -193,6 +194,7 @@ class Ocean():
         self.add_var_2D('waveperiod', load_waveperiod, kwargs)
         self.add_var_2D('windspeed',  load_windspeed, kwargs)
 
+
     def add_var_2D(self, var, load_arg, kwargs):
         """ Add 2D variable to the ocean.
 
@@ -206,6 +208,7 @@ class Ocean():
         """
         self._add_var(var, load_arg, interp_2D, reshape_2D, kwargs)
 
+
     def add_var_3D(self, var, load_arg, kwargs):
         """ Add 3D variable to the ocean.
 
@@ -218,6 +221,7 @@ class Ocean():
                     or float
         """
         self._add_var(var, load_arg, interp_3D, reshape_3D, kwargs)
+
 
     def _add_var(self, var, load_arg, interp_fcn, reshape_fcn, kwargs):
         """ Add variable to the ocean.
@@ -238,7 +242,7 @@ class Ocean():
 
         elif isinstance(load_arg, str):
             key = f'{var}_{load_arg.lower()}'
-            if fetch == True: fetch_map[key](**kwargs)
+            if self.fetch == True: fetch_map[key](**kwargs)
             load_args[ix] = load_map[key]
 
         elif isinstance(load_arg, (list, tuple, np.ndarray)):
@@ -254,8 +258,12 @@ class Ocean():
 
         elif isinstance(load_arg, (int, float)):
             kwargs[f'{var}_val'] = load_arg
-            load_arg = lambda x: x
-            reshape_fcn = lambda x: x
+            def dummy_load(**kwargs):
+                return kwargs[f'{var}_val']
+            def dummy_reshape(load_fcn, **kwargs):
+                return dict(values=load_fcn(**kwargs))
+            load_arg = dummy_load
+            reshape_fcn = dummy_reshape
 
         else: raise TypeError(f'invalid type for load_{var}. '
             'valid types include string, array, and callable')
@@ -269,7 +277,8 @@ class Ocean():
         interp.start()
         interp.join()
 
-        self.interp[var] = deserialize(kwargs, cache, f'interp_{var}')
+        self.interp[var] = deserialize(kwargs, self.cache, f'interp_{var}')
+
 
     def get_var(self, var, grid=False, **kwargs):
         assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
@@ -288,6 +297,7 @@ class Ocean():
             print('x,y or lat,lon must be specified')
             exit(1)    
 
+
     def get_deriv(self, var, axis, grid=False, **kwargs):
         assert var in self.interp.keys(), f'Requested variable ({var}) not found.'
 
@@ -305,6 +315,7 @@ class Ocean():
 
             return self.interp[var].eval_ll(lat, lon, grid,
                 lat_deriv_order=(axis=='lat'), lon_deriv_order=(axis=='lon'))
+
 
     def bathy(self, grid=False, **kwargs):
         return get_var('bathy', grid, kwargs)

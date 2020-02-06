@@ -133,9 +133,6 @@ def deserialize(kwargs, persisting=True, seed=''):
     """ read binary from the database and load it as python object """
     conn, db = bin_db()
     key = hash_key(kwargs, seed)
-
-    print('deser key: ', key)
-
     db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
     res = db.fetchone()
     if res is None: raise KeyError('no data found for query')

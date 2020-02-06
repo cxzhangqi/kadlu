@@ -136,7 +136,8 @@ def test_run_with_flat_seafloor():
 
 def test_run_with_realistic_bathymetry():
     s = Seafloor(thickness=2000)
-    o = Ocean(default=False, cache=False, load_bathymetry='chs')
+    o = Ocean(default=False, cache=False, load_bathymetry='chs',
+        south=43.1, west=-59.8, north=43.8, east=-59.2)
     # initialize calculator
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\
@@ -146,7 +147,8 @@ def test_run_with_realistic_bathymetry():
 
 def test_run_with_uniform_temp_and_salinity():
     s = Seafloor(thickness=2000)
-    o = Ocean(default=False, cache=False, load_bathymetry='chs', load_temp=4, load_salinity=35)
+    o = Ocean(default=False, cache=False, load_bathymetry='chs', load_temp=4, load_salinity=35,
+        south=43.1, west=-59.8, north=43.8, east=-59.2)
     # initialize calculator
     tl = TLCalculator(ocean=o, seafloor=s,\
         radial_bin=1000, radial_range=10e3, angular_bin=45, vertical_bin=1000,\

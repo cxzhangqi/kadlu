@@ -64,14 +64,40 @@ def test_chs_bathy():
     assert len(bathy) > 0 #check that some data was retrieved
     assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
     assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
-    b = o.bathy(x=1, y=2)
-    assert isinstance(b, float)
-    b = o.bathy(lat=[43.2,43.7], lon=[-59.3, -59.4])
-    assert len(b) == 2
+    # check that all nodes have meaningful bathymetry values
+    assert np.all(bathy < 10000)
+    assert np.all(bathy > -15000)
     # also check boundaries and origin
     assert o.origin == LatLon(43.45,-59.5)
     assert o.SW == LatLon(43.1,-59.8)
     assert o.NE == LatLon(43.8,-59.2)
+
+def test_interp_chs_bathy():
+    """ Test that we can interpolate bathymetry data 
+        obtained from a CHS file"""
+    o = Ocean(default=False, cache=False, fetch=True,
+        load_bathymetry='chs', south=43.1, west=-59.8, 
+        north=43.8, east=-59.2)
+    b = o.bathy(x=1, y=2)
+    assert isinstance(b, float)
+    b = o.bathy(lat=[43.2,43.7], lon=[-59.3, -59.4])
+    assert len(b) == 2
+
+def test_hycom_temp():
+    """ Test that ocean can be initialized with temperature data 
+        from HYCOM with automatic fetching enabled"""
+    o = Ocean(default=False, cache=False, fetch=True,
+        load_temp='hycom', 
+        south=43.1, west=-59.8, 
+        north=43.8, east=-59.2,
+        top=-100, bottom=3000,
+        start=datetime.datetime(2014,1,1,0),
+        end=datetime.datetime(2014,1,1,1))
+    (temp,lats,lons,depths) = o.temp()
+    assert len(temp) > 0 #check that some data was retrieved
+    assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
+    assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
+    assert -3000 <= np.min(depths) and np.max(depths) <= 100 #check that depths are within limits
 
 def test_array_bathy():
     """ Test that ocean can be initialized with bathymetry data 

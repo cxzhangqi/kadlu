@@ -227,7 +227,7 @@ class Ocean():
         if 'north'  not in kwargs.keys(): kwargs['north']  =    90
         if 'west'   not in kwargs.keys(): kwargs['west']   =  -180
         if 'east'   not in kwargs.keys(): kwargs['east']   =   180
-        if 'top'    not in kwargs.keys(): kwargs['top']    =    10
+        if 'top'    not in kwargs.keys(): kwargs['top']    =  -100
         if 'bottom' not in kwargs.keys(): kwargs['bottom'] = 15000
         self.SW = LatLon(kwargs['south'], kwargs['west'])
         self.NE = LatLon(kwargs['north'], kwargs['east'])

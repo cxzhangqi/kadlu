@@ -34,4 +34,6 @@ def test_load_bathy():
     assert np.all(np.logical_and(lon >= west, lon <= east))
     assert np.min(bathy) >= northumberland_strait_deepest_point 
     assert np.max(bathy) <= 2 
+    assert np.all(bathy >= northumberland_strait_deepest_point)
+    assert np.all(bathy <= 100)
 

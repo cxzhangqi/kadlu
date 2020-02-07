@@ -527,9 +527,9 @@ class TLCalculator():
 
         # only show down to the seafloor + 10%
         iy = np.nonzero(z < np.max(bathy))[0]
-        x = x[:,iy]
-        y = y[:,iy]
-        tl = tl[:,iy]
+        x = x[iy,:]
+        y = y[iy,:]
+        tl = tl[iy,:]
 
         # make contour plot
         fig = plt.figure()

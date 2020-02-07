@@ -284,7 +284,7 @@ class Interpolator2D():
                     'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
     
                 # interpolators on irregular grid
-                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
+                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='linear') #method='cubic')
                 gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
                 # map to regular grid

@@ -83,16 +83,33 @@ def test_interp_chs_bathy():
     b = o.bathy(lat=[43.2,43.7], lon=[-59.3, -59.4])
     assert len(b) == 2
 
-def test_hycom_temp():
+def test_hycom_temp_time_interval():
     """ Test that ocean can be initialized with temperature data 
-        from HYCOM with automatic fetching enabled"""
+        from HYCOM with automatic fetching enabled and using 
+        start/end args."""
     o = Ocean(default=False, cache=False, fetch=True,
         load_temp='hycom', 
         south=43.1, west=-59.8, 
         north=43.8, east=-59.2,
         top=-100, bottom=3000,
-        start=datetime.datetime(2014,1,1,0),
-        end=datetime.datetime(2014,1,1,1))
+        start=datetime.datetime(2015,1,1),
+        end=datetime.datetime(2015,1,2))
+    (temp,lats,lons,depths) = o.temp()
+    assert len(temp) > 0 #check that some data was retrieved
+    assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
+    assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
+    assert -3000 <= np.min(depths) and np.max(depths) <= 100 #check that depths are within limits
+
+def test_hycom_temp_nearest_time():
+    """ Test that ocean can be initialized with temperature data 
+        from HYCOM with automatic fetching enabled and using the 
+        time arg"""
+    o = Ocean(default=False, cache=False, fetch=True,
+        load_temp='hycom', 
+        south=43.1, west=-59.8, 
+        north=43.8, east=-59.2,
+        top=-100, bottom=3000,
+        time=datetime.datetime(2015,1,1))
     (temp,lats,lons,depths) = o.temp()
     assert len(temp) > 0 #check that some data was retrieved
     assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits

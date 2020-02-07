@@ -337,7 +337,7 @@ class Ocean():
             #load_arg = load_callback
             def dummy_load(**kwargs):
                 if f'{var}_depth' in kwargs.keys():
-                    return (kwargs[f'{var}_val'], kwargs[f'{var}_lat'], kwargs[f'{var}_lon'])
+                    return (kwargs[f'{var}_val'], kwargs[f'{var}_lat'], kwargs[f'{var}_lon'], kwargs[f'{var}_depth'])
                 else:
                     return (kwargs[f'{var}_val'], kwargs[f'{var}_lat'], kwargs[f'{var}_lon'])
             def dummy_reshape(load_fcn, **kwargs):

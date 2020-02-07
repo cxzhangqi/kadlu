@@ -189,7 +189,7 @@ def test_run_at_multiple_source_depths():
     np.testing.assert_array_almost_equal(fields[0], f0, decimal=3)
     np.testing.assert_array_almost_equal(fields[1], f1, decimal=3)
 
-def test_test():
+def test_plot_vertical():
     s = Seafloor(thickness=2000)
     o = Ocean(default=False, cache=False, load_bathymetry=-10000)
     tl = TLCalculator(ocean=o, seafloor=s, sound_speed=1500,\

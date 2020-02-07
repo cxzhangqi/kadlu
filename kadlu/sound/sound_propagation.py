@@ -525,6 +525,13 @@ class TLCalculator():
         bathy = self.ocean.bathy(x=xx, y=yy)
         bathy *= (-1.)
 
+        # only show down to the seafloor + 10%
+        iy = np.nonzero(z < np.max(bathy))[0]
+        x = x[:,iy]
+        y = y[:,iy]
+        tl = tl[:,iy]
+
+        # make contour plot
         fig = plt.figure()
         fig = plt.contourf(x, y, tl, 100, vmin=tl_min, vmax=tl_max)
 

@@ -15,16 +15,15 @@ import pygrib
 import os
 from datetime import datetime, timedelta
 import warnings
+import contextlib
 
 from kadlu.geospatial.data_sources.data_util import \
-storage_cfg, database_cfg, str_def, plot_sample_grib, dt_2_epoch, epoch_2_dt
+storage_cfg, database_cfg, str_def, dt_2_epoch, epoch_2_dt
 
 
+c = cdsapi.Client()
+#c = cdsapi.Client(key='', url='')
 conn, db = database_cfg()
-
-
-def fetchname(var, time):
-    return f"ERA5_reanalysis_{var}_{time.strftime('%Y-%m-%d_%Hh')}.grb2"
 
 
 def fetch_era5(var, kwargs):
@@ -50,57 +49,73 @@ def fetch_era5(var, kwargs):
         )
 
     while t <= kwargs['end']:
-        fname = f"{storage_cfg()}{fetchname(var, t)}"
-        print(f"downloading {fetchname(var, t)} from Copernicus Climate Data Store...")
-        c = cdsapi.Client()
-        try:
-            c.retrieve('reanalysis-era5-single-levels', {
-                'product_type'  : 'reanalysis',
-                'format'        : 'grib',
-                'variable'      : var,
-                'year'          : t.strftime("%Y"),
-                'month'         : t.strftime("%m"),
-                'day'           : t.strftime("%d"),
-                'time'          : t.strftime("%H:00")
-            }, fname)
-        except Exception:
-            warnings.warn(f"No data for {t.ctime()}")
-            t += timedelta(hours=1)
-            continue
+        fname = f"{storage_cfg()}ERA5_reanalysis_{var}_{t.strftime('%Y-%m-%d')}.grb2"
+        print(f"downloading {fname} from Copernicus Climate Data Store...")
+
+        eom = min(datetime(t.year, t.month+1, 1)-timedelta(days=1), kwargs['end'])
+        ddelta = (eom - t).days
+        days = [datetime(t.year, t.month, day).strftime('%d') 
+                for day in range(t.day, eom.day)] if t.day != eom.day else t.strftime('%d')
+
+        if ddelta == 0:
+            eod = min(datetime(t.year, t.month, t.day, 23), kwargs['end'])
+            hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') for hour in range(t.hour, eod.hour)]
+        else: hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') for hour in range(24)]
+
+        c.retrieve('reanalysis-era5-single-levels', {
+                   'product_type'  : 'reanalysis',
+                   'format'        : 'grib',
+                   'variable'      : var,
+                   'year'          : t.strftime("%Y"),
+                   'month'         : t.strftime("%m"),
+                   'day'           : days,#t.strftime("%d"),
+                   'time'          : hours#t.strftime("%H:00")
+                }, fname)
+
+
+        if not os.path.isfile(fname):
+            warnings.warn(f'error fetching era5 data for {t}')
 
         grib = pygrib.open(fname)
-        assert(grib.messages == 1)
-        msg = grib[1]
-        z, y, x = msg.data()
-
-        if np.ma.is_masked(z):
-            z2 = z[~z.mask].data
-            y2 = y[~z.mask]
-            x2 = x[~z.mask]
-        else:  # wind data has no mask
-            z2 = z.reshape(-1)
-            y2 = y.reshape(-1)
-            x2 = x.reshape(-1)
-
-        # build coordinate grid and insert into db
-        grid = np.empty((len(z2), 5), dtype=object)
-        grid[:,0] = z2
-        grid[:,1] = y2
-        grid[:,2] = ((x2 + 180) % 360) - 180
-        grid[:,3] = dt_2_epoch([t for item in z2])
-        grid[:,4] = ['era5' for item in z2]
-
         table = var[4:] if var[0:4] == '10m_' else var
         n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
-        db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
+        msgnum = 1
+        rows = 0
+        for msg in grib:
+            print(f'processing msg {msgnum}/{grib.messages} for {var} {msg.validDate}', end='\r')
+            msgnum += 1
+            if msg.validDate < kwargs['start'] or msg.validDate > kwargs['end']: continue
+            z, y, x = msg.data()
+
+            if np.ma.is_masked(z):
+                z2 = z[~z.mask].data
+                y2 = y[~z.mask]
+                x2 = x[~z.mask]
+            else:  # wind data has no mask
+                z2 = z.reshape(-1)
+                y2 = y.reshape(-1)
+                x2 = x.reshape(-1)
+
+            # build coordinate grid and insert into db
+            grid = np.empty((len(z2), 5), dtype=object)
+            grid[:,0] = z2
+            grid[:,1] = y2
+            grid[:,2] = ((x2 + 180) % 360) - 180
+            grid[:,3] = dt_2_epoch([msg.validDate for item in z2])
+            grid[:,4] = ['era5' for item in z2]
+            db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
+            rows += len(grid)
+
         n2 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
         db.execute("COMMIT")
         conn.commit()
 
-        print(f"processed and inserted {n2-n1} rows. "
-              f"{len(grid) - (n2-n1)} duplicate rows ignored\n")
+        print(f"\nprocessed and inserted {n2-n1} rows for {msg.validDate}.\t"
+              f"{rows - (n2-n1)} duplicate rows ignored")
 
-        t += timedelta(hours=1)
+        thismonth = t.month
+        while (t.month == thismonth): 
+            t += timedelta(days=1)
 
     return 
 
@@ -132,7 +147,6 @@ def load_era5(var, kwargs):
 
     val, lat, lon, epoch, source = rowdata 
 
-    #return np.array((val, lat, lon, epoch_2_dt(epoch)), dtype=object)
     return np.array((val, lat, lon, epoch), dtype=np.float)
 
 
@@ -181,12 +195,30 @@ class Era5():
     def load_wind_v(self, **kwargs):
         return load_era5('10m_v_component_of_wind', kwargs)
     def load_wind(self, **kwargs):
-        wind_u = load_era5('10m_u_component_of_wind', kwargs)
-        wind_v = load_era5('10m_v_component_of_wind', kwargs)
-        wind_uv = wind_u.copy()
+        #wind_u = load_era5('10m_u_component_of_wind', kwargs)
+        #wind_v = load_era5('10m_v_component_of_wind', kwargs)
+        #ix = np.unique(wind_u[1:] == wind_v[1:], axis=2)
+        #wind_uv = wind_u.copy()
         #wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
-        wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
-        return wind_uv
+        #wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
+
+        #table = var[4:] if var[0:4] == '10m_' else var  # table cant start with int
+        sql = ' AND '.join(['SELECT * FROM u_component_of_wind INNER JOIN v_component_of_wind ON u_component_of_wind.lat == v_component_of_wind.lat',
+            'u_component_of_wind.lon == v_component_of_wind.lon',
+            'u_component_of_wind.time == v_component_of_wind.time WHERE u_component_of_wind.lat >= ?',
+            'u_component_of_wind.lat <= ?',
+            'u_component_of_wind.lon >= ?',
+            'u_component_of_wind.lon <= ?',
+            'u_component_of_wind.time >= ?',
+            'u_component_of_wind.time <= ?']) + ' ORDER BY time, lat, lon ASC'
+        db.execute(sql, tuple(map(str, [
+                kwargs['south'],                kwargs['north'], 
+                kwargs['west'],                 kwargs['east'], 
+                dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]
+            ])))
+        wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = np.array(db.fetchall()).T
+        val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))
+        return np.array((val, lat, lon, epoch)).astype(float)
 
     def __str__(self):
         info = '\n'.join([

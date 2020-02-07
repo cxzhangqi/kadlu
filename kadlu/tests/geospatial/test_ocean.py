@@ -99,6 +99,7 @@ def test_hycom_temp_time_interval():
     assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
     assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
     assert -3000 <= np.min(depths) and np.max(depths) <= 100 #check that depths are within limits
+    assert len(depths) > 1 #check that more than one depth was fetched
 
 def test_hycom_temp_nearest_time():
     """ Test that ocean can be initialized with temperature data 

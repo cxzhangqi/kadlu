@@ -1,6 +1,6 @@
 name: kadlu_env
 channels:
-  - defaults
+  #  - defaults
   - conda-forge
 dependencies:
   - make
@@ -20,3 +20,4 @@ dependencies:
   - cdsapi
   - tqdm
   - gsw
+  - cartopy

@@ -243,13 +243,11 @@ class Ocean():
             
             self.interp = {}
             joined = 0;
-            #for i in range(len(interpolations)):
-            while joined < 7:
+            while joined < len(vartypes):
                 binary = q.get()
                 self.interp[binary[0].split('_')[1]] = binary[1]
                 joined += 1
             for i in interpolations: i.join()
-            assert q.empty()  # all done
 
             if cache: 
                 db.execute('INSERT INTO bin VALUES (?, ?)', (key, pickle.dumps(self.interp)))

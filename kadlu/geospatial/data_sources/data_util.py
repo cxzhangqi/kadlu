@@ -6,7 +6,7 @@ import configparser
 import warnings
 import pygrib
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
 import sqlite3
 from datetime import datetime, timedelta
 import json
@@ -40,7 +40,7 @@ def storage_cfg():
         storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
         if not os.path.isdir(storage_location):
             os.mkdir(storage_location)
-        warnings.warn(f"{msg} storage location will be set to {storage_location}")
+        print(f"NOTICE: {msg} storage location will be set to {storage_location}")
         return storage_location
 
     cfg = configparser.ConfigParser()       # read .ini into dictionary object
@@ -50,7 +50,7 @@ def storage_cfg():
     except KeyError:                        # missing config.ini file
         return default_storage("missing kadlu/config.ini.")
 
-    if storage_location is '':              # null value in config.ini
+    if storage_location == '':              # null value in config.ini
         return default_storage("null value in kadlu/config.ini.")
 
     if not path.isdir(storage_location):    # verify the location exists
@@ -181,13 +181,13 @@ def flatten(cols, frame_ix):
         raise ValueError("invalid number of columns to flatten")
 
 
-def reshape_2D(callback, **kwargs):
+def reshape_2D(cols):
     """ load 2D data from the database and prepare it for interpolation """
     """
     cols = Chs().load_bathymetry(**kwargs)
     bathy_matrix = reshape_2D(Chs().load_bathymetry, **kwargs) 
     """
-    cols = callback(**kwargs)
+    #cols = callback(**kwargs)
     if len(cols) == 3: cols = np.vstack((cols, [0 for x in cols[0]]))
     frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
     vals, y, x, _ = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
@@ -227,9 +227,9 @@ def reshape_2D(callback, **kwargs):
     return dict(values=gridspace, lats=ygrid, lons=xgrid)
 
 
-def reshape_3D(callback, **kwargs):
+def reshape_3D(cols):
     """ load 3D data from database and prepare it for interpolation """
-    cols = callback(**kwargs)#.astype(np.float)
+    #cols = callback(**kwargs)#.astype(np.float)
     frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
     vals, y, x, _, z = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
     rows = np.array((vals, y, x, z)).T
@@ -300,6 +300,7 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
     return np.unique(matching)
 
 
+"""
 def plot_sample_grib(gribfiles, title_text="A sample plot"):
 
     #fig, axs = plt.subplots(2, int(len(gribfiles)/2))
@@ -338,6 +339,8 @@ def plot_sample_grib(gribfiles, title_text="A sample plot"):
         fig.tight_layout()
         plt.show()
 
+"""
+"""
 
 def plot_coverage(lat, lon):
     fig = plt.figure()
@@ -355,6 +358,7 @@ def plot_coverage(lat, lon):
     plt.scatter(x, y, 1, marker='.', color='xkcd:ocean blue', zorder=10)
     fig.tight_layout()
     plt.show()
+"""
 
 def gen_kwargs():
     """ some sample fetch/load keyword args for rapid testing """
@@ -363,7 +367,7 @@ def gen_kwargs():
     self = Ocean(**kwargs)
     """
     return dict(
-        start=datetime(2015, 1, 9), end=datetime(2015, 1, 10, 12),
+        start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),
         #time=datetime(2015, 1, 9),
         south=44,                   west=-64.5, 
         north=46,                   east=-62.5, 

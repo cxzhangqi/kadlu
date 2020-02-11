@@ -45,7 +45,7 @@
 """
 
 import numpy as np
-from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, griddata
+from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, interp2d, griddata
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
 
 from sys import platform as sys_pf
@@ -53,6 +53,24 @@ if sys_pf == 'darwin':
     import matplotlib
     matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
+
+
+def interp_2D(values, lats=None, lons=None, origin=None, 
+            method_irreg='cubic',lats_reg=None, lons_reg=None):
+
+        if isinstance(values, (float, int)):
+            return Uniform2D(values)
+        
+        else:
+            return Interpolator2D(values, lats, lons, origin, method_irreg, lats_reg, lons_reg)
+
+def interp_3D(values, lats=None, lons=None, depths=None, origin=None, method='linear'):
+
+        if isinstance(values, (float, int)):
+            return Uniform3D(values)
+        
+        else:
+            return Interpolator3D(values, lats, lons, depths, origin, method)
 
 
 class GridData2D():
@@ -250,7 +268,15 @@ class Interpolator2D():
 
         # initialize lat-lon interpolator
         if reggrid:
-            self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
+            if len(lats) > 2 and len(lons) > 2:
+                self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
+            elif len(lats) > 1 and len(lons) > 1:
+                z = np.swapaxes(values, 0, 1)
+                self.interp_ll = interp2d(x=lats_rad, y=lons_rad, z=z, kind='linear')
+            elif len(lats) == 1:
+                self.interp_ll = interp1d(x=lons_rad, y=np.squeeze(values), kind='linear')
+            elif len(lons) == 1:
+                self.interp_ll = interp1d(x=lats_rad, y=np.squeeze(values), kind='linear')
 
         else:
             if method_irreg == 'regular':
@@ -258,7 +284,7 @@ class Interpolator2D():
                     'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
     
                 # interpolators on irregular grid
-                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
+                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='linear') #method='cubic')
                 gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
                 # map to regular grid
@@ -279,6 +305,9 @@ class Interpolator2D():
         self.lat_nodes = lats
         self.lon_nodes = lons
         self.values = values
+
+    def get_nodes(self):
+        return (self.values, self.lat_nodes, self.lon_nodes)
 
     def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
         """ Interpolate using planar coordinate system (xy).
@@ -376,7 +405,19 @@ class Interpolator2D():
         lat_rad, lon_rad = torad(lat, lon)
         lon_rad += self._lon_corr
 
-        zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
+        if isinstance(self.interp_ll, interp2d):
+            zi = self.interp_ll.__call__(x=lat_rad, y=lon_rad, dx=lat_deriv_order, dy=lon_deriv_order)
+            if grid: zi = np.swapaxes(zi, 0, 1)
+            if not grid and np.ndim(zi) == 2: zi = np.diagonal(zi)
+
+        elif isinstance(self.interp_ll, interp1d):
+            if len(self.lat_nodes) > 1:
+                zi = self.interp_ll(x=lat_rad)
+            elif len(self.lon_nodes) > 1:
+                zi = self.interp_ll(x=lon_rad)
+
+        else:
+            zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
         if squeeze:
             zi = np.squeeze(zi)
@@ -445,6 +486,9 @@ class Interpolator3D():
         self.lon_nodes = lons
         self.depth_nodes = depths
         self.values = values
+
+    def get_nodes(self):
+        return (self.values, self.lat_nodes, self.lon_nodes, self.depth_nodes)
 
     def eval_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).
@@ -572,7 +616,10 @@ class Uniform2D():
 
     def __init__(self, value):
         self.value = value
-    
+
+    def get_nodes(self):
+        return self.value
+
     def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
 
         z = self.eval_ll(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
@@ -614,7 +661,10 @@ class Uniform3D():
 
     def __init__(self, value):
         self.value = value
-    
+
+    def get_nodes(self):
+        return self.value
+
     def eval_xy(self, x, y, z, grid=False):
 
         v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
@@ -671,6 +721,9 @@ class DepthInterpolator3D():
         # store interpolation data
         self.depth_nodes = depths
         self.values = values
+
+    def get_nodes(self):
+        return (self.values, self.depth_nodes)
 
     def eval_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).

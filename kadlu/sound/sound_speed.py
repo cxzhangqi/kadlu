@@ -94,8 +94,8 @@ class SoundSpeed():
             depths = self._depth_coordinates(ocean, lats, lons, num_depths=num_depths, rel_err=rel_err)
 
             # temperature and salinity
-            t = ocean.temp(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
-            s = ocean.salinity(x=lons, y=lats, z=depths, geometry='spherical', grid=True)
+            t = ocean.temp(lat=lats, lon=lons, z=depths, grid=True)
+            s = ocean.salinity(lat=lats, lon=lons, z=depths, grid=True)
 
             # sound speed
             grid_shape = t.shape
@@ -118,7 +118,7 @@ class SoundSpeed():
 
     def _depth_coordinates(self, ocean, lats, lons, num_depths, rel_err):
 
-        seafloor_depth = -ocean.bathy(x=lons, y=lats, grid=True, geometry='spherical')
+        seafloor_depth = -ocean.bathy(lat=lats, lon=lons, grid=True)
 
         # find deepest point
         deepest_point = np.unravel_index(np.argmax(seafloor_depth), seafloor_depth.shape)
@@ -130,8 +130,8 @@ class SoundSpeed():
 
         # compute temperature, salinity and sound speed for every 1 meter
         z = -np.arange(0, int(np.ceil(max_depth))+1)
-        t = ocean.temp(x=lon, y=lat, z=z, geometry='spherical', grid=True)
-        s = ocean.salinity(x=lon, y=lat, z=z, geometry='spherical', grid=True)        
+        t = ocean.temp(lat=lat, lon=lon, z=z, grid=True)
+        s = ocean.salinity(lat=lat, lon=lon, z=z, grid=True)        
         c = self._sound_speed(lats=lat, lons=lon, z=z, t=t, SP=s)
 
         # determine grid

@@ -35,7 +35,7 @@ from datetime import datetime
 from scipy.interpolate import RectBivariateSpline
 
 
-# wind source level tabulation of Kewley et al. 1990
+# wind source level tabulation of kewley et al. 1990
 _kewley_table = np.array([[40.0, 44.0, 48.0, 53.0, 58.0],\
                  [37.5, 42.5, 48.0, 53.0, 58.0],\
                  [34.0, 39.0, 48.0, 53.0, 58.0]])
@@ -45,7 +45,7 @@ _kewley_interp = interp2d(x=[40, 100, 300], y=[2.57, 5.14, 10.29, 15.23, 20.58],
 
 def source_level_kewley(freq, wind_speed):
     """ Compute the wind source level according to the 
-        tabulation of Kewley et al. 1990. (Ocean Ambient Noise p. 114).
+        tabulation of kewley et al. 1990. (Ocean Ambient Noise p. 114).
 
         Values outside the tabulation domain are extrapolated via 
         nearest-neighbor extrapolation.
@@ -79,7 +79,8 @@ def source_level(freq, x, y, area, ocean, method, grid=False, geometry='planar')
             ocean: instance of the Ocean class
                 Ocean environmental data.
             method: str
-                Method used to compute the source levels.
+                Method used to compute the source levels. Currently, the only option 
+                available is 'kewley'.
             grid: bool
                 Specify how to combine elements of x and y. If x and y have different
                 lengths, specifying grid has no effect as it is automatically set to True.
@@ -90,8 +91,8 @@ def source_level(freq, x, y, area, ocean, method, grid=False, geometry='planar')
             SL: float or 1d numpy array
                 Source levels in units of dB re 1 uPa^2 / Hz @ 1m.
     """
-    if method == 'Kewley':
-        wind_speed = ocean.wave(x=x, y=y) 
+    if method == 'kewley':
+        wind_speed = ocean.windspeed(x=x, y=y) 
         sl = source_level_kewley(freq=freq, wind_speed=wind_speed) # source level per unit area
         sl += 20 * np.log10(area) # scale by area
 
@@ -183,7 +184,7 @@ class Geophony():
             progress_bar: bool
                 Display calculation progress bar. Default is True.
     """
-    def __init__(self, tl_calculator, south, north, west, east, depth, xy_res=None, source_level_method='Kewley', progress_bar=True):
+    def __init__(self, tl_calculator, south, north, west, east, depth, xy_res=None, source_level_method='kewley', progress_bar=True):
 
         self.tl = tl_calculator
 
@@ -202,14 +203,14 @@ class Geophony():
         self.tl.progress_bar = False
         self.progress_bar = progress_bar
 
-        assert source_level_method == 'Kewley', 'Invalid method for computing source levels'
+        assert source_level_method == 'kewley', 'Invalid method for computing source levels'
         self.source_level_method = source_level_method
 
         # prepare grid
         self.lats, self.lons, self.x, self.y = create_geophony_xy_grid(south, north, west, east, x_res=xy_res, y_res=xy_res)
 
         # interpolate bathymetry
-        self.bathy = self.tl.ocean.bathy(x=self.lons, y=self.lats, geometry='spherical')
+        self.bathy = self.tl.ocean.bathy(lat=self.lats, lon=self.lons)
 
     def compute(self, frequency, below_seafloor=False, start=None, end=None):
         """ Compute the noise level within a specified geographic 

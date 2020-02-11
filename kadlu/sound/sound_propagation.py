@@ -53,6 +53,8 @@ from matplotlib import pyplot as plt
 class Seafloor():
     """ Properties of the sea floor.
 
+        TODO: Consider renaming loss to attenuation
+
         Args:
             c: float
                 Uniform and isotropic sound speed in m/s
@@ -211,7 +213,7 @@ class TLCalculator():
     """
     def __init__(self, ocean, seafloor, sound_speed=None, ref_sound_speed=1500,\
             radial_bin=None, radial_range=50e3,\
-            angular_bin=10, angular_range=2*np.pi,\
+            angular_bin=10, angular_range=360,\
             vertical_bin=10, vertical_range=None,\
             absorption_layer=1/6.,\
             starter_method='THOMSON', starter_aperture=88,\
@@ -219,6 +221,8 @@ class TLCalculator():
             verbose=False, progress_bar=True):
 
         self.ocean = ocean
+        self.ocean.fetch = False
+
         self.seafloor = seafloor
         self.c0 = ref_sound_speed
 
@@ -287,7 +291,7 @@ class TLCalculator():
 
         dz = self.bin_size['z']
         rmax = self.range['r']
-        qmax = self.range['q']
+        qmax = self.range['q'] / 180 * np.pi
 
         # automatic determination of radial step size
         if self.bin_size['r'] is None:
@@ -427,7 +431,7 @@ class TLCalculator():
         self.receiver_depth = receiver_depth
 
 
-    def plot(self, source_depth_index=0, receiver_depth_index=0):
+    def plot(self, source_depth_index=0, receiver_depth_index=0, figsize=(5,4)):
         """ Plot the transmission loss on a horizontal plane at fixed depth.
 
             The argument `depth_index` referes to the array `receiver_depth` 
@@ -462,19 +466,20 @@ class TLCalculator():
         x = r * np.cos(q)
         y = r * np.sin(q)
 
-        fig = plt.contourf(x, y, tl, 100)
+        fig, ax = plt.subplots(figsize=figsize)
 
-        ax = plt.gca()
+        img = ax.contourf(x, y, tl, 100)
+
         ax.set_xlabel('x(m)')
         ax.set_ylabel('y (m)')
         plt.title('Transmission loss, source at {0:.1f} m, receiver at {1:.1f} m'.format(self.receiver_depth[receiver_depth_index], self.source_depth[source_depth_index]))
 
-        plt.colorbar(fig, format='%+2.0f dB')
+        fig.colorbar(img, ax, format='%+2.0f dB')
 
         return fig
 
 
-    def plot_vertical(self, angle=0, source_depth_index=0, show_bathy=False):
+    def plot_vertical(self, angle=0, source_depth_index=0, show_bathy=False, figsize=(5,4), dB_range=None):
         """ Plot the transmission loss on a vertical plane for a selected angular bin.
 
             Returns None if the transmission loss has not been computed.
@@ -510,23 +515,33 @@ class TLCalculator():
         # transmission loss
         tl = self.TLv[source_depth_index,:,:,idx]
 
-        # bathy
+        # compute bathymetry
         angle_rad = angle * np.pi / 180.
-        x = np.cos(angle_rad) * self.grid.r
-        y = np.sin(angle_rad) * self.grid.r
-        bathy = self.ocean.bathy(x=x, y=y)
+        xx = np.cos(angle_rad) * self.grid.r
+        yy = np.sin(angle_rad) * self.grid.r
+        bathy = self.ocean.bathy(x=xx, y=yy)
         bathy *= (-1.)
 
+        # only show down to the seafloor + 20%
+        iy = np.nonzero(z < 1.2 * np.max(bathy))[0]
+        x = x[iy,:]
+        y = y[iy,:]
+        tl = tl[iy,:]
+
         # min and max transmission loss (excluding sea surface bin)
-        tl_min = np.min(tl[1:,:])
-        tl_max = np.max(tl[1:,:])
+        if dB_range is None:
+            tl_min = np.min(tl[1:,:])
+            tl_max = np.max(tl[1:,:])
+        else:
+            tl_min = dB_range[0]
+            tl_max = dB_range[1]
 
-        fig = plt.figure()
-        fig = plt.contourf(x, y, tl, 100, vmin=tl_min, vmax=tl_max)
+        # make contour plot
+        fig, ax = plt.subplots(figsize=figsize)
+        img = ax.contourf(x, y, tl, 100, vmin=tl_min, vmax=tl_max)
 
-        plt.colorbar(fig, format='%+2.0f dB')
+        fig.colorbar(img, ax=ax, format='%+2.0f dB')
 
-        ax = plt.gca()
         ax.invert_yaxis()
         ax.set_xlabel('Range (m)')
         ax.set_ylabel('Depth (m)')
@@ -534,6 +549,6 @@ class TLCalculator():
         plt.title('Transmission loss at {0:.2f} degrees'.format(angle))
 
         if show_bathy:
-            plt.plot(self.grid.r, bathy, 'w')
+            ax.plot(self.grid.r, bathy, 'w')
             
         return fig

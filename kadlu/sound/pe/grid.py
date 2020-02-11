@@ -119,7 +119,7 @@ class Grid():
         return r, dr, len(r)
 
 
-    def _azimuthal_coordinates(self, dq, qmax):
+    def _azimuthal_coordinates(self, dq, qmax):        
         N = int(np.ceil(qmax / dq))
         if N%2 == 1: 
             N = N + 1 # ensure even number of angular bins

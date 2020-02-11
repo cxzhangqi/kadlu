@@ -153,7 +153,7 @@ def load_chs(south, north, west, east):
                tuple(map(str, [south, north, west, east])))
     
     slices = np.array(db.fetchall(), dtype=object).T
-    #assert len(slices) == 4, "no data found for query range"
+    assert len(slices) == 4, "no data found for query range"
     if len(slices) != 4:
        warnings.warn("no data found for query range, returning empty arrays")
        bathy, lat, lon = np.array([]), np.array([]), np.array([])
@@ -163,15 +163,8 @@ def load_chs(south, north, west, east):
 
 
 class Chs():
-    """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
+    """ collection of module functions for fetching and loading """
 
-    """
-    def fetch_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
-        return fetch_chs(south, north, west, east, band_id=1)
-
-    def load_bathymetry(self, south=44.4, north=44.7, west=-64.4, east=-63.8):
-        return load_chs(south, north, west, east)
-    """
     def fetch_bathymetry(self, **kwargs):
         return fetch_chs(south=kwargs['south'], north=kwargs['north'], 
               west=kwargs['west'], east=kwargs['east'], band_id=1)

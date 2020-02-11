@@ -5,13 +5,15 @@ import warnings
 import time
 from kadlu.geospatial.interpolation             import      \
         Interpolator2D,                                     \
-        Interpolator3D
+        Interpolator3D,                                     \
+        Uniform2D,                                          \
+        Uniform3D
 from kadlu.geospatial.data_sources.data_util    import      \
         hash_key,                                           \
         bin_db,                                             \
         reshape_2D,                                         \
         reshape_3D,                                         \
-        deserialize
+        dt_2_epoch
 from kadlu.geospatial.data_sources.chs          import Chs
 #from kadlu.geospatial.data_sources.gebco        import Gebco
 from kadlu.geospatial.data_sources.hycom        import Hycom
@@ -54,7 +56,7 @@ load_map = dict(
     )
 
 
-def worker(interpfcn, reshapefcn, cols, q, seed):
+def worker(interpfcn, reshapefcn, data, var, q):
     """ compute interpolation in parallel worker process
     
         interpfcn:
@@ -70,27 +72,19 @@ def worker(interpfcn, reshapefcn, cols, q, seed):
             seed the hash to differentiate interpolation variables with
             the same set of kwargs
     """
-    obj = interpfcn(**reshapefcn(cols))
-    q.put((seed, obj))
+    obj = interpfcn(**reshapefcn(var=var, data=data))
+    q.put((var, obj))
     return
 
 
-def load_callback(var, **kwargs):
-    """ bootstrap array data into callable when loading """
+def load_callback(*, data, var, **kwargs):
+    """ bootstrap data into callable when loading """
     v = var + '_'
-    data = np.array((kwargs[f'{v}val'], kwargs[f'{v}lat'], kwargs[f'{v}lon']))
-    if f'{v}depth' not in kwargs.keys(): return data
-    return np.append(data, kwargs['f{v}depth'])
-
-
-def test_2d_reshape(cols):
-    # testing doing interpolation by passing 1d arrays rather than reshaping it
-    # for demonstration purposes only, we can make this cleaner later
-    return dict(
-            values=cols[0],
-            lats=cols[1],
-            lons=cols[2]
-        )
+    if f'{v}time' not in data.keys(): 
+        return (data[f'{v}val'], data[f'{v}lat'], data[f'{v}lon'])
+    if f'{v}depth' not in data.keys(): 
+        return (data[f'{v}val'], data[f'{v}lat'], data[f'{v}lon'], data[f'{v}time'])
+    return (data[f'{v}val'], data[f'{v}lat'], data[f'{v}lon'], data[f'{v}time'], data[f'{v}depth'])
 
 
 class Ocean():
@@ -105,7 +99,7 @@ class Ocean():
         function. the boundary arguments supplied here will be passed to the 
         callable, i.e. north, south, west, east, top, bottom, start, end
 
-        callables or array arguments must be ordered by [val, lat, lon] for 2D 
+        bles or array arguments must be ordered by [val, lat, lon] for 2D 
         data, or [val, lat, lon, depth] for 3D data
 
         args:
@@ -149,8 +143,9 @@ class Ocean():
                 the start, end kwargs. the nearest fetched time data 
                 will be loaded 
     """
+
     def __init__(self, 
-            cache           = True,
+            cache           = False,
             fetch           = False,
             load_bathymetry = 'chs',
             load_temp       = 'hycom',
@@ -161,24 +156,26 @@ class Ocean():
             load_windspeed  = 'era5',
             **kwargs):
         """
-            cache           = True
+            cache           = False 
             fetch           = False
-            load_bathymetry = 'chs'
-            load_temp       = 'hycom'
-            load_salinity   = 'hycom'
-            load_wavedir    = 'era5'
-            load_waveheight = 'era5'
-            load_waveperiod = 'era5'
-            load_windspeed  = 'era5'
+            load_bathymetry = 0#'chs'
+            load_temp       = 0#'hycom',
+            load_salinity   = 0#'hycom'
+            load_wavedir    = 0#'era5'
+            load_waveheight = 0#'era5'
+            load_waveperiod = 0#'era5'
+            load_windspeed  = 0#'era5'
         """
 
-        print('NOTICE: data will be averaged over time frames for interpolation'
-              '. for finer temporal resolution, define smaller time bounds')
+        print('data will be averaged over time frames for interpolation. '
+              'for finer temporal resolution, define smaller time bounds')
 
         vartypes = ['bathy', 'temp', 'salinity', 
                 'wavedir', 'waveheight', 'waveperiod', 'windspeed']
         load_args = [load_bathymetry, load_temp, load_salinity, 
                 load_wavedir, load_waveheight, load_waveperiod, load_windspeed]
+        callbacks = []
+        data = {}
 
         # if load_args are not callable, convert string or array to callable
         for var, load_arg, ix in zip(vartypes, load_args, range(len(vartypes))):
@@ -187,26 +184,27 @@ class Ocean():
             elif isinstance(load_arg, str):
                 key = f'{var}_{load_arg.lower()}'
                 if fetch == True: fetch_map[key](**kwargs)
-                load_args[ix] = load_map[key]
+                callbacks.append(load_map[key])
 
             elif isinstance(load_arg, (int, float)):
-                kwargs[f'{var}_val'] = np.array([load_arg for n in range(10)])
-                kwargs[f'{var}_lat'] = np.linspace(kwargs['south'], kwargs['north'], 10)
-                kwargs[f'{var}_lon'] = np.linspace(kwargs['west'], kwargs['east'], 10)
+                data[f'{var}_val'] = load_arg
+                data[f'{var}_lat'] = kwargs['south'] 
+                data[f'{var}_lon'] = kwargs['west']
+                data[f'{var}_time'] = dt_2_epoch(kwargs['start'])[0] 
                 if var in ('temp', 'salinity'):
-                    kwargs[f'{var}_depth'] = np.linspace(kwargs['top'], kwargs['bottom'], 25)
-                load_args[ix] = load_callback
+                    data[f'{var}_depth'] = np.linspace(kwargs['top'], kwargs['bottom'], 10)
+                callbacks.append(load_callback)
 
             elif isinstance(load_arg, (list, tuple, np.ndarray)):
                 if len(load_arg) not in (3, 4):
                     raise ValueError(f'invalid array shape for load_{var}. '
                     'arrays must be ordered by [val, lat, lon] for 2D data, or '
                     '[val, lat, lon, depth] for 3D data')
-                kwargs[f'{var}_val'] = load_arg[0]
-                kwargs[f'{var}_lat'] = load_arg[1]
-                kwargs[f'{var}_lon'] = load_arg[2]
-                if len(load_arg) == 4: kwargs[f'{var}_depth'] = load_arg[3]
-                load_args[ix] = load_callback
+                data[f'{var}_val'] = load_arg[0]
+                data[f'{var}_lat'] = load_arg[1]
+                data[f'{var}_lon'] = load_arg[2]
+                if len(load_arg) == 4: data[f'{var}_depth'] = load_arg[3]
+                callbacks.append(load_callback)
 
             else: raise TypeError(f'invalid type for load_{var}. '
                   'valid types include string, array, and callable')
@@ -220,88 +218,112 @@ class Ocean():
             # compute interpolations in parallel processes
             print('preparing interpolations...')
             q = Queue()
-            cols = [callback(var=var, **kwargs) for var, callback in zip(vartypes, load_args)]
+            interpolators = []
+            var3D = ('temp', 'salinity')
+            for v, arg in zip(vartypes, load_args):
+                if isinstance(arg, (float, int)):
+                    if v in var3D: interpolators.append(Uniform3D)
+                    else: interpolators.append(Uniform2D)
+                else:
+                    if v in var3D: interpolators.append(Interpolator3D)
+                    else: interpolators.append(Interpolator2D)
 
-            interpolations = [
-                    Process(target=worker,
-                            args=(Interpolator2D, test_2d_reshape, cols[0], q, 'interp_bathy')),
-                    Process(target=worker,
-                            args=(Interpolator3D, reshape_3D, cols[1], q, 'interp_temp')),
-                    Process(target=worker,
-                            args=(Interpolator3D, reshape_3D, cols[2], q, 'interp_salinity')),
-                    Process(target=worker,
-                            args=(Interpolator2D, reshape_2D, cols[3], q, 'interp_wavedir')), 
-                    Process(target=worker,
-                            args=(Interpolator2D, reshape_2D, cols[4], q, 'interp_waveheight')),
-                    Process(target=worker,
-                            args=(Interpolator2D, reshape_2D, cols[5], q, 'interp_waveperiod')),
-                    Process(target=worker,
-                            args=(Interpolator2D, reshape_2D, cols[6], q, 'interp_wind'))
-                ]
+            reshapers = [reshape_2D if v not in ('temp', 'salinity') else reshape_3D for v in vartypes]
+            columns = [callback(data=data, var=v, **kwargs) for v, callback in zip(vartypes, callbacks)]
+            interpolations = map(
+                lambda i,r,c,v: Process(target=worker, args=(i,r,c,v,q)),
+                interpolators, reshapers, columns, vartypes
+            )
 
-            for i in interpolations: i.start()
-            
-            self.interp = {}
             joined = 0;
+            self.interp = {}
+            for i in interpolations: i.start()
             while joined < len(vartypes):
-                binary = q.get()
-                self.interp[binary[0].split('_')[1]] = binary[1]
+                obj = q.get()
+                self.interp[obj[0]] = obj[1]
                 joined += 1
             for i in interpolations: i.join()
+            q.close()
 
             if cache: 
                 db.execute('INSERT INTO bin VALUES (?, ?)', (key, pickle.dumps(self.interp)))
                 conn.commit()
 
+            #self.lat_default = np.linspace(kwargs['south'], kwargs['north'],100)
+            #self.lon_default = np.linspace(kwargs['west'],  kwargs['east'], 100)
+            #self.depth_default = np.linspace(kwargs['top'],  kwargs['bottom'], 100)
 
-    def bathy(self, lat, lon, grid=False):
+            self.lat_default = kwargs['north']
+            self.lon_default = kwargs['west']
+            self.depth_default = kwargs['top']
+
+
+    def bathy(self, lat=None, lon=None, grid=False):
+        if lat is None: lat=self.lat_default
+        if lon is None: lon=self.lon_default
         return self.interp['bathy'].eval_ll(lat=lat, lon=lon, grid=grid)
 
-    def bathy_xy():
+    def bathy_xy(self, x, y, grid=False):
         pass
 
-    def bathy_gradient(self, lat, lon, axis='x', grid=False):
+    def bathy_deriv(self, lat=None, lon=None, axis='x', grid=False):
+        if lat == None: lat=self.lat_default
+        if lon == None: lon=self.lon_default
         assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
         return self.interp['bathy'].eval_ll(lat=lat, lon=lon, grid=grid,
                 lat_deriv_order=(axis != 'x'), lon_deriv_order=(axis == 'x'))
 
-    def bathy_gradient_xy():
+    def bathy_deriv_xy(self, x, y, grid=False):
         pass
 
-    def temp(self, lat, lon, depth, grid=False):
+    def temp(self, lat=None, lon=None, depth=None, grid=False):
+        if lat == None: lat=self.lat_default
+        if lon == None: lon=self.lon_default
+        if depth == None: depth=self.depth_default
         return self.interp['temp'].eval_ll(lat=lat, lon=lon, z=depth, grid=grid)
 
-    def temp_xy():
+    def temp_xy(self, x, y, z, grid=False):
         pass
 
-    def salinity(self, lat, lon, depth, grid=False):
+    def salinity(self,lat=None, lon=None, depth=None, grid=False):
+        if lat == None: lat=self.lat_default
+        if lon == None: lon=self.lon_default
+        if depth == None: depth=self.depth_default
         return self.interp['salinity'].eval_ll(lat=lat, lon=lon, z=depth, grid=grid)
 
-    def salinity_xy():
+    def salinity_xy(self, x, y, z, grid=False):
         pass
 
-    def wavedir(self, lat, lon, grid=False):
+    def wavedir(self, lat=None, lon=None, depth=None, grid=False):
+        if lat == None: lat=self.lat_default
+        if lon == None: lon=self.lon_default
         return self.interp['wavedir'].eval_ll(lat=lat, lon=lon, grid=grid)
 
-    def wavedir_xy():
+    def wavedir_xy(self, x, y, grid=False):
         pass
 
-    def waveheight(self, lat, lon, grid=False):
+    def waveheight(self, lat=None, lon=None, depth=None, grid=False):
+        if lat == None: lat=self.lat_default
+        if lon == None: lon=self.lon_default
         return self.interp['waveheight'].eval_ll(lat=lat, lon=lon, grid=grid)
 
-    def waveheight_xy():
+    def waveheight_xy(self, x, y, grid=False):
         pass
 
-    def waveperiod(self, lat, lon, grid=False):
+    def waveperiod(self, lat=None, lon=None, depth=None, grid=False):
+        if lat == None: lat=self.lat_default
+        if lon == None: lon=self.lon_default
         return self.interp['waveperiod'].eval_ll(lat=lat, lon=lon, grid=grid)
 
-    def waveperiod_xy():
+    def waveperiod_xy(self, x, y, grid=False):
         pass
 
-    def windspeed(self, lat, lon, grid=False):
-        return self.interp['wind'].eval_ll(lat=lat, lon=lon, grid=grid)
+    def windspeed(self, lat=None, lon=None, depth=None, grid=False):
+        if lat == None: lat=self.lat_default
+        if lon == None: lon=self.lon_default
+        return self.interp['windspeed'].eval_ll(lat=lat, lon=lon, grid=grid)
 
-    def windspeed_xy():
+    def windspeed_xy(self, x, y, grid=False):
         pass
 
 """

@@ -614,8 +614,12 @@ class Interpolator3D():
 
 class Uniform2D():
 
-    def __init__(self, value):
-        self.value = value
+    """
+    def __init__(self, values, lats, lons):
+        self.value = values[0]
+    """
+    def __init__(self, values, lats, lons):
+        self.value = values
 
     def get_nodes(self):
         return self.value
@@ -659,8 +663,15 @@ class Uniform2D():
 
 class Uniform3D():
 
-    def __init__(self, value):
-        self.value = value
+    #def __init__(self, value):
+    #    self.value = value
+    """
+    def __init__(self, values, lats, lons, depths):
+        print(values[0][0][0])
+        self.value = values.flatten()[0]
+    """
+    def __init__(self, values):
+        self.value = values
 
     def get_nodes(self):
         return self.value

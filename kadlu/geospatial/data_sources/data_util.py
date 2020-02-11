@@ -162,76 +162,36 @@ def index(val, sorted_arr):
     return np.nonzero(sorted_arr >= val)[0][0]
   
 
-def flatten(cols, frame_ix):
+def flatten(v, cols, frames):
     """ dimensional reduction by taking average of time frames """
     # assert that frames are of equal size
-    assert reduce(lambda a, b: (a==b)*a, frame_ix[1:] - frame_ix[:-1])
+    assert reduce(lambda a, b: (a==b)*a, frames[1:] - frames[:-1])
 
-    ix = range(0, len(frame_ix) -1)
-    frames = np.array([cols[0][frame_ix[f] : frame_ix[f +1]] for f in ix])
-    vals = (reduce(np.add, frames) / len(frames))
+    ix = range(len(frames) -1)
+    fsplit= np.array([cols[3][frames[f] : frames[f +1]] for f in ix])
+    vals = (reduce(np.add, fsplit) / len(fsplit))
 
     if len(cols) == 4:
-        _, y, x, _ = cols[:, frame_ix[0] : frame_ix[1]]
-        return vals, y, x, frames
-    elif len(cols) == 5:
-        _, y, x, _, z = cols[:, frame_ix[0] : frame_ix[1]]
-        return vals, y, x, frames, z
-    else: 
-        raise ValueError("invalid number of columns to flatten")
+        _, y, x, _ = cols[:, frames[0] : frames[1]]
+    else:
+        _, y, x, _, z = cols[:, frames[0] : frames[1]]
+        return vals, y, x, z
 
 
-def reshape_2D(cols):
-    """ load 2D data from the database and prepare it for interpolation """
-    """
-    cols = Chs().load_bathymetry(**kwargs)
-    bathy_matrix = reshape_2D(Chs().load_bathymetry, **kwargs) 
-    """
-    #cols = callback(**kwargs)
-    if len(cols) == 3: cols = np.vstack((cols, [0 for x in cols[0]]))
-    frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
-    vals, y, x, _ = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
-    rows = np.array((vals, y, x)).T
-
-    # reshape row data to 2D array
-    xgrid, ygrid = np.unique(x), np.unique(y)
-    gridspace = np.full((len(ygrid), len(xgrid)), fill_value=-30000)
-    """
-    ###
-    list(product(xgrid, ygrid))
-    list(map(gridspace, vals, index(xgrid), index(ygrid)))
-
-    t1 = datetime.now()
-    xmap = list(map(index, rows.T[2], [xgrid for x in rows.T[2]]))
-    ymap = list(map(index, rows.T[1], [ygrid for y in rows.T[1]]))
-    t2 = datetime.now()
-    print(f'{(t2-t1).seconds} seconds')
-
-    [gridspace[index(row[2], xgrid), index(row[1], ygrid)] = row[0] for row in rows]
-    np.meshgrid(vals, ymap, xmap) 
-
-    ###
-    """
-
-    # this could potentially be optimized to avoid an index lookup cost 
-    for row in rows:
-        x_ix = index(row[2], xgrid)
-        y_ix = index(row[1], ygrid)
-        gridspace[y_ix, x_ix] = row[0]
-    gridspace
-
-    # TODO:
-    #  - replace -30000 values with something more reasonable for interpolation
-    #  - create default values for columns that are entirely null
-
-    return dict(values=gridspace, lats=ygrid, lons=xgrid)
+def reshape_2D(*, var, data):
+    return dict(values=data[0],
+               lats=data[1],
+               lons=data[2]
+            )
 
 
-def reshape_3D(cols):
+def reshape_3D(*, var, data):
     """ load 3D data from database and prepare it for interpolation """
-    #cols = callback(**kwargs)#.astype(np.float)
-    frame_ix = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
-    vals, y, x, _, z = flatten(cols, frame_ix) if len(frame_ix) > 1 else cols
+    if isinstance(data[0], (float, int)):
+        return dict(values=data[0])
+    frames = np.append(np.nonzero(data[3][1:] > data[3][:-1])[0] + 1, len(data[3]))
+    if len(np.unique(frames)) > 1: vals, y, x, z = flatten(var, data, frames) 
+    else: vals, y, x, _, z  = data
     rows = np.array((vals, y, x, z)).T
 
     # reshape row data to 3D array

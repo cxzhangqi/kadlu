@@ -10,8 +10,8 @@ from kadlu.geospatial.data_sources.data_util    import      \
         reshape_3D,                                         \
         dt_2_epoch
 from kadlu.geospatial.data_sources.source_map   import      \
-      fetch_map,                                            \
-      load_map
+        fetch_map,                                          \
+        load_map
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
@@ -39,7 +39,7 @@ def worker(interpfcn, reshapefcn, cols, var, q):
 def load_callback(*, data, v, **kwargs):
     """ bootstrap data into callable to prepare for parallelization """
     return [data[key] for key in 
-               (f'{v}_val',f'{v}_lat',f'{v}_lon', f'{v}_time',f'{v}_depth')
+               (f'{v}_val', f'{v}_lat', f'{v}_lon', f'{v}_time', f'{v}_depth')
                if key in data.keys()]
 
 

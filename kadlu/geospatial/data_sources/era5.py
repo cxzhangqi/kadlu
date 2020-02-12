@@ -199,7 +199,9 @@ class Era5():
         #wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
 
         #table = var[4:] if var[0:4] == '10m_' else var  # table cant start with int
-        sql = ' AND '.join(['SELECT * FROM u_component_of_wind INNER JOIN v_component_of_wind ON u_component_of_wind.lat == v_component_of_wind.lat',
+        sql = ' AND '.join(['SELECT * FROM u_component_of_wind '\
+            'INNER JOIN v_component_of_wind '\
+            'ON u_component_of_wind.lat == v_component_of_wind.lat',
             'u_component_of_wind.lon == v_component_of_wind.lon',
             'u_component_of_wind.time == v_component_of_wind.time WHERE u_component_of_wind.lat >= ?',
             'u_component_of_wind.lat <= ?',

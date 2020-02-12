@@ -13,6 +13,7 @@ profiling/*.prof
 .cache
 .gitignore
 Nx2DSSFPE/mat_Mariana_Nx2D_longrng_*
+Nx2DSSFPE
 build/*
 playroom/bathy.mat
 calc.prof

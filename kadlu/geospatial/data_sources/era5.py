@@ -3,10 +3,6 @@
 
     Metadata regarding the dataset can be found here:
         https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview
-
-    Oliver Kirsebom
-    Casey Hilliard
-    Matthew Smith
 """
 
 import cdsapi

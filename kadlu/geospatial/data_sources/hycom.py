@@ -6,13 +6,6 @@
     web interface for manual hycom data retrieval:
         https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
 
-    Oliver Kirsebom
-    Casey Hilliard
-    Matthew Smith 
-
-    NOTES: for the future when writing documentation
-        - keyword args must be supplied to fetch and load fcns (not positional)
-
     TODO:
         - support queries ranging more than one year
 """

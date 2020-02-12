@@ -6,10 +6,6 @@
 
     Data model description (boundary definitions, map visualizations, etc)
         https://polar.ncep.noaa.gov/waves/implementations.php
-
-    Oliver Kirsebom
-    Casey Hilliard
-    Matthew Smith
 """
 
 import numpy as np

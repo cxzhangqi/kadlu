@@ -6,7 +6,6 @@ import configparser
 import warnings
 import pygrib
 import matplotlib.pyplot as plt
-#from mpl_toolkits.basemap import Basemap
 import sqlite3
 from datetime import datetime, timedelta
 import json

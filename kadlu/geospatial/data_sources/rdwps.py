@@ -4,10 +4,6 @@
 
     Metadata regarding the dataset can be found here:
         https://weather.gc.ca/grib/grib2_RDWPS_e.html
-
-    Oliver Kirsebom
-    Casey Hilliard
-    Matthew Smith
 """
 
 import numpy as np

@@ -1,15 +1,3 @@
-""" 
-    Module within the kadlu package for handling Non-Navigational NONNA-100 
-    bathymetric data from the The Canadian Hydrographic Service (CHS). 
-
-    Authors: Oliver Kirsebom, Casey Hilliard, Matthew Smith
-    contact: oliver.kirsebom@dal.ca
-    Organization: MERIDIAN-Intitute for Big Data Analytics
-    Team: Acoustic data Analytics, Dalhousie University
-    Project: packages/kadlu
-             Project goal: Tools for underwater soundscape modeling
-"""
-
 import os
 import numpy as np
 from kadlu.geospatial.geospatial import crop, read_geotiff
@@ -33,15 +21,6 @@ def parse_sw_corner(path):
     assert west >= -180 and west <= 180, 'Invalid parsed longitude value'
     assert south >= -90 and south <= 90, 'Invalid parsed latitude value'
     return south, west
-
-
-# matt_s 2019-12
-# removed this function since filenames are now pulled directly from source
-
-#def filename(south, west):
-#    """ generate a filename for given southwest corner coordinates """
-#    fname = "CA2_{0:04d}N{1:05d}W.tif".format(int(south * 100), -int(west * 100))
-#    return fname
 
 
 def fetch_chs(south, north, west, east, band_id=1):

@@ -179,106 +179,76 @@ class Ocean():
             else: raise TypeError(f'invalid type for load_{var}. '
                   'valid types include string, array, and callable')
 
-        key = hash_key(kwargs, 'interp_ocean')
-        db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
-        res = db.fetchone()
-        if res is not None: self.interp = pickle.loads(res[1])
-        else:  # compute interpolations in parallel 
-            q = Queue()
+        q = Queue()
 
-            is_3D = [v in ('temp', 'salinity') for v in vartypes]
-            is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
-            columns = [f(data=data, var=v, **kwargs) for v, f in zip(vartypes, callbacks)]
-            intrplrs = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
-            reshapers = [reshape_3D if v else reshape_2D for v in is_3D]
+        is_3D = [v in ('temp', 'salinity') for v in vartypes]
+        is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
+        columns = [f(data=data, var=v, **kwargs) for v, f in zip(vartypes, callbacks)]
+        intrplrs = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
+        reshapers = [reshape_3D if v else reshape_2D for v in is_3D]
 
-            interpolators = map(lambda x, y: intrplrs[x][y], is_arr, is_3D)
-            interpolations = map(
-                lambda i,r,c,v: Process(target=worker, args=(i,r,c,v,q)),
-                interpolators, reshapers, columns, vartypes
-            )
+        self.interps = {}
+        interpolators = map(lambda x, y: intrplrs[x][y], is_arr, is_3D)
+        interpolations = map(
+            lambda i,r,c,v: Process(target=worker, args=(i,r,c,v,q)),
+            interpolators, reshapers, columns, vartypes
+        )
 
-            self.interp = {}
-            for i in interpolations: i.start()
-            while len(self.interp.keys()) < 7:
-                obj = q.get()
-                self.interp[obj[0]] = obj[1]
-            for i in interpolations: i.join()
-            q.close()
-
-            if cache: 
-                db.execute('INSERT INTO bin VALUES (?, ?)', (key, pickle.dumps(self.interp)))
-                conn.commit()
-
-        self.lat_default = kwargs['south']
-        self.lon_default = kwargs['west']
-        self.depth_default = kwargs['top']
+        for i in interpolations: i.start()
+        while len(self.interps.keys()) < 7:
+            obj = q.get()
+            self.interps[obj[0]] = obj[1]
+        for i in interpolations: i.join()
+        q.close()
 
 
-    def bathy(self, lat=None, lon=None, grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
+    def bathy(self, lat, lon, grid=False):
         return self.interp['bathy'].eval_ll(lat=lat, lon=lon, grid=grid)
 
     def bathy_xy(self, x, y, grid=False):
         pass
 
-    def bathy_deriv(self, lat=None, lon=None, axis='x', grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
+    def bathy_deriv(self, lat, lon, axis='x', grid=False):
         assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
-        return self.interp['bathy'].eval_ll(lat=lat, lon=lon, grid=grid,
+        return self.interps['bathy'].eval_ll(lat=lat, lon=lon, grid=grid,
                 lat_deriv_order=(axis != 'x'), lon_deriv_order=(axis == 'x'))
 
     def bathy_deriv_xy(self, x, y, grid=False):
         pass
 
-    def temp(self, lat=None, lon=None, depth=None, grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
+    def temp(self, lat, lon, depth, grid=False):
         if depth == None: depth=self.depth_default
-        return self.interp['temp'].eval_ll(lat=lat, lon=lon, z=depth, grid=grid)
+        return self.interps['temp'].eval_ll(lat=lat, lon=lon, z=depth, grid=grid)
 
     def temp_xy(self, x, y, z, grid=False):
         pass
 
-    def salinity(self,lat=None, lon=None, depth=None, grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
-        if depth == None: depth=self.depth_default
-        return self.interp['salinity'].eval_ll(lat=lat, lon=lon, z=depth, grid=grid)
+    def salinity(self,lat, lon, depth, grid=False):
+        return self.interps['salinity'].eval_ll(lat=lat, lon=lon, z=depth, grid=grid)
 
     def salinity_xy(self, x, y, z, grid=False):
         pass
 
-    def wavedir(self, lat=None, lon=None, depth=None, grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
-        return self.interp['wavedir'].eval_ll(lat=lat, lon=lon, grid=grid)
+    def wavedir(self, lat, lon, depth, grid=False):
+        return self.interps['wavedir'].eval_ll(lat=lat, lon=lon, grid=grid)
 
     def wavedir_xy(self, x, y, grid=False):
         pass
 
-    def waveheight(self, lat=None, lon=None, depth=None, grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
-        return self.interp['waveheight'].eval_ll(lat=lat, lon=lon, grid=grid)
+    def waveheight(self, lat, lon, depth, grid=False):
+        return self.interps['waveheight'].eval_ll(lat=lat, lon=lon, grid=grid)
 
     def waveheight_xy(self, x, y, grid=False):
         pass
 
-    def waveperiod(self, lat=None, lon=None, depth=None, grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
-        return self.interp['waveperiod'].eval_ll(lat=lat, lon=lon, grid=grid)
+    def waveperiod(self, lat, lon, depth, grid=False):
+        return self.interps['waveperiod'].eval_ll(lat=lat, lon=lon, grid=grid)
 
     def waveperiod_xy(self, x, y, grid=False):
         pass
 
-    def windspeed(self, lat=None, lon=None, depth=None, grid=False):
-        if lat is None: lat=self.lat_default
-        if lon is None: lon=self.lon_default
-        return self.interp['windspeed'].eval_ll(lat=lat, lon=lon, grid=grid)
+    def windspeed(self, lat, lon, depth, grid=False):
+        return self.interps['windspeed'].eval_ll(lat=lat, lon=lon, grid=grid)
 
     def windspeed_xy(self, x, y, grid=False):
         pass

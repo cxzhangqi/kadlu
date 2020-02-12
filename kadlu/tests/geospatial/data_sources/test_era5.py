@@ -3,7 +3,6 @@ import numpy as np
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import era5
 from kadlu.geospatial.data_sources.era5 import Era5
-from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 from os.path import isfile
 
 # gulf st lawrence
@@ -18,6 +17,9 @@ end   = datetime(2018, 1, 1, 0, 0, 0, 0)
 def test_era5_fetch_windwaveswellheight():
     Era5().fetch_windwaveswellheight(start=start, end=end)
 
+# if we can fetch one var, we can probably fetch these also...
+# commenting these might speed up tests slightly
+"""
 def test_era5_fetch_wavedirection():
     Era5().fetch_wavedirection(start=start, end=end)
 
@@ -26,6 +28,7 @@ def test_era5_fetch_waveperiod():
 
 def test_era5_fetch_wind():
     Era5().fetch_wind(start=start, end=end)
+"""
 
 def test_era5_load_windwaveswellheight():
     height, lat, lon, time = Era5().load_windwaveswellheight(
@@ -34,6 +37,7 @@ def test_era5_load_windwaveswellheight():
     assert(len(height)==len(lat)==len(lon))
     assert(len(lat) > 0)
 
+"""
 def test_era5_load_wavedirection():
     wave, lat, lon, time = Era5().load_wavedirection(
             south=south, north=north, west=west, east=east, start=start, end=end
@@ -54,5 +58,6 @@ def test_era5_load_wind():
         )
     assert(len(wind)==len(lat)==len(lon))
     assert(len(lat) > 0)
+"""
 
 

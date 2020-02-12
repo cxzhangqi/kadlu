@@ -347,7 +347,7 @@ class Interpolator2D():
             lat = np.reshape(lat, newshape=(M*N))
             lon = np.reshape(lon, newshape=(M*N))
 
-        zi = self.eval_ll(lat=lat, lon=lon, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+        zi = self.interp(lat=lat, lon=lon, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
 
         if x_deriv_order + y_deriv_order > 0:
             r = DLDL_over_DXDY(lat=lat, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
@@ -533,7 +533,7 @@ class Interpolator3D():
             lon = lon.flatten()
             z = z.flatten()
 
-        vi = self.eval_ll(lat=lat, lon=lon, z=z, squeeze=False)
+        vi = self.interp(lat=lat, lon=lon, z=z, squeeze=False)
 
         if grid:
             vi = np.reshape(vi, newshape=(M,N,K))
@@ -614,9 +614,10 @@ class Interpolator3D():
 
 class Uniform2D():
 
-    #def __init__(self, value):
-    #    self.value = value
-    def __init__(self, values, lats, lons):
+    def __init__(self, values, **garbage):
+        # added garbage kwargs to standardize input format 
+        # with the interface of the Interpolator2D
+        # this gets rid of errors in the ocean module
         self.value = values
 
     #def get_nodes(self):
@@ -624,7 +625,7 @@ class Uniform2D():
 
     def interp_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
 
-        z = self.eval_ll(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+        z = self.interp(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
 
         if np.ndim(z) == 3:
             z = np.swapaxes(z, 0, 1)
@@ -671,7 +672,7 @@ class Uniform3D():
 
     def interp_xy(self, x, y, z, grid=False):
 
-        v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+        v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
 
         if np.ndim(v) == 3:
             v = np.swapaxes(v, 0, 1)
@@ -729,7 +730,7 @@ class DepthInterpolator3D():
     def get_nodes(self):
         return (self.values, self.depth_nodes)
 
-    def eval_xy(self, x, y, z, grid=False):
+    def interp_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).
 
             x,y,z can be floats or arrays.
@@ -757,7 +758,7 @@ class DepthInterpolator3D():
             Returns:
                 vi: Interpolated values
         """
-        v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+        v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
 
         if np.ndim(v) == 3:
             v = np.swapaxes(v, 0, 1)
@@ -765,7 +766,7 @@ class DepthInterpolator3D():
         v = np.squeeze(v)
         return v
 
-    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+    def interp(self, lat, lon, z, grid=False, squeeze=True):
         """ Interpolate using spherical coordinate system (lat-lon).
 
             lat,lot,z can be floats or arrays.
@@ -814,3 +815,4 @@ class DepthInterpolator3D():
             v = np.squeeze(v)
 
         return v
+

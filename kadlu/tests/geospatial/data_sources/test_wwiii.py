@@ -1,6 +1,5 @@
 import pytest
 from datetime import datetime, timedelta
-from kadlu.geospatial.data_sources import fetch_util
 from kadlu.geospatial.data_sources import wwiii
 from kadlu.geospatial.data_sources.wwiii import Wwiii, Boundary, wwiii_regions, wwiii_global
 

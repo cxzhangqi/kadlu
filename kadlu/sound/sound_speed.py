@@ -69,7 +69,7 @@ class SoundSpeed():
                 self.interp = DepthInterpolator3D(values=ssp[0], depths=ssp[1])
 
             else:
-                self.interp = Uniform3D(value=ssp)
+                self.interp = Uniform3D(values=ssp)
 
         else:
             self.origin = ocean.origin
@@ -182,10 +182,10 @@ class SoundSpeed():
 
         else:
             if geometry == 'planar':
-                c = self.interp.eval_xy(x=x, y=y, z=z, grid=grid)
+                c = self.interp.interp_xy(x=x, y=y, z=z, grid=grid)
 
             elif geometry == 'spherical':
-                c = self.interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
+                c = self.interp.interp(lat=y, lon=x, z=z, grid=grid)
 
         return c
 

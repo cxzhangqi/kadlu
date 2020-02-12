@@ -3,7 +3,6 @@ import numpy as np
 from datetime import datetime, timedelta
 from kadlu import hycom
 from kadlu.geospatial.data_sources.hycom import Hycom
-from kadlu.geospatial.data_sources.fetch_util import storage_cfg
 import os
 from os.path import isfile
 

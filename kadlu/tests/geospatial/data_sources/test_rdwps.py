@@ -2,7 +2,6 @@ import pytest
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import rdwps 
 from kadlu.geospatial.data_sources.rdwps import Rdwps, rdwps_regions
-from kadlu.geospatial.data_sources import fetch_util
 from os.path import isfile
 
 # mahone bay test area:

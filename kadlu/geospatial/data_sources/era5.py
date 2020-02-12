@@ -38,6 +38,8 @@ def fetch_era5(var, kwargs):
     """
     assert 2 == sum(map(lambda kw: kw in kwargs.keys(), 
         ['start', 'end'])), 'malformed query'
+    if kwargs['start'] == kwargs['end']:
+        kwargs['end'] += timedelta(hours=3)
 
     t = datetime(
             kwargs['start'].year,   kwargs['start'].month, 

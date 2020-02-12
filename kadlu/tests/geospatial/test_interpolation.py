@@ -16,7 +16,6 @@ import os
 import numpy as np
 from kadlu.geospatial.geospatial import load_data_from_file
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D, interp_2D, interp_3D
-#import kadlu.geospatial.data_sources.chs as chs
 from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
 
@@ -30,13 +29,13 @@ def test_interp_2x2_grid():
     lats = np.array([0, 1])
     lons = np.array([0, 1])
     ip = Interpolator2D(values=values, lats=lats, lons=lons)
-    assert ip.eval_ll(0,0) == 0
-    assert ip.eval_ll(1,1) == 2
-    res = ip.eval_ll(0,0.5)
+    assert ip.interp(0,0) == 0
+    assert ip.interp(1,1) == 2
+    res = ip.interp(0,0.5)
     assert np.abs(res - 1.) < 1e-6
-    res = ip.eval_ll([0.5,0.5], [0.2,0.3])
+    res = ip.interp([0.5,0.5], [0.2,0.3])
     assert np.all(np.abs(res - [0.4, 0.6]) < 1e-6)
-    res = ip.eval_ll([0.5,0.6,0.7], [0.2,0.3], grid=True)
+    res = ip.interp([0.5,0.6,0.7], [0.2,0.3], grid=True)
     assert np.all(np.abs(res - [0.4, 0.6]) < 1e-6)
 
 def test_interp_1x2_grid():
@@ -44,9 +43,9 @@ def test_interp_1x2_grid():
     lats = np.array([0])
     lons = np.array([0, 1])
     ip = Interpolator2D(values=values, lats=lats, lons=lons)
-    assert ip.eval_ll(0,0) == 0
-    assert ip.eval_ll(1,1) == 2
-    res = ip.eval_ll(0,0.5)
+    assert ip.interp(0,0) == 0
+    assert ip.interp(1,1) == 2
+    res = ip.interp(0,0.5)
     assert np.abs(res - 1.) < 1e-6
  
 def test_interpolate_bathymetry_using_latlon_coordinates():
@@ -59,13 +58,13 @@ def test_interpolate_bathymetry_using_latlon_coordinates():
     ip = Interpolator2D(bathy, lat, lon)
 
     # interpolate at a single point on the grid
-    z = ip.eval_ll(lat=lat[0], lon=lon[0]) 
+    z = ip.interp(lat=lat[0], lon=lon[0]) 
     z = int(z)
     assert z == bathy[0,0]
 
     # interpolate at a single point between two grid points
     x = (lat[1] + lat[2]) / 2
-    z = ip.eval_ll(lat=x, lon=lon[0]) 
+    z = ip.interp(lat=x, lon=lon[0]) 
     z = float(z)
     zmin = min(bathy[1,0], bathy[2,0])
     zmax = max(bathy[1,0], bathy[2,0])
@@ -75,7 +74,7 @@ def test_interpolate_bathymetry_using_latlon_coordinates():
     # interpolate at two points
     x1 = (lat[1] + lat[2])/2
     x2 = (lat[2] + lat[3])/2
-    z = ip.eval_ll(lat=[x1,x2], lon=lon[0])
+    z = ip.interp(lat=[x1,x2], lon=lon[0])
     zmin = min(bathy[1,0], bathy[2,0])
     zmax = max(bathy[1,0], bathy[2,0])
     assert z[0] >= zmin
@@ -90,10 +89,10 @@ def test_interpolate_bathymetry_using_latlon_coordinates():
     x2 = (lat[2] + lat[3])/2
     y1 = (lon[1] + lon[2])/2
     y2 = (lon[2] + lon[3])/2
-    z = ip.eval_ll(lat=[x1,x2], lon=[y1,y2], grid=False)
+    z = ip.interp(lat=[x1,x2], lon=[y1,y2], grid=False)
     assert np.ndim(z) == 1
     assert z.shape[0] == 2 
-    z = ip.eval_ll(lat=[x1,x2], lon=[y1,y2], grid=True) 
+    z = ip.interp(lat=[x1,x2], lon=[y1,y2], grid=True) 
     assert np.ndim(z) == 2
     assert z.shape[0] == 2 
     assert z.shape[1] == 2 
@@ -120,18 +119,18 @@ def test_interpolation_tables_agree_on_latlon_grid():
     ilat = int(len(ip.lat_nodes)/2)
     lat = ip.lat_nodes[ilat]
     for lon in ip.lon_nodes: 
-        bll = ip.eval_ll(lat=lat, lon=lon)
+        bll = ip.interp(lat=lat, lon=lon)
         x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
-        bxy = ip.eval_xy(x=x, y=y)
+        bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
     # lon fixed
     ilon = int(len(ip.lon_nodes)/2)
     lon = ip.lon_nodes[ilon]
     for lat in ip.lat_nodes: 
-        bll = ip.eval_ll(lat=lat, lon=lon)
+        bll = ip.interp(lat=lat, lon=lon)
         x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
-        bxy = ip.eval_xy(x=x, y=y)
+        bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
 
@@ -144,9 +143,9 @@ def test_interpolation_tables_agree_anywhere():
     # --- at origo ---
     lat_c = ip.origin.latitude
     lon_c = ip.origin.longitude
-    z_ll = ip.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
+    z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
-    z_xy = ip.eval_xy(x=0, y=0) # interpolate using x-y
+    z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
     z_xy = float(z_xy)
     assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)
 
@@ -154,9 +153,9 @@ def test_interpolation_tables_agree_anywhere():
     lat = lat_c + 0.1
     lon = lon_c
     x,y = LLtoXY(lat=lat, lon=lon, lat_ref=lat_c, lon_ref=lon_c)
-    z_ll = ip.eval_ll(lat=lat, lon=lon)
+    z_ll = ip.interp(lat=lat, lon=lon)
     z_ll = float(z_ll)
-    z_xy = ip.eval_xy(x=x, y=y) 
+    z_xy = ip.interp_xy(x=x, y=y) 
     z_xy = float(z_xy)
     assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)    
 
@@ -164,9 +163,9 @@ def test_interpolation_tables_agree_anywhere():
     lat = lat_c - 0.08
     lon = lon_c
     x,y = LLtoXY(lat=lat, lon=lon, lat_ref=lat_c, lon_ref=lon_c)
-    z_ll = ip.eval_ll(lat=lat, lon=lon)
+    z_ll = ip.interp(lat=lat, lon=lon)
     z_ll = float(z_ll)
-    z_xy = ip.eval_xy(x=x, y=y) 
+    z_xy = ip.interp_xy(x=x, y=y) 
     z_xy = float(z_xy)
     assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)   
 
@@ -175,9 +174,9 @@ def test_interpolation_tables_agree_anywhere():
     ip = Interpolator2D(bathy, lat, lon, origin=LatLon(55.30,15.10))
     lat_c = ip.origin.latitude
     lon_c = ip.origin.longitude
-    z_ll = ip.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
+    z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
-    z_xy = ip.eval_xy(x=0, y=0) # interpolate using x-y
+    z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
     z_xy = float(z_xy)
     assert z_ll == pytest.approx(z_xy, rel=1e-3) or z_xy == pytest.approx(z_ll, abs=0.1)
 
@@ -192,18 +191,18 @@ def test_interpolation_tables_agree_on_ll_grid_for_dbarclays_data():
     ilat = int(len(ip.lat_nodes)/2)
     lat = ip.lat_nodes[ilat]
     for lon in ip.lon_nodes: 
-        bll = ip.eval_ll(lat=lat, lon=lon)
+        bll = ip.interp(lat=lat, lon=lon)
         x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
-        bxy = ip.eval_xy(x=x, y=y)
+        bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
     # lon fixed
     ilon = int(len(ip.lon_nodes)/2)
     lon = ip.lon_nodes[ilon]
     for lat in ip.lat_nodes: 
-        bll = ip.eval_ll(lat=lat, lon=lon)
+        bll = ip.interp(lat=lat, lon=lon)
         x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
-        bxy = ip.eval_xy(x=x, y=y)
+        bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
 
@@ -216,9 +215,9 @@ def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
     # --- at origo ---
     lat_c = ip.origin.latitude
     lon_c = ip.origin.longitude
-    z_ll = ip.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
+    z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
-    z_xy = ip.eval_xy(x=0, y=0) # interpolate using x-y
+    z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
     z_xy = float(z_xy)
     assert z_ll == pytest.approx(z_xy, rel=1E-3) or z_ll == pytest.approx(z_xy, abs=0.1)
 
@@ -227,9 +226,9 @@ def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
     ip = Interpolator2D(bathy, lat, lon, origin=LatLon(9.,140.))
     lat_c = ip.origin.latitude
     lon_c = ip.origin.longitude
-    z_ll = ip.eval_ll(lat=lat_c, lon=lon_c) # interpolate using lat-lon
+    z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
-    z_xy = ip.eval_xy(x=0, y=0) # interpolate using x-y
+    z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
     z_xy = float(z_xy)
     assert z_ll == pytest.approx(z_xy, rel=1E-3) or z_ll == pytest.approx(z_xy, abs=0.1)
 
@@ -239,11 +238,11 @@ def test_mariana_trench_is_in_correct_location():
     path = path_to_assets + '/BathyData_Mariana_500kmx500km.mat'
     bathy, lat, lon = load_data_from_file(path, lat_name='latgrat', lon_name='longrat', val_name='mat', lon_axis=0)
     ip = Interpolator2D(bathy, lat, lon)
-    d = ip.eval_ll(lat=11.3733, lon=142.5917)
+    d = ip.interp(lat=11.3733, lon=142.5917)
     assert d < -10770
-    d = ip.eval_ll(lat=12.0, lon=142.4)
+    d = ip.interp(lat=12.0, lon=142.4)
     assert d > -3000
-    d = ip.eval_ll(lat=11.4, lon=143.1)
+    d = ip.interp(lat=11.4, lon=143.1)
     assert d < -9000
 
 
@@ -260,10 +259,10 @@ def test_can_interpolate_multiple_points_in_ll():
     # --- 4 longitudes --- 
     lons = [lon_c, lon_c+0.15, lon_c-0.08, lon_c-0.12]
     # interpolate
-    depths = ip.eval_ll(lat=lats, lon=lons)
+    depths = ip.interp(lat=lats, lon=lons)
     zi = list()
     for lat, lon in zip(lats, lons):
-        zi.append(ip.eval_ll(lat=lat, lon=lon))
+        zi.append(ip.interp(lat=lat, lon=lon))
     for z,d in zip(zi, depths):
         assert z == pytest.approx(d, rel=1e-3)
 
@@ -278,10 +277,10 @@ def test_can_interpolate_multiple_points_in_xx():
     # --- 4 y coordinates --- 
     ys = [0, 1500, 800, -120]
     # interpolate
-    depths = ip.eval_xy(x=xs, y=ys)
+    depths = ip.interp_xy(x=xs, y=ys)
     zi = list()
     for x, y in zip(xs, ys):
-        zi.append(ip.eval_xy(x=x, y=y))
+        zi.append(ip.interp_xy(x=x, y=y))
     for z,d in zip(zi, depths):
         assert z == pytest.approx(d, rel=1e-3)
 
@@ -294,7 +293,7 @@ def test_can_interpolate_regular_grid():
     # initialize interpolator
     ip = Interpolator2D(bathy, lat, lon)
     # check value at grid point
-    b = ip.eval_ll(lat=45, lon=62)
+    b = ip.interp(lat=45, lon=62)
     assert b == pytest.approx(bathy[1,2], abs=1E-9)
 
 
@@ -310,13 +309,13 @@ def test_can_interpolate_irregular_grid():
     # --- 4 longitudes --- 
     lons = [0.01, 2.0, 1.0, 0.71]
     # interpolate all at once
-    depths = ip.eval_ll(lat=lats, lon=lons)
+    depths = ip.interp(lat=lats, lon=lons)
     assert depths[1] == pytest.approx(-200, abs=1E-9)
     assert depths[2] < -90 and depths[2] > -200
     # interpolate one at a time
     zi = list()
     for lat, lon in zip(lats, lons):
-        zi.append(ip.eval_ll(lat=lat, lon=lon))
+        zi.append(ip.interp(lat=lat, lon=lon))
     # check that the all-at-once and one-at-a-time 
     # approaches give the same result
     for z,d in zip(zi, depths):
@@ -338,7 +337,7 @@ def test_can_interpolate_irregular_grid_by_mapping_to_regular_grid():
     # --- 4 longitudes --- 
     lons = [0.01, 2.0, 1.0, 0.71]
     # interpolate all at once
-    depths = ip.eval_ll(lat=lats, lon=lons)
+    depths = ip.interp(lat=lats, lon=lons)
     assert depths[1] == pytest.approx(-200, abs=1E-9)
     assert depths[2] < -90 and depths[2] > -200
 
@@ -360,14 +359,14 @@ def test_can_interpolate_geotiff_data():
     # --- 4 longitudes --- 
     lons = [-59.6, -59.8, -59.2, -59.3]
     # interpolate
-    depths = ip.eval_ll(lat=lats, lon=lons)
+    depths = ip.interp(lat=lats, lon=lons)
     zi = list()
     for lat, lon in zip(lats, lons):
-        zi.append(ip.eval_ll(lat=lat, lon=lon))
+        zi.append(ip.interp(lat=lat, lon=lon))
     for z,d in zip(zi, depths):
         assert z == pytest.approx(d, rel=1e-3)
     # interpolate on grid
-    depths_grid = ip.eval_ll(lat=lats, lon=lons, grid=True)
+    depths_grid = ip.interp(lat=lats, lon=lons, grid=True)
     assert depths_grid.shape[0] == 4
     assert depths_grid.shape[1] == 4
     for i in range(4):
@@ -388,14 +387,14 @@ def test_interpolate_uniform_3d_data():
     lats = np.random.rand(3) * (N - 1)
     lons = np.random.rand(3) * (N - 1)
     depths = np.random.rand(3) * (N - 1)
-    vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
+    vi = ip.interp(lat=lats, lon=lons, z=depths)
     for v in vi:
         assert v == pytest.approx(1, abs=1E-9)
     # check interpolation on a grid
     lats = np.random.rand(3) * (N - 1)
     lons = np.random.rand(4) * (N - 1)
     depths = np.random.rand(5) * (N - 1)
-    vi = ip.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
+    vi = ip.interp(lat=lats, lon=lons, z=depths, grid=True)
     assert vi.shape[0] == 3
     assert vi.shape[1] == 4
     assert vi.shape[2] == 5
@@ -418,7 +417,7 @@ def test_interpolate_3d_data_with_constant_slope():
     lats = np.array([4, 4, 4])
     lons = np.array([4, 4, 4])
     depths = np.array([4, 4.5, 5])
-    vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
+    vi = ip.interp(lat=lats, lon=lons, z=depths)
     assert vi[0] == pytest.approx(4, abs=1E-9)
     assert vi[1] == pytest.approx(4.5, abs=1E-9)
     assert vi[2] == pytest.approx(5, abs=1E-9)
@@ -426,7 +425,7 @@ def test_interpolate_3d_data_with_constant_slope():
     lats = np.array([2, 3, 4])
     lons = np.array([1, 2, 3])
     depths = np.array([4, 4.5, 5])
-    vi = ip.eval_ll(lat=lats, lon=lons, z=depths, grid=True)
+    vi = ip.interp(lat=lats, lon=lons, z=depths, grid=True)
     assert np.all(np.abs(vi[:,:,0] - 4) < 1E-9)
     assert np.all(np.abs(vi[:,:,1] - 4.5) < 1E-9)
     assert np.all(np.abs(vi[:,:,2] - 5) < 1E-9)
@@ -447,7 +446,7 @@ def test_interpolate_3d_data_using_xy_coordinates():
     x = np.array([0, 100, 200])
     y = np.array([0, 100, 200])
     depths = np.array([4, 4.5, 5])
-    vi = ip.eval_xy(x=x, y=y, z=depths)
+    vi = ip.interp_xy(x=x, y=y, z=depths)
     assert vi[0] == pytest.approx(4, abs=1E-9)
     assert vi[1] == pytest.approx(4.5, abs=1E-9)
     assert vi[2] == pytest.approx(5, abs=1E-9)
@@ -467,18 +466,18 @@ def test_interpolate_3d_outside_grid():
     lats = 20
     lons = 5
     depths = 5
-    vi = ip.eval_ll(lat=lats, lon=lons, z=depths)
+    vi = ip.interp(lat=lats, lon=lons, z=depths)
     assert vi == 1
 
 
 def test_interpolate_uniform_2d():
     ip = Uniform2D(17)
-    v = ip.eval_ll(lat=5, lon=2000)
+    v = ip.interp(lat=5, lon=2000)
     assert v == 17
-    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0, 1])
+    v = ip.interp(lat=[5, 12, 13], lon=[2000, 0, 1])
     assert np.all(v == 17)
     assert v.shape[0] == 3
-    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0], grid=True)
+    v = ip.interp(lat=[5, 12, 13], lon=[2000, 0], grid=True)
     assert np.all(v == 17)
     assert v.shape[0] == 3
     assert v.shape[1] == 2
@@ -486,12 +485,12 @@ def test_interpolate_uniform_2d():
 
 def test_interpolate_uniform_3d():
     ip = Uniform3D(17)
-    v = ip.eval_ll(lat=5, lon=2000, z=-10)
+    v = ip.interp(lat=5, lon=2000, z=-10)
     assert v == 17
-    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0, 1], z=[0, 2, -3])
+    v = ip.interp(lat=[5, 12, 13], lon=[2000, 0, 1], z=[0, 2, -3])
     assert np.all(v == 17)
     assert v.shape[0] == 3
-    v = ip.eval_ll(lat=[5, 12, 13], lon=[2000, 0], z=[0, 2, -3], grid=True)
+    v = ip.interp(lat=[5, 12, 13], lon=[2000, 0], z=[0, 2, -3], grid=True)
     assert np.all(v == 17)
     assert v.shape[0] == 3
     assert v.shape[1] == 2
@@ -501,8 +500,9 @@ def test_interpolate_uniform_3d():
 def test_interpolate_depth_3d():
     ip = DepthInterpolator3D(values=[0,1,4,9], depths=[0,1,2,3], method='quadratic')
     # inside range
-    v = ip.eval_ll(lat=5, lon=2000, z=1.5)
+    v = ip.interp(lat=5, lon=2000, z=1.5)
     assert v == 1.5*1.5
     # outside range
-    v = ip.eval_ll(lat=5, lon=2000, z=3.5)
+    v = ip.interp(lat=5, lon=2000, z=3.5)
     assert v == 3.5*3.5
+

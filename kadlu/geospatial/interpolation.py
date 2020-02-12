@@ -309,7 +309,7 @@ class Interpolator2D():
     def get_nodes(self):
         return (self.values, self.lat_nodes, self.lon_nodes)
 
-    def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
+    def interp_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
         """ Interpolate using planar coordinate system (xy).
 
             x and y can be floats or arrays.
@@ -366,7 +366,7 @@ class Interpolator2D():
 
         return zi
 
-    def eval_ll(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
+    def interp(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
         """ Interpolate using spherical coordinate system (latitude-longitude).
 
             lat and lot can be floats or arrays.
@@ -490,7 +490,7 @@ class Interpolator3D():
     def get_nodes(self):
         return (self.values, self.lat_nodes, self.lon_nodes, self.depth_nodes)
 
-    def eval_xy(self, x, y, z, grid=False):
+    def interp_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).
 
             x,y,z can be floats or arrays.
@@ -548,7 +548,7 @@ class Interpolator3D():
 
         return vi
 
-    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+    def interp(self, lat, lon, z, grid=False, squeeze=True):
         """ Interpolate using spherical coordinate system (lat-lon).
 
             lat,lot,z can be floats or arrays.
@@ -614,17 +614,15 @@ class Interpolator3D():
 
 class Uniform2D():
 
-    """
-    def __init__(self, values, lats, lons):
-        self.value = values[0]
-    """
+    #def __init__(self, value):
+    #    self.value = value
     def __init__(self, values, lats, lons):
         self.value = values
 
-    def get_nodes(self):
-        return self.value
+    #def get_nodes(self):
+    #    return self.value
 
-    def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
+    def interp_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
 
         z = self.eval_ll(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
 
@@ -635,7 +633,7 @@ class Uniform2D():
 
         return z
 
-    def eval_ll(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
+    def interp(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
 
         if np.ndim(lat) == 0: lat = np.array([lat])
         if np.ndim(lon) == 0: lon = np.array([lon])
@@ -665,18 +663,13 @@ class Uniform3D():
 
     #def __init__(self, value):
     #    self.value = value
-    """
-    def __init__(self, values, lats, lons, depths):
-        print(values[0][0][0])
-        self.value = values.flatten()[0]
-    """
     def __init__(self, values):
         self.value = values
 
-    def get_nodes(self):
-        return self.value
+    #def get_nodes(self):
+    #    return self.value
 
-    def eval_xy(self, x, y, z, grid=False):
+    def interp_xy(self, x, y, z, grid=False):
 
         v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
 
@@ -687,7 +680,7 @@ class Uniform3D():
 
         return v
 
-    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+    def interp(self, lat, lon, z, grid=False, squeeze=True):
 
         if np.ndim(lat) == 0: lat = np.array([lat])
         if np.ndim(lon) == 0: lon = np.array([lon])

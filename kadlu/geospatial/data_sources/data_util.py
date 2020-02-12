@@ -162,7 +162,7 @@ def index(val, sorted_arr):
     return np.nonzero(sorted_arr >= val)[0][0]
   
 
-def flatten(v, cols, frames):
+def flatten(cols, frames):
     """ dimensional reduction by taking average of time frames """
     # assert that frames are of equal size
     assert reduce(lambda a, b: (a==b)*a, frames[1:] - frames[:-1])
@@ -178,20 +178,17 @@ def flatten(v, cols, frames):
         return vals, y, x, z
 
 
-def reshape_2D(*, var, data):
-    return dict(values=data[0],
-               lats=data[1],
-               lons=data[2]
-            )
+def reshape_2D(cols):
+    return dict(values=cols[0], lats=cols[1], lons=cols[2])
 
 
-def reshape_3D(*, var, data):
-    """ load 3D data from database and prepare it for interpolation """
-    if isinstance(data[0], (float, int)):
-        return dict(values=data[0])
-    frames = np.append(np.nonzero(data[3][1:] > data[3][:-1])[0] + 1, len(data[3]))
-    if len(np.unique(frames)) > 1: vals, y, x, z = flatten(var, data, frames) 
-    else: vals, y, x, _, z  = data
+def reshape_3D(cols):
+    """ prepare loaded data for interpolation """
+    if isinstance(cols[0], (float, int)):
+        return dict(values=cols[0])
+    frames = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
+    if len(np.unique(frames)) > 1: vals, y, x, z = flatten(cols, frames) 
+    else: vals, y, x, _, z  = cols 
     rows = np.array((vals, y, x, z)).T
 
     # reshape row data to 3D array

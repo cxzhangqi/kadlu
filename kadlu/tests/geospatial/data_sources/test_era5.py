@@ -15,20 +15,20 @@ end   = datetime(2018, 1, 1, 0, 0, 0, 0)
 # note: see assertions within fetch function
 
 def test_era5_fetch_windwaveswellheight():
-    Era5().fetch_windwaveswellheight(start=start, end=end)
+    if not Era5().fetch_windwaveswellheight(start=start, end=end):
+        print('era5 query was fetched already, skipping...')
 
-# if we can fetch one var, we can probably fetch these also...
-# commenting these might speed up tests slightly
-"""
 def test_era5_fetch_wavedirection():
-    Era5().fetch_wavedirection(start=start, end=end)
+    if not Era5().fetch_wavedirection(start=start, end=end):
+        print('era5 query was fetched already, skipping...')
 
 def test_era5_fetch_waveperiod():
-    Era5().fetch_waveperiod(start=start, end=end)
+    if not Era5().fetch_waveperiod(start=start, end=end):
+        print('era5 query was fetched already, skipping...')
 
 def test_era5_fetch_wind():
-    Era5().fetch_wind(start=start, end=end)
-"""
+    if not Era5().fetch_wind(start=start, end=end):
+        print('era5 query was fetched already, skipping...')
 
 def test_era5_load_windwaveswellheight():
     height, lat, lon, time = Era5().load_windwaveswellheight(
@@ -37,7 +37,6 @@ def test_era5_load_windwaveswellheight():
     assert(len(height)==len(lat)==len(lon))
     assert(len(lat) > 0)
 
-"""
 def test_era5_load_wavedirection():
     wave, lat, lon, time = Era5().load_wavedirection(
             south=south, north=north, west=west, east=east, start=start, end=end
@@ -54,10 +53,9 @@ def test_era5_load_waveperiod():
 
 def test_era5_load_wind():
     wind, lat, lon, time = Era5().load_wind(
-            south=south, north=north, west=west, east=east, start=start, end=end
+            south=south, north=south+1, west=west, east=west+1, start=start, end=end
         )
     assert(len(wind)==len(lat)==len(lon))
     assert(len(lat) > 0)
-"""
 
 

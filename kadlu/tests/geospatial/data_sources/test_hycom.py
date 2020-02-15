@@ -19,31 +19,21 @@ end   = datetime(2000, 1, 10, 12)
 
 
 def test_fetch_salinity():
-    #Hycom().fetch_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
-    val, lat, lon, time, depth = Hycom().load_salinity(
+    if not Hycom().fetch_salinity(
             south=south, north=north, 
             west=west, east=east, 
             start=start, end=end, 
-            top=top, bottom=bottom
-        )
-    
-    if len(val) == 0:
-        Hycom().fetch_salinity(
-                south=south, north=north, 
-                west=west, east=east, 
-                start=start, end=end, 
-                top=top, bottom=bottom
-            )
+            top=top, bottom=bottom):
+        print("hycom query was already fetched. skipping... ")
+    return
 
-        val, lat, lon, time, depth = Hycom().load_salinity(
-                south=south, north=north, 
-                west=west, east=east, 
-                start=start, end=end, 
-                top=top, bottom=bottom
-            )
-    else:
-        print("found some data in the database, skipping fetching... "
-              "to test explicitly, delete the database and restart")
+def test_fetch_temp():
+    if not Hycom().fetch_temp(
+            south=south, north=north, 
+            west=west, east=east, 
+            start=start, end=end, 
+            top=top, bottom=bottom):
+        print("hycom query was already fetched. skipping... ")
     return
 
 def test_load_salinity():
@@ -109,9 +99,7 @@ def test_fetch_load_over_antimeridian():
 # hycom connection seems to be pretty slow for some reason... im getting ~2kbps download speeds
 # in the meantime i've commented out the other fetch tests to make integrated testing faster
 
-"""
 def test_fetch_temp():
-    if not test_fetch: return
     Hycom().fetch_temp(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_temp():
@@ -121,7 +109,6 @@ def test_load_temp():
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_fetch_water_u():
-    if not test_fetch: return
     Hycom().fetch_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_water_u():
@@ -131,7 +118,6 @@ def test_load_water_u():
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
 def test_fetch_water_v():
-    if not test_fetch: return
     Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_water_v():
@@ -139,7 +125,6 @@ def test_load_water_v():
     assert(len(val) == len(lat) == len(lon) == len(time))
     assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
-"""
 
 
 """ interactive mode debugging: assert db ordering is correct

@@ -4,8 +4,8 @@ from kadlu.geospatial.data_sources import wwiii
 from kadlu.geospatial.data_sources.wwiii import Wwiii, Boundary, wwiii_regions, wwiii_global
 
 
-start = datetime(2019, 2, 3, 0, 0, 0, 0)
-end = datetime(2019, 2, 3, 0, 0, 0, 0)
+start = datetime(2015, 2, 3, 0, 0, 0, 0)
+end = datetime(2015, 2, 3, 3, 0, 0, 0)
 
 # gulf st lawrence
 south, west = 47.1, -70
@@ -38,14 +38,35 @@ def test_wwiii_ll2regionstr():
     assert(len(globe) == 5)
 
 def test_wwiii_fetch_windwaveheight():
-    Wwiii().fetch_windwaveheight(south=south, north=north, west=west, east=east, start=start, end=end)
+    if not Wwiii().fetch_windwaveheight(south=south, north=north, west=west, east=east, start=start, end=end):
+        print('wwiii query was fetched already, skipping...')
+    return 
+
+def test_wwiii_fetch_wavedirection():
+    if not Wwiii().fetch_wavedirection(south=south, north=north, west=west, east=east, start=start, end=end):
+        print('wwiii query was fetched already, skipping...')
+    return 
+def test_wwiii_fetch_waveperiod():
+    if not Wwiii().fetch_waveperiod(south=south, north=north, west=west, east=east, start=start, end=end):
+        print('wwiii query was fetched already, skipping...')
+    return 
+def test_wwiii_fetch_windwaveheight():
+    if not Wwiii().fetch_windwaveheight(south=south, north=north, west=west, east=east, start=start, end=end):
+        print('wwiii query was fetched already, skipping...')
+    return 
+def test_wwiii_fetch_wind():
+    if not Wwiii().fetch_wind(south=south, north=north, west=west, east=east, start=start, end=end):
+        print('wwiii query was fetched already, skipping...')
+    return 
 
 def test_wwiii_load_windwaveheight():
     wave, lat, lon, time = Wwiii().load_windwaveheight(south=43, west=-60, north=44, east=-59, start=start, end=end)
 
 
 def test_wwiii_fetch_wind():
-    Wwiii().fetch_wind(south=south, north=north, west=west, east=east, start=start, end=end)
+    if not Wwiii().fetch_wind(south=south, north=north, west=west, east=east, start=start, end=end):
+        print('wwiii query was fetched already, skipping...')
+    return 
 
 def test_wwiii_load_wind():
     wave, lat, lon, time = Wwiii().load_wind(south=43, west=-60, north=44, east=-59, start=start, end=end)

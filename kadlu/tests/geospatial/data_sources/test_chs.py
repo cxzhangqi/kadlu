@@ -24,7 +24,9 @@ northumberland_strait_deepest_point = -37
 # http://fishing-app.gpsnauticalcharts.com/i-boating-fishing-web-app/fishing-marine-charts-navigation.html?title=Northumberland+Strait+boating+app#9/46.0018/-63.1677
 
 def test_fetch_bathy():
-    source.fetch_bathymetry(south=south, north=north, west=west, east=east)
+    if not source.fetch_bathymetry(south=south, north=north, west=west, east=east):
+        print('chs query was fetched already, skipping...')
+    return 
 
 def test_load_bathy_northumberland_strait():
     bathy, lat, lon = source.load_bathymetry(south=south, north=north, west=west, east=east)

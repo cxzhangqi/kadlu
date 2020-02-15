@@ -71,6 +71,6 @@ def test_query_sound_speed_interpolation_data():
     # instance of sound speed class 
     ss = SoundSpeed(ssp=(c0,z0), num_depths=50, rel_err=None)
     # query underlying data
-    d = ss.eval()
+    d = ss.eval([0], [0], [0])
     assert np.all(np.abs(d[1]-z0) < 1E-6)
     assert np.all(np.abs(d[0]-c0) < 1E-6)

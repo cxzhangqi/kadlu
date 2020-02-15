@@ -105,8 +105,11 @@ def test_interpolation_grids_are_what_they_should_be():
     ip = Interpolator2D(bathy, lat, lon)
     lat_c = 0.5 * (lat[0] + lat[-1])
     lon_c = 0.5 * (lon[0] + lon[-1])
-    assert ip.origin.latitude == lat_c
-    assert ip.origin.longitude == lon_c
+
+    #assert ip.origin.latitude == lat_c
+    #assert ip.origin.longitude == lon_c
+    assert lat_c, lon_c == LatLon(lat, lon)
+
 
 
 def test_interpolation_tables_agree_on_latlon_grid():
@@ -120,7 +123,8 @@ def test_interpolation_tables_agree_on_latlon_grid():
     lat = ip.lat_nodes[ilat]
     for lon in ip.lon_nodes: 
         bll = ip.interp(lat=lat, lon=lon)
-        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
+        #x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
+        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin[0], lon_ref=ip.origin[1])
         bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
@@ -129,7 +133,7 @@ def test_interpolation_tables_agree_on_latlon_grid():
     lon = ip.lon_nodes[ilon]
     for lat in ip.lat_nodes: 
         bll = ip.interp(lat=lat, lon=lon)
-        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
+        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin[0], lon_ref=ip.origin[1])
         bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
@@ -141,8 +145,9 @@ def test_interpolation_tables_agree_anywhere():
     ip = Interpolator2D(bathy, lat, lon)
 
     # --- at origo ---
-    lat_c = ip.origin.latitude
-    lon_c = ip.origin.longitude
+    lat_c, lon_c = LatLon(lat, lon)
+    #lat_c = ip.origin.latitude
+    #lon_c = ip.origin.longitude
     z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
     z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
@@ -172,8 +177,8 @@ def test_interpolation_tables_agree_anywhere():
     # --- at shifted origo ---
     bathy, lat, lon = load_data_from_file(path)
     ip = Interpolator2D(bathy, lat, lon, origin=LatLon(55.30,15.10))
-    lat_c = ip.origin.latitude
-    lon_c = ip.origin.longitude
+    lat_c = ip.origin[0]
+    lon_c = ip.origin[1]
     z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
     z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
@@ -192,7 +197,7 @@ def test_interpolation_tables_agree_on_ll_grid_for_dbarclays_data():
     lat = ip.lat_nodes[ilat]
     for lon in ip.lon_nodes: 
         bll = ip.interp(lat=lat, lon=lon)
-        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
+        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin[0], lon_ref=ip.origin[1])
         bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
@@ -201,7 +206,7 @@ def test_interpolation_tables_agree_on_ll_grid_for_dbarclays_data():
     lon = ip.lon_nodes[ilon]
     for lat in ip.lat_nodes: 
         bll = ip.interp(lat=lat, lon=lon)
-        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin.latitude, lon_ref=ip.origin.longitude)
+        x, y = LLtoXY(lat=lat, lon=lon, lat_ref=ip.origin[0], lon_ref=ip.origin[1])
         bxy = ip.interp_xy(x=x, y=y)
         assert bxy == pytest.approx(bll, rel=1e-3) or bxy == pytest.approx(bll, abs=0.1)
 
@@ -213,8 +218,8 @@ def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
     ip = Interpolator2D(bathy, lat, lon)
 
     # --- at origo ---
-    lat_c = ip.origin.latitude
-    lon_c = ip.origin.longitude
+    lat_c = ip.origin[0]
+    lon_c = ip.origin[1]
     z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
     z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
@@ -224,8 +229,8 @@ def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
     # --- at shifted origo ---
     bathy, lat, lon = load_data_from_file(path, lat_name='latgrat', lon_name='longrat', val_name='mat', lon_axis=0)
     ip = Interpolator2D(bathy, lat, lon, origin=LatLon(9.,140.))
-    lat_c = ip.origin.latitude
-    lon_c = ip.origin.longitude
+    lat_c = ip.origin[0]
+    lon_c = ip.origin[1]
     z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
     z_ll = float(z_ll)
     z_xy = ip.interp_xy(x=0, y=0) # interpolate using x-y
@@ -252,8 +257,8 @@ def test_can_interpolate_multiple_points_in_ll():
     bathy, lat, lon = load_data_from_file(path)
     ip = Interpolator2D(bathy, lat, lon)
     # coordinates of origin
-    lat_c = ip.origin.latitude
-    lon_c = ip.origin.longitude
+    lat_c = ip.origin[0]
+    lon_c = ip.origin[1]
     # --- 4 latitudes ---
     lats = [lat_c, lat_c+0.1, lat_c-0.2, lat_c+0.03]
     # --- 4 longitudes --- 

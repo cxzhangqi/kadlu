@@ -41,6 +41,7 @@ from kadlu.sound.pe.starter import Starter
 from kadlu.sound.pe.propagator import Propagator
 from kadlu.utils import XYtoLL, toarray
 from datetime import datetime
+from kadlu.geospatial.data_sources.source_map import default_val 
 
 from sys import platform as sys_pf
 if sys_pf == 'darwin' or sys_pf == 'win32':
@@ -303,7 +304,8 @@ class TLCalculator():
         dq = self.bin_size['q'] / 180 * np.pi
 
         # automatic determination of vertical range
-        bathy = self.ocean.bathy()
+        #bathy = self.ocean.bathy()
+        bathy = [default_val['top'], default_val['bottom']]
         if isinstance(bathy, float) or isinstance(bathy, int):
             max_depth = -bathy
         else:
@@ -373,7 +375,7 @@ class TLCalculator():
         self.seafloor.frequency = frequency
 
         # load data and initialize grid
-        self._update_source_location_and_time(lat=source_lat, lon=source_lon, start=start, end=end)
+        #self._update_source_location_and_time(lat=source_lat, lon=source_lon, start=start, end=end)
 
         # create grid
         grid = self._create_grid(frequency)

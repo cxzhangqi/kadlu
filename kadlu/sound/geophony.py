@@ -92,7 +92,7 @@ def source_level(freq, x, y, area, ocean, method, grid=False, geometry='planar')
                 Source levels in units of dB re 1 uPa^2 / Hz @ 1m.
     """
     if method == 'kewley':
-        wind_speed = ocean.windspeed(x=x, y=y) 
+        wind_speed = ocean.windspeed(lon=x, lat=y) 
         sl = source_level_kewley(freq=freq, wind_speed=wind_speed) # source level per unit area
         sl += 20 * np.log10(area) # scale by area
 

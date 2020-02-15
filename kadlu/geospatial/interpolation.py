@@ -245,9 +245,9 @@ class Interpolator2D():
         
         # compute coordinates of origin, if not provided
         if origin is None:
-            lat_ref = (np.min(lats) + np.max(lats)) / 2
-            lon_ref = (np.min(lons) + np.max(lons)) / 2
-            origin = LatLon(lat_ref, lon_ref)
+            #lat_ref = (np.min(lats) + np.max(lats)) / 2
+            #lon_ref = (np.min(lons) + np.max(lons)) / 2
+            origin = LatLon(lats, lons)
 
         self.origin = origin
 
@@ -339,7 +339,7 @@ class Interpolator2D():
             Returns:
                 zi: Interpolated interpolation values
         """
-        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
+        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin[0], lon_ref=self.origin[1], grid=grid)
 
         if grid:
             M = lat.shape[0]
@@ -455,7 +455,6 @@ class Interpolator3D():
                 Interpolation method. Default is linear
     """
     def __init__(self, values, lats, lons, depths, origin=None, method='linear'):
-        
         # compute coordinates of origin, if not provided
         if origin is None:
             lat_ref = (np.min(lats) + np.max(lats)) / 2
@@ -526,7 +525,7 @@ class Interpolator3D():
         if np.ndim(z) == 1: 
             K = len(z)
 
-        lat, lon, z = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid, z=z)
+        lat, lon, z = XYtoLL(x=x, y=y, lat_ref=self.origin[0], lon_ref=self.origin[1], grid=grid, z=z)
 
         if grid:
             lat = lat.flatten()
@@ -614,8 +613,8 @@ class Interpolator3D():
 
 class Uniform2D():
 
-    def __init__(self, values, **garbage):
-        # added garbage kwargs to standardize input format 
+    def __init__(self, values, **other):
+        # added other kwargs to standardize input format 
         # with the interface of the Interpolator2D
         # this gets rid of errors in the ocean module
         self.value = values
@@ -721,7 +720,7 @@ class DepthInterpolator3D():
             values = values[0,0,:]
 
         # initialize 1d interpolator
-        self.interp = interp1d(x=depths, y=values, kind=method, fill_value="extrapolate")
+        self.interp1d = interp1d(x=depths, y=values, kind=method, fill_value="extrapolate")
 
         # store interpolation data
         self.depth_nodes = depths
@@ -758,7 +757,8 @@ class DepthInterpolator3D():
             Returns:
                 vi: Interpolated values
         """
-        v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+        #v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+        v = self.interp1d(lat=y, lon=x, z=z, grid=grid, squeeze=False)
 
         if np.ndim(v) == 3:
             v = np.swapaxes(v, 0, 1)
@@ -806,7 +806,8 @@ class DepthInterpolator3D():
 
             s = len(lat)
 
-        v = self.interp(z)
+        #v = self.interp(z)
+        v = self.interp(lat, lon, z)
 
         if grid:
             v = np.ones(s) * v[np.newaxis, np.newaxis, :]

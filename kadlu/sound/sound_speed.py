@@ -72,11 +72,15 @@ class SoundSpeed():
                 self.interp = Uniform3D(values=ssp)
 
         else:
-            self.origin = ocean.origin
+            #self.origin = ocean.origin
 
             # convert from meters to degrees
-            lat_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=1, lon_deriv_order=0)
-            lon_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=0, lon_deriv_order=1)
+            #lat_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=1, lon_deriv_order=0)
+            #lon_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=self.origin.latitude, lat_deriv_order=0, lon_deriv_order=1)
+            origin_lat, origin_lon = self.origin
+            lat_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=origin_lat, lat_deriv_order=1, lon_deriv_order=0)
+            # should the kwarg on the next line be lat ?
+            lon_res = 1./deg2rad * xy_res * DLDL_over_DXDY(lat=origin_lon, lat_deriv_order=0, lon_deriv_order=1)
 
             # geographic boundaries
             S = ocean.SW.latitude
@@ -141,7 +145,7 @@ class SoundSpeed():
         return depths
 
 
-    def eval(self, x=None, y=None, z=None, grid=False, geometry='planar'):
+    def eval(self, x, y, z, grid=False, geometry='planar'):
         """ Evaluate interpolated sound speed in spherical (lat-lon) or  
             planar (x-y) geometry.
 
@@ -177,17 +181,34 @@ class SoundSpeed():
             Returns:
                 c: Interpolated sound speed values
         """
-        if x is None and y is None and z is None:
-            c = self.data
+        
+        # default x,y,z values were breaking tests, so i made x,y,z to be 
+        # mandatory args for now
+        # matt_s
 
+
+        #if x is None and y is None and z is None:
+        #    #c = self.data
+
+        #else:
+        #    if geometry == 'planar':
+        #        #c = self.interp.interp_xy(x=x, y=y, z=z, grid=grid)
+        #        c = self.interp_xy(x=x, y=y, z=z, grid=grid)
+
+        #    elif geometry == 'spherical':
+        #        c = self.interp.interp(lat=y, lon=x, z=z, grid=grid)
+
+        #   return c
+
+        if grid == False:
+            assert len(x) == len(y) == len(z), 'x,y,z must be supplied with equal length'
+
+        if geometry == 'planar':
+            return self.interp.interp_xy(x, y, z, grid=grid)
+        elif geometry == 'spherical':
+            return self.interp.interp(lon=x, lat=y, depth=z, grid=grid)
         else:
-            if geometry == 'planar':
-                c = self.interp.interp_xy(x=x, y=y, z=z, grid=grid)
-
-            elif geometry == 'spherical':
-                c = self.interp.interp(lat=y, lon=x, z=z, grid=grid)
-
-        return c
+            raise ValueError('geometry can be \'planar\' or \'spherical\'')
 
 
     def _sound_speed(self, lats, lons, z, t, SP):
@@ -215,3 +236,4 @@ class SoundSpeed():
         CT = gsw.CT_from_t(SA, t, p)  # conservative temperature
         c = gsw.density.sound_speed(SA=SA, CT=CT, p=p)
         return c
+

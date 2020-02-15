@@ -37,6 +37,7 @@ import math
 from tqdm import tqdm
 from numpy.lib import scimath
 from kadlu.utils import create_boolean_array
+from kadlu.geospatial.data_sources.source_map import default_val
 
 
 class Propagator():
@@ -208,8 +209,11 @@ class Propagator():
         h = self.height_above_seafloor
         lc = self.smooth_len_c
         ld = self.smooth_len_den
-        den_w = self.ocean.water_density
-        den_b = self.seafloor.density
+        #den_w = self.ocean.water_density
+        den_w = default_val['water_density']
+        #den_b = self.seafloor.density
+        # in the future, fetch/load sediment values here ?
+        den_b = default_val['seafloor_density']
 
         # smooth sound speed
         f = 0.5 * (1 + np.tanh(0.5 * h / lc))
@@ -262,15 +266,15 @@ class Propagator():
         x = self.costheta * dist
         y = self.sintheta * dist
 
-        depth = self.ocean.bathy(x=x, y=y)
+        depth = self.ocean.bathy(lon=x, lat=y)
         depth *= (-1.)
 
         if self.ignore_bathy_gradient:
             gradient = np.zeros(x.shape)
 
         else:
-            dfdx = self.ocean.bathy_deriv(x=x, y=y, axis='x')
-            dfdy = self.ocean.bathy_deriv(x=x, y=y, axis='y')
+            dfdx = self.ocean.bathy_deriv(lon=x, lat=y, axis='lon')
+            dfdy = self.ocean.bathy_deriv(lon=x, lat=y, axis='lat')
             gradient = self.costheta * dfdx + self.sintheta * dfdy
             gradient *= (-1.)
 

@@ -15,16 +15,12 @@ R1_IUGG = 6371009
 deg2rad = np.pi / 180.
 
 
-LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
-""" Latitude and longitude coordinates for a given location.
-
-    Args: 
-        latitude: float
-            Latitude in degrees from -90 (South Pole) to +90 (North Pole).
-        longitude: float
-            Longitude in degrees from -180 to +180 (West to East) with 0 
-            corresponding to the Greenwich Meridian.
-"""
+#LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
+def LatLon(lat, lon):
+    """ centerpoint of lat/lon bounds """
+    if isinstance(lat, (list, tuple, np.ndarray)):
+        return min(lat) + max(lat) / 2, min(lon) + max(lon) / 2
+    return lat + lat / 2, lon + lon / 2
 
 
 def DLDL_over_DXDY(lat, lat_deriv_order, lon_deriv_order):

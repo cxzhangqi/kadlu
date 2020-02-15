@@ -42,7 +42,7 @@ default_val = dict(
         south=45.0, west=-68.5,
         north=51.5, east=-56.5,
         top=0, bottom=5000,
-        start=datetime.now()-timedelta(hours=3), end=datetime.now(),
+        start=datetime(2015, 3, 1), end=datetime(2015, 3, 1, 3),
         water_density=1, seafloor_density=1
     )
 

@@ -11,7 +11,8 @@ from kadlu.geospatial.data_sources.data_util    import      \
         dt_2_epoch
 from kadlu.geospatial.data_sources.source_map   import      \
         fetch_map,                                          \
-        load_map
+        load_map,                                           \
+        default_val
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
@@ -20,23 +21,25 @@ from kadlu.geospatial.data_sources.wwiii        import Wwiii
 
 def worker(interpfcn, reshapefcn, cols, var, q):
     """ compute interpolation in parallel worker process
-    
+
         interpfcn:
             callback function for interpolation
         reshapefcn:
             callback function for reshaping row data into matrix format
             for interpolation
-        data:
+        cols:
             data as returned from load function
+        var:
+            variable type. used as key in Ocean().interps dictionary
         q:
-            shared queue object to pass binary back to parent
+            shared queue object to pass interpolation back to parent
     """
     obj = interpfcn(**reshapefcn(cols))
     q.put((var, obj))
     return
 
 
-def load_callback(*, data, v, **kwargs):
+def load_callback(*, v, data, **kwargs):
     """ bootstrap data into callable to prepare for parallelization """
     return [data[key] for key in 
                (f'{v}_val', f'{v}_lat', f'{v}_lon', f'{v}_time', f'{v}_depth')
@@ -96,21 +99,26 @@ class Ocean():
                 before computing interpolation
     """
 
-    def __init__(self, 
-            load_bathymetry=0, load_temp=0, load_salinity=0, load_wavedir=0, 
-            load_waveheight=0, load_waveperiod=0, load_windspeed=0, 
+    def __init__(self,
+            load_bathymetry=0, load_temp=0, load_salinity=0, load_wavedir=0,
+            load_waveheight=0, load_waveperiod=0, load_windspeed=0,
             fetch=False, **kwargs):
+
+        for kw in [k for k in 
+                ('south', 'west', 'north', 'east', 'top', 'bottom', 
+                 'start', 'end') if k not in kwargs.keys()]:
+            kwargs[kw] = default_val[kw]
 
         data = {}
         callbacks = []
-        vartypes = ['bathy', 'temp', 'salinity', 
-                'wavedir', 'waveheight', 'waveperiod', 'windspeed']
-        load_args = [load_bathymetry, load_temp, load_salinity, 
-                load_wavedir, load_waveheight, load_waveperiod, load_windspeed]
+        vartypes = ['bathy', 'temp', 'salinity', 'wavedir', 
+                    'waveheight', 'waveperiod', 'windspeed']
+        load_args = [load_bathymetry, load_temp, load_salinity, load_wavedir, 
+                     load_waveheight, load_waveperiod, load_windspeed]
 
         # if load_args are not callable, convert it to a callable function
         for v, load_arg, ix in zip(vartypes, load_args, range(len(vartypes))):
-            if callable(load_arg): continue
+            if callable(load_arg): callbacks.append(load_arg)
 
             elif isinstance(load_arg, str):
                 key = f'{v}_{load_arg.lower()}'
@@ -119,9 +127,9 @@ class Ocean():
 
             elif isinstance(load_arg, (int, float)):
                 data[f'{v}_val'] = load_arg
-                data[f'{v}_lat'] = kwargs['south'] 
+                data[f'{v}_lat'] = kwargs['south']
                 data[f'{v}_lon'] = kwargs['west']
-                data[f'{v}_time'] = dt_2_epoch(kwargs['start'])[0] 
+                data[f'{v}_time'] = dt_2_epoch(kwargs['start'])[0]
                 if v in ('temp', 'salinity'): data[f'{v}_depth'] = kwargs['top']
                 callbacks.append(load_callback)
 
@@ -141,17 +149,18 @@ class Ocean():
 
         q = Queue()
 
-        pipe = zip(vartypes, callbacks)
+        # prepare data pipeline
+        pipe = zip(callbacks, vartypes)
         is_3D = [v in ('temp', 'salinity') for v in vartypes]
         is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
-        columns = [f(data=data, v=v, **kwargs) for v, f in pipe]
+        columns = [fcn(v=v, data=data, **kwargs) for fcn, v in pipe]
         intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
         reshapers = [reshape_3D if v else reshape_2D for v in is_3D]
-
+        # map interpolations to dictionary in parallel
         self.interps = {}
         interpolators = map(lambda x, y: intrpmap[x][y], is_arr, is_3D)
         interpolations = map(
-            lambda i,r,c,v: Process(target=worker, args=(i,r,c,v,q)),
+            lambda i,r,c,v,q=q: Process(target=worker, args=(i,r,c,v,q)),
             interpolators, reshapers, columns, vartypes
         )
 

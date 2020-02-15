@@ -11,13 +11,14 @@
 import numpy as np
 from datetime import datetime, timedelta
 import os
+from os.path import isfile
 import requests
 import shutil
 import pygrib
 import warnings
 
 from kadlu.geospatial.data_sources.data_util import \
-storage_cfg, database_cfg, Boundary, ll_2_regionstr, dt_2_epoch, epoch_2_dt, str_def
+storage_cfg, database_cfg, Boundary, ll_2_regionstr, dt_2_epoch, epoch_2_dt, str_def, serialized, insert_hash
 
 
 conn, db = database_cfg()
@@ -62,6 +63,12 @@ def fetch_wwiii(var, kwargs):
         return:
             nothing. some status messages are printed to stdout
     """
+    assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
+        ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
+    assert kwargs['start'] < kwargs['end']
+
+    if serialized(kwargs, f'fetch_wwiii_{var}'): return False
+
     regions = ll_2_regionstr(
             kwargs['south'], kwargs['north'], kwargs['west'], kwargs['east'], 
             wwiii_regions, [str(wwiii_global)]
@@ -77,7 +84,12 @@ def fetch_wwiii(var, kwargs):
         for reg in regions:
             fname = fetchname(var, t, reg)
             fetchfile = f"{storage_cfg()}{fname}"
+            if isfile(fetchfile):
+                print(f'found {fetchfile} on disk')
+                continue
+
             print(f"\ndownloading {fname} from NOAA WaveWatch III...", end="\r")
+
             if reg == 'glo_30m' and t.year >= 2018:
                 fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/gribs/{fname}"
             else:
@@ -129,7 +141,8 @@ def fetch_wwiii(var, kwargs):
               f"{null} null values removed, "
               f"{size - (n2-n1)} duplicate rows ignored")
 
-    return 
+    insert_hash(kwargs, f'fetch_wwiii_{var}')
+    return True
 
 def load_wwiii(var, kwargs):
     """ return downloaded wwiii data for specified wavevar according to given time, lat, lon boundaries

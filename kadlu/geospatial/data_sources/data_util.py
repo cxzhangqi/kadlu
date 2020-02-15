@@ -105,6 +105,12 @@ def database_cfg():
         db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                    f"idx_{var} on {var}(time, lon, lat, val, source)")
 
+    db.execute("CREATE TABLE IF NOT EXISTS fetch_map"
+                '(  hash    INT  NOT NULL,  '
+                '   bytes   BLOB           )' )
+    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
+                 f"idx_fetched on fetch_map(hash)")
+
     return conn, db
 
 
@@ -118,6 +124,7 @@ def bin_db():
                 '   bytes   BLOB NOT NULL  )' )
     db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                  f"idx_bin on bin(hash)")
+
     return conn, db
 
 
@@ -126,6 +133,21 @@ def hash_key(kwargs, seed):
     string = seed + json.dumps(kwargs, sort_keys=True, default=str)
     key = int(md5(string.encode('utf-8')).hexdigest(), base=16)
     return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
+
+
+def serialized(kwargs, seed=''):
+    """ returns true if fetch query hash exists in database """
+    conn, db = database_cfg()
+    key = hash_key(kwargs, seed)
+    db.execute('SELECT * FROM fetch_map WHERE hash == ? LIMIT 1', (key,))
+    return not db.fetchone() is None 
+
+
+def insert_hash(kwargs, seed=''):
+    conn, db = database_cfg()
+    key = hash_key(kwargs, seed)
+    db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)', (key, None))
+    conn.commit()
 
 
 def deserialize(kwargs, persisting=True, seed=''):

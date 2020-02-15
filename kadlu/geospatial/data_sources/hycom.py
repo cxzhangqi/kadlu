@@ -18,8 +18,8 @@ from datetime import datetime, timedelta
 from os.path import isfile
 import warnings
 
-from kadlu.geospatial.data_sources.data_util import \
-storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def, index
+from kadlu.geospatial.data_sources.data_util        import          \
+storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def, index, serialized, insert_hash
 
 
 hycom_src = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data"
@@ -272,7 +272,7 @@ def load_hycom(self, var, kwargs):
     #if len(rowdata[0]) >= int(kwargs['limit'].split(";")[0]):
     #    warnings.warn(f'query limit exceeded, returning first {kwargs["limit"].split(";")[0]}')
 
-    return rowdata[0:5]
+    return rowdata[0:5].astype(float)
 
 
 def fetch_idx(self, var, kwargs): 
@@ -312,6 +312,10 @@ def fetch_idx(self, var, kwargs):
     #     call _idx once per year
     assert kwargs['start'].year == kwargs['end'].year, \
             "hycom queries spanning multiple years are not supported yet"
+
+    # check if query has been loaded already
+    if serialized(kwargs, f'fetch_hycom_{var}'): return False
+    
     year = str(kwargs['start'].year)
 
     if kwargs['west'] > kwargs['east']:
@@ -321,10 +325,11 @@ def fetch_idx(self, var, kwargs):
         kwargs2['west'] = self.xgrid[0]
         _idx(self, var, year, kwargs1)
         _idx(self, var, year, kwargs2)
-        return
+        return True
 
     _idx(self, var, year, kwargs)
-    return
+    insert_hash(kwargs, f'fetch_hycom_{var}')
+    return True
 
 
 class Hycom():
@@ -350,13 +355,13 @@ class Hycom():
         self.epoch = load_times()
         self.depth = load_depth()
 
-    def fetch_salinity(self, **kwargs): fetch_idx(self,  'salinity',   kwargs)
-    def fetch_temp    (self, **kwargs): fetch_idx(self,  'water_temp', kwargs)
-    def fetch_water_u (self, **kwargs): fetch_idx(self,  'water_u',    kwargs)
-    def fetch_water_v (self, **kwargs): fetch_idx(self,  'water_v',    kwargs)
+    def fetch_salinity(self, **kwargs): return fetch_idx(self,  'salinity',   kwargs)
+    def fetch_temp    (self, **kwargs): return fetch_idx(self,  'water_temp', kwargs)
+    def fetch_water_u (self, **kwargs): return fetch_idx(self,  'water_u',    kwargs)
+    def fetch_water_v (self, **kwargs): return fetch_idx(self,  'water_v',    kwargs)
     def fetch_water   (self, **kwargs): 
-                                        fetch_idx(self,  'water_u',    kwargs)
-                                        fetch_idx(self,  'water_v',    kwargs)
+                                        return fetch_idx(self,  'water_u',    kwargs) and\
+                                               fetch_idx(self,  'water_v',    kwargs)
 
     def load_salinity (self, **kwargs): return load_hycom(self, 'salinity',   kwargs)
     def load_temp     (self, **kwargs): return load_hycom(self, 'water_temp', kwargs)

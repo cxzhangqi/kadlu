@@ -7,7 +7,7 @@ from osgeo import gdal
 import warnings
 
 from kadlu.geospatial.data_sources.data_util import \
-storage_cfg, database_cfg, chs_table, str_def
+storage_cfg, database_cfg, chs_table, str_def, serialized, insert_hash
 
 
 conn, db = database_cfg()
@@ -138,15 +138,18 @@ def load_chs(south, north, west, east):
        bathy, lat, lon = np.array([]), np.array([]), np.array([])
     else:
        bathy, lat, lon, source = slices
-    return np.array((bathy, lat, lon))
+    return np.array((bathy, lat, lon)).astype(float)
 
 
 class Chs():
     """ collection of module functions for fetching and loading """
 
     def fetch_bathymetry(self, **kwargs):
-        return fetch_chs(south=kwargs['south'], north=kwargs['north'], 
+        if serialized(kwargs, 'fetch_chs'): return False
+        fetch_chs(south=kwargs['south'], north=kwargs['north'], 
               west=kwargs['west'], east=kwargs['east'], band_id=1)
+        insert_hash(kwargs, 'fetch_chs')
+        return True
 
     def load_bathymetry(self, **kwargs):
         return load_chs(south=kwargs['south'], north=kwargs['north'], 

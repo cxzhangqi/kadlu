@@ -9,12 +9,13 @@ import cdsapi
 import numpy as np
 import pygrib
 import os
+from os.path import isfile
 from datetime import datetime, timedelta
 import warnings
 import contextlib
 
 from kadlu.geospatial.data_sources.data_util import \
-storage_cfg, database_cfg, str_def, dt_2_epoch, epoch_2_dt
+storage_cfg, database_cfg, str_def, dt_2_epoch, epoch_2_dt, serialized, insert_hash
 
 
 c = cdsapi.Client()
@@ -38,16 +39,25 @@ def fetch_era5(var, kwargs):
     """
     assert 2 == sum(map(lambda kw: kw in kwargs.keys(), 
         ['start', 'end'])), 'malformed query'
-    if kwargs['start'] == kwargs['end']:
-        kwargs['end'] += timedelta(hours=3)
+
+    if kwargs['start'] == kwargs['end']: kwargs['end'] += timedelta(hours=3)
+
+    if serialized(kwargs, f'fetch_era5_{var}'): return False
 
     t = datetime(
             kwargs['start'].year,   kwargs['start'].month, 
             kwargs['start'].day,    kwargs['start'].hour
         )
+    filenames = []
 
     while t <= kwargs['end']:
         fname = f"{storage_cfg()}ERA5_reanalysis_{var}_{t.strftime('%Y-%m-%d')}.grb2"
+        filenames.append(fname)
+
+        if isfile(fname):
+            while (t.month == thismonth): t += timedelta(days=1)
+            continue
+            
         print(f"downloading {fname} from Copernicus Climate Data Store...")
 
         eom = min(datetime(t.year, t.month+1, 1)-timedelta(days=1), kwargs['end'])
@@ -74,6 +84,7 @@ def fetch_era5(var, kwargs):
         if not os.path.isfile(fname):
             warnings.warn(f'error fetching era5 data for {t}')
 
+    for fname in filenames:
         grib = pygrib.open(fname)
         table = var[4:] if var[0:4] == '10m_' else var
         n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
@@ -112,10 +123,10 @@ def fetch_era5(var, kwargs):
               f"{rows - (n2-n1)} duplicate rows ignored")
 
         thismonth = t.month
-        while (t.month == thismonth): 
-            t += timedelta(days=1)
+        while (t.month == thismonth): t += timedelta(days=1)
 
-    return 
+    insert_hash(kwargs, f'fetch_era5_{var}')
+    return True
 
 
 def load_era5(var, kwargs):
@@ -163,24 +174,18 @@ class Era5():
     """
 
     def fetch_windwaveswellheight(self, **kwargs):
-        fetch_era5('significant_height_of_combined_wind_waves_and_swell', kwargs)
-        return
+        return fetch_era5('significant_height_of_combined_wind_waves_and_swell', kwargs)
     def fetch_wavedirection(self, **kwargs):
-        fetch_era5('mean_wave_direction', kwargs)
-        return
+        return fetch_era5('mean_wave_direction', kwargs)
     def fetch_waveperiod(self, **kwargs):
-        fetch_era5('mean_wave_period', kwargs)
-        return
+        return fetch_era5('mean_wave_period', kwargs)
     def fetch_wind_u(self, **kwargs):
-        fetch_era5('10m_u_component_of_wind', kwargs)
-        return
+        return fetch_era5('10m_u_component_of_wind', kwargs)
     def fetch_wind_v(self, **kwargs):
-        fetch_era5('10m_v_component_of_wind', kwargs)
-        return
+        return fetch_era5('10m_v_component_of_wind', kwargs)
     def fetch_wind(self, **kwargs):
-        fetch_era5('10m_u_component_of_wind', kwargs)
-        fetch_era5('10m_v_component_of_wind', kwargs)
-        return
+        return fetch_era5('10m_u_component_of_wind', kwargs) and\
+               fetch_era5('10m_v_component_of_wind', kwargs)
 
     def load_windwaveswellheight(self, **kwargs):
         return load_era5('significant_height_of_combined_wind_waves_and_swell', kwargs)

@@ -9,7 +9,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 import os
-#import urllib.request
+from os.path import isfile
 import requests
 import pygrib
 from kadlu.geospatial.data_sources import data_util
@@ -89,6 +89,9 @@ def fetch_rdwps(wavevar, start, end, regions):
             list of strings containing complete file paths of fetched data
     """
     filenames = []
+    #if start.hour <= 6 and start.date() == datetime.now().date(): 
+    #    start += timedelta(hours=6)
+    #    end += timedelta(hours=6)
     time = datetime(start.year, start.month, start.day, (start.hour // 3 * 3))
 
     # RDWPS is a prediction service - requested times must be in the 
@@ -96,18 +99,21 @@ def fetch_rdwps(wavevar, start, end, regions):
     assert(time >= datetime.now() - timedelta(hours=6))
     assert(end <= datetime.now() + timedelta(hours=48))
     assert(time <= end)
-    
+
     while time <= end:
         for reg in regions:
             fname = fetchname(wavevar, time, reg)
             fetchfile = f"{storage_cfg()}{fname}"
+            if isfile(fetchfile): 
+                print(f'found {fname} on disk')
+                continue
             directory = 'ocean' if 'gulf-st-lawrence' in fname else 'great_lakes'
             hour = f"{(((datetime.now()-timedelta(hours=3)).hour) // 6 * 6):02d}"
             fetchurl = f"http://dd.weather.gc.ca/model_wave/{directory}/{reg}/grib2/{hour}/{fname}"
             print(f"Downloading {fname} from the Regional Deterministic Wave Prediction System...")
             #urllib.request.urlretrieve(fetchurl, fetchfile)
             grib = requests.get(fetchurl)
-            assert(grib.status_code == 200)
+            assert(grib.status_code == 200), f'failed getting {fname}'
             with open(fetchfile, 'wb') as f: f.write(grib.content)
             filenames.append(fetchfile)
 

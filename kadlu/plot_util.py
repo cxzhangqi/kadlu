@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib
-matplotlib.use('Qt5Agg')
+matplotlib.use('svg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy.interpolate import griddata
@@ -8,7 +8,13 @@ import cartopy
 import cartopy.crs as ccrs
 import cartopy.io.img_tiles as cimgt
 import cartopy.feature as cfeature
-
+import os
+from datetime import datetime, timedelta
+from kadlu.geospatial.data_sources.chs import Chs
+from kadlu.geospatial.data_sources.hycom import Hycom
+from kadlu.geospatial.data_sources.era5 import Era5
+from kadlu.geospatial.data_sources.wwiii import Wwiii
+import imageio
 
 
 #terrain = cimgt.Stamen('terrain')
@@ -34,44 +40,43 @@ config = dict(
             cm      = plt.cm.bone,
             alpha   = 0.9,
             levels  = lambda v, n=25: np.linspace(min(v), max(v)-2, n),
+            norm    = matplotlib.colors.Normalize(vmin=0, vmax=1000),
             title   = 'bathymetry (metres)'),
         temp=dict(
             #cm      = plt.cm.jet, 
             cm      = plt.cm.coolwarm, 
             alpha   = 0.8,
             levels  = lambda v, n=25: np.linspace(min(v)+.1, max(v), n),
+            norm    = matplotlib.colors.Normalize(vmin=-4, vmax=17),
             title   = 'temperature (celsius)'),
         salinity=dict(
             cm      = plt.cm.viridis,
             alpha   = 0.7,
             levels  = lambda v, n=25: np.linspace(min(v)+.1, max(v), n),
-            title   = 'salinity (g/kg of salt in water)'),
-        #wavedir=dict(
-        #    cm=
+            norm    = matplotlib.colors.Normalize(vmin=20, vmax=40),
+            title   = 'salinity (g/kg salt in water)'),
         waveheight=dict(
             #cm      = plt.cm.Spectral_r,
             #cm      = plt.cm.BrBG,
             cm      = plt.cm.BuPu,
-            #cm      = sns.cubehelix_palette(8, start=2, rot=0, dark=0, light=.95, reverse=True),
             alpha   = 0.85,
             levels  = lambda v, n=20: np.linspace(min(v)+.1, max(v), n),
+            norm    = matplotlib.colors.Normalize(vmin=0, vmax=20),
             title   = 'wave height (metres)')
     )
 
 
 
-def plot2D(val, lat, lon, var, title='bathymetry (metres)', **kwargs):
+def plot2D(val, lat, lon, var, **kwargs): 
     """
 
-    from kadlu.geospatial.data_sources.chs import Chs
-    from kadlu.geospatial.data_sources.hycom import Hycom
-    from kadlu.geospatial.data_sources.era5 import Era5
     kwargs = dict(
             start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),
             south=44,                   west=-64.5, 
             north=45,                   east=-62.5, 
             top=0,                      bottom=0
         )
+
     kwargs = dict(
             start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),
             south=45,                   west=-68.4, 
@@ -94,8 +99,10 @@ def plot2D(val, lat, lon, var, title='bathymetry (metres)', **kwargs):
     var = 'bathy'
 
     """
-    # project data onto coordinate space
+    #if config[var]['norm'] is None: 
+    #    config[var]['norm'] = matplotlib.colors.Normalize(vmin=min(val), vmax=max(val))
 
+    # project data onto coordinate space
     extent = proj.transform_points(
             ccrs.Geodetic(),
             np.array([kwargs['west'], kwargs['east']]), 
@@ -109,23 +116,23 @@ def plot2D(val, lat, lon, var, title='bathymetry (metres)', **kwargs):
     plon = projected_lonlat[:,0]
     plat = projected_lonlat[:,1]
     # create interpolation grid, perform interpolation
-    #num_lats = int(np.ceil((extent[1][1] - extent[0][1]) / 100)) + 1
-    #num_lons = abs(int(np.ceil((extent[0][0] -extent[1][0]) / 100)) + 1)
-    num_lats = 1000
-    num_lons = 1000
+    num_lats = 1000 
+    num_lons = 1000 
     lons = np.linspace(start=min(plon), stop=max(plon), num=num_lons)
     lats = np.linspace(start=min(plat), stop=max(plat), num=num_lats)
     data = griddata(points=(plon, plat), values=val, xi=(lons[None,:],lats[:,None]), method='linear')
     # map content settings
     coast = cfeature.NaturalEarthFeature('physical', 'coastline', '10m')
     #ocean = cfeature.NaturalEarthFeature('physical', 'ocean', '10m')
-    norm = matplotlib.colors.Normalize(vmin=min(val), vmax=max(val))
+    #norm = matplotlib.colors.Normalize(vmin=min(val), vmax=max(val))
     fg = (.92, .92, .92, 1)
 
+    fname = f'{var}_{kwargs["start"].date().isoformat()}.png'
+    print('saving ' + fname + '...')
     cm = config[var]['cm']
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, 
-            title=config[var]['title'],
+            title=config[var]['title']+f'\n{kwargs["start"].date().isoformat()}',
             projection=proj, 
             facecolor=cm(256), 
             frameon=True
@@ -133,8 +140,7 @@ def plot2D(val, lat, lon, var, title='bathymetry (metres)', **kwargs):
     ax.contourf(lons, lats, data,
                 transform=proj,
                 levels=config[var]['levels'](val),
-                cmap=cm,
-                alpha=config[var]['alpha'],
+                cmap=cm, alpha=config[var]['alpha'],
                 zorder=8
             )
     ax.contour(lons, lats, data,
@@ -147,19 +153,82 @@ def plot2D(val, lat, lon, var, title='bathymetry (metres)', **kwargs):
             )
     #ax.add_feature(ocean, facecolor=cm(0), edgecolor=(0,0,0,1), zorder=10)
     ax.add_feature(coast, facecolor=fg, edgecolor=(0,0,0,1), zorder=10)
-    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linestyle='--', zorder=11)
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linestyle='--',
+            zorder=11)
     gl.xlabels_top = False
     gl.ylabels_right = False
     gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
     gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
-    plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cm))
-    manager = plt.get_current_fig_manager()
-    s = manager.window.maximumSize()
-    manager.resize(s.width(), s.height())
-    plt.tight_layout()
-    plt.show()
+    ax.tick_params(axis='x', rotation=45)
+    #ax.set_xticks(range(28, 35))
+    plt.colorbar(matplotlib.cm.ScalarMappable(norm=config[var]['norm'], cmap=cm))
+    plt.savefig(f'http/{var}/{fname}', 
+                bbox_inches='tight', dpi=250, optimize=True)
+    plt.close()
 
-    return 
+    #plt.tight_layout()
+    #plt.show()
+    return
+
+
+def animate(kwargs, var, fetchfcn, loadfcn):
+    """
+
+    var='temp'
+
+    kwargs = dict(
+            start=datetime(2015, 3, 1), end=datetime(2015, 9, 1),
+            south=45,                   west=-68.4, 
+            north=51.5,                 east=-56.5, 
+            top=0,                      bottom=0
+        )
+    
+    fetch = (Hycom().fetch_temp, Hycom().fetch_salinity, Era5().fetch_windwaveswellheight)
+    load = (Hycom().load_temp, Hycom().load_salinity, Era5().load_windwaveswellheight)
+    vartypes = ('temp', 'salinity', 'waveheight')
+    vartypes = ('salinity', 'waveheight')
+
+
+    for f,l,v in zip(fetch, load, vartypes):
+        animate(kwargs, v, f, l)
+
+    """
+
+    dirname = f'http/{var}'
+    if not os.path.isdir(dirname): os.mkdir(dirname)
+
+    qry = kwargs.copy()
+    t = datetime(qry['start'].year, 
+                 qry['start'].month, 
+                 qry['start'].day)
+
+    png = lambda f: f if '.png' in f else None
+    old = map(png, list(os.walk(f'http/{var}'))[0][2])
+
+    #[os.remove(f'http/{var}/{x}') for x in old if x is not None]
+
+    while (t <= kwargs['end']):
+        qry['start'] = t
+        qry['end'] = t + timedelta(days=1)
+        fname = f'http/{var}/{var}_{t.date().isoformat()}.png'
+        if not os.path.isfile(fname):
+            fetchfcn(**qry)
+            if var in ('temp', 'salinity'): 
+                val, lat, lon, time, depth = loadfcn(**qry)
+            else:
+                val, lat, lon, time = loadfcn(**qry)
+            plot2D(val, lat, lon, var, **qry)
+        t += timedelta(days=1)
+
+    print(f'animating {var}.gif...')
+    imgs = [f'http/{var}/{x}' for x in 
+            map(png, list(os.walk(f'http/{var}'))[0][2]) 
+            if x is not None]
+    imageio.mimsave(f'http/{var}.gif', 
+            map(imageio.imread, sorted(imgs)), 
+            loop=0, duration=0.1, fps=30)
+
+    return
 
 
 

@@ -807,7 +807,7 @@ class DepthInterpolator3D():
             s = len(lat)
 
         #v = self.interp(z)
-        v = self.interp(lat, lon, z)
+        v = self.interp1d(z)
 
         if grid:
             v = np.ones(s) * v[np.newaxis, np.newaxis, :]

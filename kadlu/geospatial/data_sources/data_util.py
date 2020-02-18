@@ -140,13 +140,17 @@ def serialized(kwargs, seed=''):
     conn, db = database_cfg()
     key = hash_key(kwargs, seed)
     db.execute('SELECT * FROM fetch_map WHERE hash == ? LIMIT 1', (key,))
-    return not db.fetchone() is None 
+    res = db.fetchone()
+    if res is None: return False
+    if res[1] is not None: return res[1]
+    return True
 
 
-def insert_hash(kwargs, seed=''):
+def insert_hash(kwargs, seed='', obj=None):
     conn, db = database_cfg()
     key = hash_key(kwargs, seed)
-    db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)', (key, None))
+    db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)',
+               (key, pickle.dumps(obj)))
     conn.commit()
 
 
@@ -181,7 +185,7 @@ def index(val, sorted_arr):
     """ converts value in coordinate array to grid index """
     if val > sorted_arr[-1]: return len(sorted_arr) - 1
     return np.nonzero(sorted_arr >= val)[0][0]
-  
+
 
 def flatten(cols, frames):
     """ dimensional reduction by taking average of time frames """
@@ -209,13 +213,13 @@ def reshape_3D(cols):
         return dict(values=cols[0])
     frames = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
     if len(np.unique(frames)) > 1: vals, y, x, z = flatten(cols, frames) 
-    else: vals, y, x, _, z  = cols 
+    else: vals, y, x, _, z  = cols
     rows = np.array((vals, y, x, z)).T
 
     # reshape row data to 3D array
     xgrid, ygrid, zgrid = np.unique(x), np.unique(y), np.unique(z)
     gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
-    # this could potentially be optimized to avoid an index lookup cost 
+    # this could potentially be optimized to avoid an index lookup cost
     for row in rows:
         x_ix = index(row[2], xgrid)
         y_ix = index(row[1], ygrid)
@@ -258,7 +262,7 @@ class Boundary():
         return not (self.east  < other.west or
                     self.west  > other.east or
                     self.north < other.south or
-                    self.south > other.north )
+                    self.south > other.north)
 
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
@@ -338,17 +342,17 @@ def plot_coverage(lat, lon):
     plt.show()
 """
 
-def gen_kwargs():
-    """ some sample fetch/load keyword args for rapid testing """
-    """
-    kwargs = gen_kwargs()
-    self = Ocean(**kwargs)
-    """
-    return dict(
-        start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),
-        #time=datetime(2015, 1, 9),
-        south=44,                   west=-64.5, 
-        north=46,                   east=-62.5, 
-        top=0,                      bottom=5000
-    )
+#def gen_kwargs():
+#    """ some sample fetch/load keyword args for rapid testing """
+#    """
+#    kwargs = gen_kwargs()
+#    self = Ocean(**kwargs)
+#    """
+#    return dict(
+#        start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),
+#        #time=datetime(2015, 1, 9),
+#        south=44,                   west=-64.5, 
+#        north=46,                   east=-62.5, 
+#        top=0,                      bottom=5000
+#    )
 

@@ -50,6 +50,7 @@ def fetch_era5(var, kwargs):
         )
     filenames = []
 
+    thismonth = t.month
     while t <= kwargs['end']:
         fname = f"{storage_cfg()}ERA5_reanalysis_{var}_{t.strftime('%Y-%m-%d')}.grb2"
         filenames.append(fname)
@@ -84,6 +85,12 @@ def fetch_era5(var, kwargs):
         if not os.path.isfile(fname):
             warnings.warn(f'error fetching era5 data for {t}')
 
+        while (t.month == thismonth): t += timedelta(days=1)
+
+    t = datetime(
+            kwargs['start'].year,   kwargs['start'].month, 
+            kwargs['start'].day,    kwargs['start'].hour
+        )
     for fname in filenames:
         grib = pygrib.open(fname)
         table = var[4:] if var[0:4] == '10m_' else var

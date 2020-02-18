@@ -16,8 +16,10 @@ dependencies:
   - h5py
   - GDAL
   - pygrib
-  - basemap
   - cdsapi
   - tqdm
   - gsw
+  - basemap
   - cartopy
+  - imageio
+

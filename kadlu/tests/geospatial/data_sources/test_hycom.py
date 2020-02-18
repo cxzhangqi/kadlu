@@ -8,12 +8,12 @@ from os.path import isfile
 
 
 # gulf st lawrence - small test area
-south =  46 
-north =  47
-west  = -60
-east  = -59
+south =  45 
+north =  51.5
+west  = -68.4
+east  = -56.5
 top   =  0
-bottom=  100
+bottom=  0
 start = datetime(2000, 1, 10)
 end   = datetime(2000, 1, 10, 12)
 

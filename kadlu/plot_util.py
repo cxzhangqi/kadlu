@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib
 #matplotlib.use('svg')
-matplotlib.use('Qt5Agg')
 #matplotlib.use('TkAgg')
+#matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy.interpolate import griddata

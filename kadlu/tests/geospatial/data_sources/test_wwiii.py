@@ -4,8 +4,8 @@ from kadlu.geospatial.data_sources import wwiii
 from kadlu.geospatial.data_sources.wwiii import Wwiii, Boundary, wwiii_regions, wwiii_global
 
 
-start = datetime(2015, 2, 3, 0, 0, 0, 0)
-end = datetime(2015, 2, 3, 3, 0, 0, 0)
+start = datetime(2014, 2, 3, 0, 0, 0, 0)
+end = datetime(2014, 2, 3, 3, 0, 0, 0)
 
 # gulf st lawrence
 south, west = 47.1, -70
@@ -60,7 +60,7 @@ def test_wwiii_fetch_wind():
     return 
 
 def test_wwiii_load_windwaveheight():
-    wave, lat, lon, time = Wwiii().load_windwaveheight(south=43, west=-60, north=44, east=-59, start=start, end=end)
+    wave, lat, lon, time = Wwiii().load_windwaveheight(south=south, west=west, north=north, east=east, start=start, end=end)
 
 
 def test_wwiii_fetch_wind():
@@ -69,7 +69,7 @@ def test_wwiii_fetch_wind():
     return 
 
 def test_wwiii_load_wind():
-    wave, lat, lon, time = Wwiii().load_wind(south=43, west=-60, north=44, east=-59, start=start, end=end)
+    wave, lat, lon, time = Wwiii().load_wind(south=south, west=west, north=north, east=east, start=start, end=end)
 
 
 def test_wwiii_fetch_waveperiod():
@@ -77,6 +77,6 @@ def test_wwiii_fetch_waveperiod():
         print('wwiii query was fetched already, skipping...')
 
 def test_wwiii_load_waveperiod():
-    wave, lat, lon, time = Wwiii().load_waveperiod(south=43, west=-60, north=44, east=-59, start=start, end=end)
+    wave, lat, lon, time = Wwiii().load_waveperiod(south=south, west=west, north=north, east=east, start=start, end=end)
   
 

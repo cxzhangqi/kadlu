@@ -352,6 +352,7 @@ def test_can_interpolate_geotiff_data():
     #path = path_to_assets + '/tif/CA2_4300N06000W.tif'
     south, west = 43, -60
     north, east = 44, -59
+    Chs().fetch_bathymetry(south=south, north=north, west=west, east=east)
     bathy, lat, lon = Chs().load_bathymetry(south=south, north=north, west=west, east=east)
 
     if len(bathy) == 0:

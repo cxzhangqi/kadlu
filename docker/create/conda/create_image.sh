@@ -3,7 +3,7 @@
 cp -r ../../../kadlu/ .
 cp ../../../setup.py .
 cp ../../../environment.yml .
-cp ../../../../meridian-rtd-theme/dist/sphinx_mer_rtd_theme-0.4.3.dev0.tar.gz .
+cp ../../../docs/sphinx_mer_rtd_theme-0.4.3.dev0.tar.gz .
 
 # build image
 docker build --tag=kadlu_v0.0.1 .

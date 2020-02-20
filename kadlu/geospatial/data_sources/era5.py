@@ -31,6 +31,7 @@ try:
     c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['url'])
 except KeyError:
     try:
+        assert(os.path.isfile(os.path.expanduser('~')+'/.cdsapirc'))
         c = cdsapi.Client()
     except Exception:
         raise Exception('CDS API has not been configured. obtain an API key '
@@ -160,33 +161,6 @@ def fetch_era5(var, kwargs):
     insert_hash(kwargs, f'fetch_era5_{var}')
     return True
 
-"""
-def msg_parser(var, grib, msg, kwargs)
-    print(f'processing msg {msgnum}/{grib.messages} for {var} {msg.validDate}', end='\r')
-    if msg.validDate < kwargs['start'] or msg.validDate > kwargs['end']: return
-    z, y, x = msg.data()
-
-    if np.ma.is_masked(z):
-        z2 = z[~z.mask].data
-        y2 = y[~z.mask]
-        x2 = x[~z.mask]
-    else:  # wind data has no mask
-        z2 = z.reshape(-1)
-        y2 = y.reshape(-1)
-        x2 = x.reshape(-1)
-
-    # build coordinate grid and insert into db
-    grid = np.empty((len(z2), 5), dtype=object)
-    grid[:,0] = z2
-    grid[:,1] = y2
-    grid[:,2] = ((x2 + 180) % 360) - 180
-    grid[:,3] = dt_2_epoch([msg.validDate for item in z2])
-    grid[:,4] = ['era5' for item in z2]
-    db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
-    conn.commit()
-
-    ### end of testing ###
-"""
 
 def load_era5(var, kwargs):
     if 'time' in kwargs.keys():

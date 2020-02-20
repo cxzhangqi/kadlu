@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib
-#matplotlib.use('svg')
-#matplotlib.use('TkAgg')
+matplotlib.use('TkAgg')
 #matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -18,11 +17,6 @@ from kadlu.geospatial.data_sources.era5 import Era5
 from kadlu.geospatial.data_sources.wwiii import Wwiii
 import imageio
 
-
-#terrain = cimgt.Stamen('terrain')
-#terrain = cimgt.StamenTerrain()
-#terrain = cimgt.Stamen('toner-lite')
-#terrain = cimgt.MapQuestOpenAerial()
 
 proj = ccrs.Mercator()
 config = dict(
@@ -57,15 +51,8 @@ config = dict(
 
 
 
-def plot2D(val, lat, lon, var, **kwargs): 
+def plot2D(val, lat, lon, var, wind=False, **kwargs): 
     """
-
-    kwargs = dict(
-            start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),
-            south=44,                   west=-64.5, 
-            north=45,                   east=-62.5, 
-            top=0,                      bottom=0
-        )
 
     kwargs = dict(
             start=datetime(2015, 1, 9), end=datetime(2015, 1, 10),
@@ -76,8 +63,9 @@ def plot2D(val, lat, lon, var, **kwargs):
 
     #Chs().fetch_bathymetry(**kwargs)
     #Hycom().fetch_temp(**kwargs)
-    #Hycom().fetch_salinity(**kwargs)
+    Hycom().fetch_salinity(**kwargs)
     #Era5().fetch_windwaveswellheight(**kwargs)
+
     val, lat, lon, time = Era5().load_windwaveswellheight(**kwargs)
     var = 'waveheight'
     val, lat, lon, time, depth =  Hycom().load_temp(**kwargs)
@@ -102,16 +90,13 @@ def plot2D(val, lat, lon, var, **kwargs):
         )
     plon = projected_lonlat[:,0]
     plat = projected_lonlat[:,1]
-    # create interpolation grid, perform interpolation
-    num_lats = 500
-    num_lons = 500
     num_lats = 1000 
     num_lons = 1000 
     lons = np.linspace(start=min(plon), stop=max(plon), num=num_lons)
     lats = np.linspace(start=min(plat), stop=max(plat), num=num_lats)
     data = griddata(points=(plon, plat), values=val, xi=(lons[None,:],lats[:,None]), method='linear')
     coast = cfeature.NaturalEarthFeature('physical', 'coastline', '10m')
-    fg = (.92, .92, .92, 1)
+    #fg = (.92, .92, .92, 1)
     fg = (0.66,0.66,0.66, 1)
 
     fname = f'{var}_{kwargs["start"].date().isoformat()}.png'
@@ -138,8 +123,18 @@ def plot2D(val, lat, lon, var, **kwargs):
                 linewidths=2,
                 zorder=9
             )
-    #ax.add_feature(ocean, facecolor=cm(0), edgecolor=(0,0,0,1), zorder=10)
-    ax.add_feature(coast, facecolor=fg, edgecolor=(0,0,0,1), zorder=10)
+
+    if wind == 'era5':
+        Era5().fetch_wind(**kwargs)
+        uval, ulat, ulon, utime = Era5().load_wind_u(**kwargs)
+        vval, vlat, vlon, vtime = Era5().load_wind_v(**kwargs)
+        assert(len(vval) == len(uval))
+
+    if wind is not False:
+        ax.quiver(ulon, ulat, uval, vval, transform=ccrs.PlateCarree(), 
+                regrid_shape=20, zorder=10)
+
+    ax.add_feature(coast, facecolor=fg, edgecolor=(0,0,0,1), zorder=11)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linestyle='--',
             zorder=11)
     gl.xlabels_top = False
@@ -147,7 +142,6 @@ def plot2D(val, lat, lon, var, **kwargs):
     gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
     gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
     ax.tick_params(axis='x', rotation=45)
-    #ax.set_xticks(range(28, 35))
     plt.colorbar(matplotlib.cm.ScalarMappable(norm=config[var]['norm'], 
                 cmap=config[var]['cm']))
 
@@ -199,7 +193,6 @@ def animate(kwargs, var, fetchfcn, loadfcn, debug=False):
                  qry['start'].month, 
                  qry['start'].day)
 
-
     while (t <= kwargs['end']):
         qry['start'] = t
         qry['end'] = t + timedelta(days=1)
@@ -224,6 +217,18 @@ def animate(kwargs, var, fetchfcn, loadfcn, debug=False):
     return
 
 
+"""
+from ridge_map import RidgeMap
+RidgeMap().plot_map()
+rmap = RidgeMap((kwargs['west'], kwargs['south'], kwargs['east'], kwargs['north']))
+rvals = rmap.get_elevation_data(num_lines=150)
+rmap.plot_map(label='', ax=ax)
+plt.show()
+"""
+
+
+
+
 
 def fetch_topo():
     url = 'ftp.maps.canada.ca/pub/nrcan_rncan/vector/canvec/shp/Elevation/canvec_50K_NS_Elevation_shp.zip'
@@ -232,6 +237,12 @@ def fetch_topo():
         fname = storage_cfg()+'topo_NS.zip'
         with open(fname, 'wb') as f: f.write(payload.content)
         
+
+
+#terrain = cimgt.Stamen('terrain')
+#terrain = cimgt.StamenTerrain()
+#terrain = cimgt.Stamen('toner-lite')
+#terrain = cimgt.MapQuestOpenAerial()
 
 
 #ax.add_feature(cartopy.feature.LAKES, edgecolor='black', projection=proj)

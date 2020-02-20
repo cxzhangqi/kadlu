@@ -9,18 +9,37 @@ import cdsapi
 import numpy as np
 import pygrib
 import os
-from os.path import isfile
+from os.path import isfile, dirname
 from datetime import datetime, timedelta
 import warnings
-import contextlib
+from configparser import ConfigParser
 
-from kadlu.geospatial.data_sources.data_util import \
-storage_cfg, database_cfg, str_def, dt_2_epoch, epoch_2_dt, serialized, insert_hash
+from kadlu.geospatial.data_sources.data_util    import              \
+        storage_cfg,                                                \
+        database_cfg,                                               \
+        str_def,                                                    \
+        dt_2_epoch,                                                 \
+        epoch_2_dt,                                                 \
+        serialized,                                                 \
+        insert_hash
 
 
-c = cdsapi.Client()
-#c = cdsapi.Client(key='', url='')
 conn, db = database_cfg()
+cfg = ConfigParser() 
+cfg.read(dirname(dirname(dirname(dirname(__file__))))+'/config.ini')
+try:
+    c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['url'])
+except KeyError:
+    try:
+        c = cdsapi.Client()
+    except Exception:
+        raise Exception('CDS API has not been configured. obtain an API key '
+                    'from the following URL and add it to kadlu/config.ini. '
+                    'https://cds.climate.copernicus.eu/api-how-to')
+    raise KeyError('CDS API has not been configured. obtain an API key '
+                'from the following URL and add it to kadlu/config.ini. '
+                'https://cds.climate.copernicus.eu/api-how-to')
+
 
 
 def fetch_era5(var, kwargs):
@@ -37,11 +56,10 @@ def fetch_era5(var, kwargs):
         return:
             nothing
     """
-    assert 2 == sum(map(lambda kw: kw in kwargs.keys(), 
-        ['start', 'end'])), 'malformed query'
+    assert 6 == sum(map(lambda kw: kw in kwargs.keys(), 
+        ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 
     if kwargs['start'] == kwargs['end']: kwargs['end'] += timedelta(hours=3)
-
     if serialized(kwargs, f'fetch_era5_{var}'): return False
 
     t = datetime(
@@ -60,16 +78,18 @@ def fetch_era5(var, kwargs):
             continue
             
         print(f"downloading {fname} from Copernicus Climate Data Store...")
-
         eom = min(datetime(t.year, t.month+1, 1)-timedelta(days=1), kwargs['end'])
         ddelta = (eom - t).days
-        days = [datetime(t.year, t.month, day).strftime('%d') 
-                for day in range(t.day, eom.day)] if t.day != eom.day else t.strftime('%d')
-
+        days = ([datetime(t.year, t.month, day).strftime('%d') 
+                for day in range(t.day, eom.day)] 
+                if t.day != eom.day else t.strftime('%d'))
         if ddelta == 0:
             eod = min(datetime(t.year, t.month, t.day, 23), kwargs['end'])
-            hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') for hour in range(t.hour, eod.hour)]
-        else: hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') for hour in range(24)]
+            hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') 
+                     for hour in range(t.hour, eod.hour)]
+        else: 
+            hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') 
+                     for hour in range(24)]
 
         c.retrieve('reanalysis-era5-single-levels', {
                    'product_type'  : 'reanalysis',
@@ -112,13 +132,18 @@ def fetch_era5(var, kwargs):
                 y2 = y.reshape(-1)
                 x2 = x.reshape(-1)
 
+            # index coordinates and select query range subset
+            latix = np.logical_and(y2 >= kwargs['south'], y2 <= kwargs['north'])
+            lonix = np.logical_and(x2 >= kwargs['west']+180,  x2 <= kwargs['east']+180)
+            ix = np.logical_and(latix, lonix)
+
             # build coordinate grid and insert into db
-            grid = np.empty((len(z2), 5), dtype=object)
-            grid[:,0] = z2
-            grid[:,1] = y2
-            grid[:,2] = ((x2 + 180) % 360) - 180
-            grid[:,3] = dt_2_epoch([msg.validDate for item in z2])
-            grid[:,4] = ['era5' for item in z2]
+            grid = np.empty((len(z2[ix]), 5), dtype=object)
+            grid[:,0] = z2[ix]
+            grid[:,1] = y2[ix]
+            grid[:,2] = ((x2[ix] + 180) % 360) - 180
+            grid[:,3] = dt_2_epoch([msg.validDate for item in z2[ix]])
+            grid[:,4] = ['era5' for item in z2[ix]]
             db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
             rows += len(grid)
 
@@ -135,6 +160,33 @@ def fetch_era5(var, kwargs):
     insert_hash(kwargs, f'fetch_era5_{var}')
     return True
 
+"""
+def msg_parser(var, grib, msg, kwargs)
+    print(f'processing msg {msgnum}/{grib.messages} for {var} {msg.validDate}', end='\r')
+    if msg.validDate < kwargs['start'] or msg.validDate > kwargs['end']: return
+    z, y, x = msg.data()
+
+    if np.ma.is_masked(z):
+        z2 = z[~z.mask].data
+        y2 = y[~z.mask]
+        x2 = x[~z.mask]
+    else:  # wind data has no mask
+        z2 = z.reshape(-1)
+        y2 = y.reshape(-1)
+        x2 = x.reshape(-1)
+
+    # build coordinate grid and insert into db
+    grid = np.empty((len(z2), 5), dtype=object)
+    grid[:,0] = z2
+    grid[:,1] = y2
+    grid[:,2] = ((x2 + 180) % 360) - 180
+    grid[:,3] = dt_2_epoch([msg.validDate for item in z2])
+    grid[:,4] = ['era5' for item in z2]
+    db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
+    conn.commit()
+
+    ### end of testing ###
+"""
 
 def load_era5(var, kwargs):
     if 'time' in kwargs.keys():

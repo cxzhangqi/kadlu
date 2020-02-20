@@ -45,7 +45,7 @@ def storage_cfg():
     cfg = configparser.ConfigParser()       # read .ini into dictionary object
     cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
     try:
-        storage_location = cfg["storage"]["StorageLocation"]
+        storage_location = cfg["storage"]["storage_location"]
     except KeyError:                        # missing config.ini file
         return default_storage("missing kadlu/config.ini.")
 

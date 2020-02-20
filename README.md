@@ -79,7 +79,7 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
 
  1. Data storage location
 
-    By default, a storage folder will be created in Kadlu's root folder. A custom location can be configured by placing the following inside config.ini
+    By default, a storage folder will be created in Kadlu's root folder. Alternatively, a custom location can be configured by placing the following inside config.ini:
     ```ini
       [storage]
       storage_location = /path/to/data/storage/

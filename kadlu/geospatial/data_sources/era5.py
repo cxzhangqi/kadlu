@@ -28,7 +28,7 @@ conn, db = database_cfg()
 cfg = ConfigParser() 
 cfg.read(dirname(dirname(dirname(dirname(__file__))))+'/config.ini')
 try:
-    c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['url'])
+    c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
 except KeyError:
     try:
         assert(os.path.isfile(os.path.expanduser('~')+'/.cdsapirc'))
@@ -133,16 +133,19 @@ def fetch_era5(var, kwargs):
                 y2 = y.reshape(-1)
                 x2 = x.reshape(-1)
 
+            # adjust latitude-zero to 180th meridian
+            x3 = ((x2 + 180) % 360) - 180
+
             # index coordinates and select query range subset
             latix = np.logical_and(y2 >= kwargs['south'], y2 <= kwargs['north'])
-            lonix = np.logical_and(x2 >= kwargs['west']+180,  x2 <= kwargs['east']+180)
+            lonix = np.logical_and(x3 >= kwargs['west'],  x3 <= kwargs['east'])
             ix = np.logical_and(latix, lonix)
 
             # build coordinate grid and insert into db
             grid = np.empty((len(z2[ix]), 5), dtype=object)
             grid[:,0] = z2[ix]
             grid[:,1] = y2[ix]
-            grid[:,2] = ((x2[ix] + 180) % 360) - 180
+            grid[:,2] = x3[ix]
             grid[:,3] = dt_2_epoch([msg.validDate for item in z2[ix]])
             grid[:,4] = ['era5' for item in z2[ix]]
             db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
@@ -182,7 +185,7 @@ def load_era5(var, kwargs):
             dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
-    #assert len(rowdata) > 0, "no data found for query"
+    assert len(rowdata) > 0, "no data found for query"
     if len(rowdata) == 0:
         warnings.warn('no records found, returning empty arrays')
         return np.array([ [], [], [], [], [] ])

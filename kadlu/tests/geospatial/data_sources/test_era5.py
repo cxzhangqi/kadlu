@@ -8,7 +8,7 @@ from os.path import isfile
 # gulf st lawrence
 kwargs = dict(
         south=40, west=-70, north=59, east=-55,
-        start=datetime(2018, 1, 1), end=datetime(2018, 1, 1)
+        start=datetime(2018, 2, 1), end=datetime(2018, 2, 3)
     )
 
 # note: see assertions within fetch function

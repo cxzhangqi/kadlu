@@ -78,6 +78,7 @@ libraries using pip and apt-get. It should work out of the box on newer Ubuntu s
 Kadlu allows configuration for how data is accessed and stored on your machine. These preferences are defined in kadlu/config.ini
 
  1. Data storage location
+
     By default, a storage folder will be created in Kadlu's root folder. A custom location can be configured by placing the following inside config.ini
     ```ini
       [storage]
@@ -85,6 +86,7 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
     ```
 
  2. ECMWF - CDS API Token
+
     Kadlu uses ECMWF's Era5 dataset as one of the optional data sources for wave height/direction/period and wind speed data.
     In order to access Era5 reanalysis data from the ECMWF, it is necessary to first obtain an API token.
     This can be obtained by registering an account and visiting [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token will be displayed in the box under heading 'Install the CDS API key'

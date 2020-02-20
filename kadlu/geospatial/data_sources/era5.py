@@ -30,12 +30,11 @@ cfg.read(dirname(dirname(dirname(dirname(__file__))))+'/config.ini')
 try:
     c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
 except KeyError:
-    err = ()
     try:
         c = cdsapi.Client()
     except Exception:
-        raise KeyError('CDS API has not been configured. obtain an API key from'
-                       'the following URL and add it to kadlu/config.ini. '
+        raise KeyError('CDS API has not been configured. obtain an API key '
+                       'from the following URL and add it to kadlu/config.ini. '
                        'https://cds.climate.copernicus.eu/api-how-to')
 
 

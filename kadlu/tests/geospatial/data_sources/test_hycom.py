@@ -63,6 +63,12 @@ def test_fetch_load_over_antimeridian():
     north, east = 45, -179
     top, bottom = 0, 5000
 
+    Hycom().fetch_salinity(
+            south=south, north=north, 
+            west=west, east=east, 
+            start=start, end=end, 
+            top=top, bottom=bottom
+        )
     val, lat, lon, time, depth = Hycom().load_salinity(
             south=south, north=north, 
             west=west, east=east, 
@@ -70,21 +76,6 @@ def test_fetch_load_over_antimeridian():
             top=top, bottom=bottom
         )
     
-    if len(val) == 0:
-        Hycom().fetch_salinity(
-                south=south, north=north, 
-                west=west, east=east, 
-                start=start, end=end, 
-                top=top, bottom=bottom
-            )
-
-        val, lat, lon, time, depth = Hycom().load_salinity(
-                south=south, north=north, 
-                west=west, east=east, 
-                start=start, end=end, 
-                top=top, bottom=bottom
-            )
-
     assert(len(val) > 0)
     assert(len(val) == len(lat) == len(lon) == len(time))
     assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))

@@ -6,12 +6,6 @@ from kadlu.geospatial.data_sources.era5 import Era5
 from os.path import isfile
 
 # gulf st lawrence
-south, west = 40, -70
-north, east = 59, -55
-
-start = datetime(2018, 1, 1, 0, 0, 0, 0)
-end   = datetime(2018, 1, 1, 0, 0, 0, 0)
-
 kwargs = dict(
         south=40, west=-70, north=59, east=-55,
         start=datetime(2018, 1, 1), end=datetime(2018, 1, 1)

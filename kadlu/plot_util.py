@@ -1,13 +1,12 @@
 import numpy as np
 import matplotlib
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 #matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy.interpolate import griddata
 import cartopy
 import cartopy.crs as ccrs
-#import cartopy.io.img_tiles as cimgt
 import cartopy.feature as cfeature
 import os
 from datetime import datetime, timedelta
@@ -15,8 +14,8 @@ from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.geospatial.data_sources.hycom import Hycom
 from kadlu.geospatial.data_sources.era5 import Era5
 from kadlu.geospatial.data_sources.wwiii import Wwiii
+from kadlu.geospatial.data_sources.source_map import fetch_handler
 import imageio
-
 
 proj = ccrs.Mercator()
 config = dict(
@@ -51,7 +50,7 @@ config = dict(
 
 
 
-def plot2D(val, lat, lon, var, wind=False, **kwargs): 
+def plot2D(val, lat, lon, var, plot_wind=False, **kwargs): 
     """
 
     kwargs = dict(
@@ -96,12 +95,12 @@ def plot2D(val, lat, lon, var, wind=False, **kwargs):
     lats = np.linspace(start=min(plat), stop=max(plat), num=num_lats)
     data = griddata(points=(plon, plat), values=val, xi=(lons[None,:],lats[:,None]), method='linear')
     coast = cfeature.NaturalEarthFeature('physical', 'coastline', '10m')
-    #fg = (.92, .92, .92, 1)
-    fg = (0.66,0.66,0.66, 1)
-
+    fg = (.92, .92, .92, 1)
+    #fg = (0.66,0.66,0.66, 1)
     fname = f'{var}_{kwargs["start"].date().isoformat()}.png'
     print('saving ' + fname + '...')
     fig = plt.figure()
+
     ax = fig.add_subplot(1, 1, 1, 
             title=config[var]['title']+f'\n{kwargs["start"].date().isoformat()}',
             projection=proj, 
@@ -124,13 +123,15 @@ def plot2D(val, lat, lon, var, wind=False, **kwargs):
                 zorder=9
             )
 
-    if wind == 'era5':
+    if plot_wind == 'era5':
         Era5().fetch_wind(**kwargs)
         uval, ulat, ulon, utime = Era5().load_wind_u(**kwargs)
         vval, vlat, vlon, vtime = Era5().load_wind_v(**kwargs)
-        assert(len(vval) == len(uval))
+        assert(len(vval) == len(uval))  # this can be fixed with an SQL JOIN in load module
+    elif plot_wind is False: pass
+    else: raise ValueError('invalid plot_wind source string')
 
-    if wind is not False:
+    if plot_wind is not False:
         ax.quiver(ulon, ulat, uval, vval, transform=ccrs.PlateCarree(), 
                 regrid_shape=20, zorder=10)
 
@@ -156,7 +157,8 @@ def plot2D(val, lat, lon, var, wind=False, **kwargs):
     return
 
 
-def animate(kwargs, var, fetchfcn, loadfcn, debug=False):
+def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1), 
+        debug=False):
     """
 
     var='temp'
@@ -181,7 +183,9 @@ def animate(kwargs, var, fetchfcn, loadfcn, debug=False):
     fetchfcn = Hycom().fetch_salinity
     loadfcn = Hycom().load_salinity
 
+
     """
+    fetch_handler(var, source, kwargs)
 
     dirname = f'http/{var}'
     if not os.path.isdir(dirname): os.mkdir(dirname)
@@ -189,22 +193,22 @@ def animate(kwargs, var, fetchfcn, loadfcn, debug=False):
     old = map(png, list(os.walk(f'http/{var}'))[0][2])
     _rm = [os.remove(f'http/{var}/{x}') for x in old if debug and x is not None]
     qry = kwargs.copy()
-    t = datetime(qry['start'].year, 
-                 qry['start'].month, 
-                 qry['start'].day)
+    cur = datetime(qry['start'].year, 
+                   qry['start'].month, 
+                   qry['start'].day)
 
-    while (t <= kwargs['end']):
-        qry['start'] = t
-        qry['end'] = t + timedelta(days=1)
+    while cur <= kwargs['end']:
+        qry['start'] = cur
+        qry['end'] = cur + step
         fname = f'http/{var}/{var}_{t.date().isoformat()}.png'
         if not os.path.isfile(fname):
-            fetchfcn(**qry)
+            #fetchfcn(**qry)
             if var in ('temp', 'salinity'): 
                 val, lat, lon, time, depth = loadfcn(**qry)
             else:
                 val, lat, lon, time = loadfcn(**qry)
             plot2D(val, lat, lon, var, **qry)
-        t += timedelta(days=1)
+        cur += step
 
     print(f'animating {var}.gif...')
     frames = sorted([f'http/{var}/{i}' for i in 

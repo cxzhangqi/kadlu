@@ -1,39 +1,38 @@
 """
     API for Era5 dataset from Copernicus Climate Datastore
-
+     
     Metadata regarding the dataset can be found here:
         https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview
 """
 
-import cdsapi
-import numpy as np
-import pygrib
 import os
-from os.path import isfile, dirname
-from datetime import datetime, timedelta
+import cdsapi
+import pygrib
 import warnings
+import numpy as np
+from os.path import isfile, dirname
 from configparser import ConfigParser
-
+from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources.data_util    import              \
-        storage_cfg,                                                \
         database_cfg,                                               \
-        str_def,                                                    \
+        storage_cfg,                                                \
+        insert_hash,                                                \
         dt_2_epoch,                                                 \
         epoch_2_dt,                                                 \
         serialized,                                                 \
-        insert_hash
+        dev_null,                                                   \
+        str_def,                                                    \
+        cfg
 
 
 conn, db = database_cfg()
-cfg = ConfigParser() 
-cfg.read(dirname(dirname(dirname(dirname(__file__))))+'/config.ini')
 try:
     c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
 except KeyError:
     try:
         c = cdsapi.Client()
     except Exception:
-        raise KeyError('CDS API has not been configured. obtain an API key '
+        raise KeyError('CDS API has not been configured. obtain an API token '
                        'from the following URL and add it to kadlu/config.ini. '
                        'https://cds.climate.copernicus.eu/api-how-to')
 
@@ -50,113 +49,80 @@ def fetch_era5(var, kwargs):
                 keyword arguments passed from the Era5() class as a dictionary
 
         return:
-            nothing
+            True if new data was fetched, else False 
     """
+
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(), 
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
-
-    if kwargs['start'] == kwargs['end']: kwargs['end'] += timedelta(hours=3)
+    assert not kwargs['start'] == kwargs['end'], 'use query builder instead'
+    t = datetime(kwargs['start'].year,   kwargs['start'].month, 
+                 kwargs['start'].day,    kwargs['start'].hour)
+    assert t.month == (kwargs['end']-timedelta(hours=1)).month, \
+            'use query_builder for this instead'
     if serialized(kwargs, f'fetch_era5_{var}'): return False
 
-    t = datetime(
-            kwargs['start'].year,   kwargs['start'].month, 
-            kwargs['start'].day,    kwargs['start'].hour
-        )
-    filenames = []
+    fname = f'ERA5_reanalysis_{var}_{t.strftime("%Y-%m-%d")}.grb2'
+    fpath = f'{storage_cfg()}{fname}'
+    if not isfile(fpath):
+        with dev_null():
+            c.retrieve('reanalysis-era5-single-levels', {
+                       'product_type' : 'reanalysis',
+                       'format'       : 'grib',
+                       'variable'     : var,
+                       'year'         : t.strftime("%Y"),
+                       'month'        : t.strftime("%m"),
+                       'day'          : t.strftime("%d"),
+                       'time'         : [datetime(t.year, t.month, t.day, h)
+                                         .strftime('%H:00') for h in range(24)]
+                    }, fpath)
+    
+    assert isfile(fpath)
+    grb = pygrib.open(fpath)
+    agg = np.array([[],[],[],[],[]])
+    table = var[4:] if var[0:4] == '10m_' else var
 
-    thismonth = t.month
-    while t <= kwargs['end']:
-        fname = f"{storage_cfg()}ERA5_reanalysis_{var}_{t.strftime('%Y-%m-%d')}.grb2"
-        filenames.append(fname)
-
-        if isfile(fname):
-            while (t.month == thismonth): t += timedelta(days=1)
+    for msg, num in zip(grb, range(1, grb.messages)):
+        if msg.validDate < kwargs['start'] or msg.validDate > kwargs['end']: 
             continue
-            
-        print(f"downloading {fname} from Copernicus Climate Data Store...")
-        eom = min(datetime(t.year, t.month+1, 1)-timedelta(days=1), kwargs['end'])
-        ddelta = (eom - t).days
-        days = ([datetime(t.year, t.month, day).strftime('%d') 
-                for day in range(t.day, eom.day)] 
-                if t.day != eom.day else t.strftime('%d'))
-        if ddelta == 0:
-            eod = min(datetime(t.year, t.month, t.day, 23), kwargs['end'])
-            hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') 
-                     for hour in range(t.hour, eod.hour)]
-        else: 
-            hours = [datetime(t.year, t.month, t.day, hour).strftime('%H:00') 
-                     for hour in range(24)]
 
-        c.retrieve('reanalysis-era5-single-levels', {
-                   'product_type'  : 'reanalysis',
-                   'format'        : 'grib',
-                   'variable'      : var,
-                   'year'          : t.strftime("%Y"),
-                   'month'         : t.strftime("%m"),
-                   'day'           : days,#t.strftime("%d"),
-                   'time'          : hours#t.strftime("%H:00")
-                }, fname)
+        # read grib data
+        z, y, x = msg.data()
+        if np.ma.is_masked(z):
+            z2 = z[~z.mask].data
+            y2 = y[~z.mask]
+            x2 = x[~z.mask]
+        else:  # wind data has no mask
+            z2 = z.reshape(-1)
+            y2 = y.reshape(-1)
+            x2 = x.reshape(-1)
 
+        # adjust latitude-zero to 180th meridian
+        x3 = ((x2 + 180) % 360) - 180
 
-        if not os.path.isfile(fname):
-            warnings.warn(f'error fetching era5 data for {t}')
+        # index coordinates, select query range subset, aggregate results
+        xix = np.logical_and(x3>=kwargs['west'],  x3<=kwargs['east'])
+        yix = np.logical_and(y2>=kwargs['south'], y2<=kwargs['north'])
+        idx = np.logical_and(xix, yix)
+        agg = np.hstack((agg, [z2[idx],
+                               y2[idx],
+                               x3[idx],
+                               dt_2_epoch([msg.validDate for i in z2[idx]]),
+                               ['era5' for i in z2[idx]]]))
 
-        while (t.month == thismonth): t += timedelta(days=1)
-
-    t = datetime(
-            kwargs['start'].year,   kwargs['start'].month, 
-            kwargs['start'].day,    kwargs['start'].hour
-        )
-    for fname in filenames:
-        grib = pygrib.open(fname)
-        table = var[4:] if var[0:4] == '10m_' else var
-        n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
-        msgnum = 1
-        rows = 0
-        for msg in grib:
-            print(f'processing msg {msgnum}/{grib.messages} for {var} {msg.validDate}', end='\r')
-            msgnum += 1
-            if msg.validDate < kwargs['start'] or msg.validDate > kwargs['end']: continue
-            z, y, x = msg.data()
-
-            if np.ma.is_masked(z):
-                z2 = z[~z.mask].data
-                y2 = y[~z.mask]
-                x2 = x[~z.mask]
-            else:  # wind data has no mask
-                z2 = z.reshape(-1)
-                y2 = y.reshape(-1)
-                x2 = x.reshape(-1)
-
-            # adjust latitude-zero to 180th meridian
-            x3 = ((x2 + 180) % 360) - 180
-
-            # index coordinates and select query range subset
-            latix = np.logical_and(y2 >= kwargs['south'], y2 <= kwargs['north'])
-            lonix = np.logical_and(x3 >= kwargs['west'],  x3 <= kwargs['east'])
-            ix = np.logical_and(latix, lonix)
-
-            # build coordinate grid and insert into db
-            grid = np.empty((len(z2[ix]), 5), dtype=object)
-            grid[:,0] = z2[ix]
-            grid[:,1] = y2[ix]
-            grid[:,2] = x3[ix]
-            grid[:,3] = dt_2_epoch([msg.validDate for item in z2[ix]])
-            grid[:,4] = ['era5' for item in z2[ix]]
-            db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", grid)
-            rows += len(grid)
-
-        n2 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
-        db.execute("COMMIT")
-        conn.commit()
-
-        print(f"\nprocessed and inserted {n2-n1} rows for {msg.validDate}.\t"
-              f"{rows - (n2-n1)} duplicate rows ignored")
-
-        thismonth = t.month
-        while (t.month == thismonth): t += timedelta(days=1)
-
+    if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
+    n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
+    db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", 
+                   agg.T)
+    n2 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
+    db.execute("COMMIT")
+    conn.commit()
     insert_hash(kwargs, f'fetch_era5_{var}')
+    if 'lock' in kwargs.keys(): kwargs['lock'].release()
+
+    print(f"ERA5 {msg.validDate.date().isoformat()} {var}: "
+          f"processed and inserted {n2-n1} rows. "
+          f"{len(agg[0])- (n2-n1)} duplicates ignored")
+
     return True
 
 
@@ -181,9 +147,6 @@ def load_era5(var, kwargs):
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
     assert len(rowdata) > 0, "no data found for query"
-    if len(rowdata) == 0:
-        warnings.warn('no records found, returning empty arrays')
-        return np.array([ [], [], [], [], [] ])
 
     val, lat, lon, epoch, source = rowdata 
 
@@ -241,7 +204,8 @@ class Era5():
             'INNER JOIN v_component_of_wind '\
             'ON u_component_of_wind.lat == v_component_of_wind.lat',
             'u_component_of_wind.lon == v_component_of_wind.lon',
-            'u_component_of_wind.time == v_component_of_wind.time WHERE u_component_of_wind.lat >= ?',
+            'u_component_of_wind.time == v_component_of_wind.time '\
+            'WHERE u_component_of_wind.lat >= ?',
             'u_component_of_wind.lat <= ?',
             'u_component_of_wind.lon >= ?',
             'u_component_of_wind.lon <= ?',

@@ -10,6 +10,7 @@
     License:
 
 """
+
 import pytest
 import os
 import numpy as np
@@ -26,7 +27,6 @@ bounds = dict(
         north=46,                   east=-62.5, 
         top=0,                      bottom=5000
     )
-
 test_lat, test_lon, test_depth = bounds['south'], bounds['west'], bounds['top']
 
 def test_null_ocean():
@@ -79,7 +79,7 @@ def test_chs_bathy():
     #    north=43.8, east=-59.2)
     bound_args = bounds.copy()
     bound_args['south'], bound_args['west'], bound_args['north'], bound_args['east'] = 43.1, -59.8, 43.8, -59.2
-    o = Ocean(fetch=True, load_bathymetry='chs', **bound_args)
+    o = Ocean(fetch=8, load_bathymetry='chs', **bound_args)
     #(bathy,lats,lons) = o.bathy()
     test_lat = [43.4, 43.5]
     test_lon = [-59.6, -59.5]

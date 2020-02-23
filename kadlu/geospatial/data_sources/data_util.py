@@ -1,17 +1,19 @@
-import os
+import os, sys
 from os import path
 from os.path import dirname
 import numpy as np
 import configparser
 import warnings
-import pygrib
-import matplotlib.pyplot as plt
 import sqlite3
 from datetime import datetime, timedelta
 import json
 import pickle
 from functools import reduce
 from hashlib import md5
+from contextlib import contextmanager, redirect_stdout, redirect_stderr
+
+#import pygrib
+#import matplotlib.pyplot as plt
 
 
 # database tables for data fetching and loading
@@ -26,11 +28,14 @@ era5_tables  = [
         'v_component_of_wind'
     ]
 
+cfg = configparser.ConfigParser()       # read .ini into dictionary object
+cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
+
 
 def storage_cfg():
     """ return filepath containing storage configuration string
 
-    first tries to check the config.ini file in kadlu root folder, if there's a 
+    first checks the config.ini file in kadlu root folder, if there's a 
     problem defaults to kadlu/storage and issues a warning
     """
 
@@ -42,8 +47,6 @@ def storage_cfg():
         print(f"NOTICE: {msg} storage location will be set to {storage_location}")
         return storage_location
 
-    cfg = configparser.ConfigParser()       # read .ini into dictionary object
-    cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
     try:
         storage_location = cfg["storage"]["storage_location"]
     except KeyError:                        # missing config.ini file
@@ -115,9 +118,8 @@ def database_cfg():
 
 
 def bin_db():
-    """ database for storing objects serialized as binary """
-    #conn = sqlite3.connect('file::memory:?cache=shared', uri=True)
-    conn = sqlite3.connect(storage_cfg() + 'binary.db')
+    """ database for storing serialized objects in memory """
+    conn = sqlite3.connect('file::memory:?cache=shared', uri=True)
     db = conn.cursor()
     db.execute('CREATE TABLE IF NOT EXISTS bin'
                 '(  hash    INT  NOT NULL,  '
@@ -125,12 +127,16 @@ def bin_db():
     db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                  f"idx_bin on bin(hash)")
 
-    return conn, db
+    raise ResourceWarning('fcn not used')
+    #return conn, db
 
 
-def hash_key(kwargs, seed):
+def hash_key(kwargs, seed, block=('lock',)):
     """ compute unique hash and convert to 8-byte int as serialization key """
-    string = seed + json.dumps(kwargs, sort_keys=True, default=str)
+    qry = kwargs.copy()
+    for x in block:
+        if x in qry.keys(): del qry[x]
+    string = seed + json.dumps(qry, sort_keys=True, default=str)
     key = int(md5(string.encode('utf-8')).hexdigest(), base=16)
     return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
 
@@ -139,30 +145,39 @@ def serialized(kwargs, seed=''):
     """ returns true if fetch query hash exists in database """
     conn, db = database_cfg()
     key = hash_key(kwargs, seed)
+    if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
     db.execute('SELECT * FROM fetch_map WHERE hash == ? LIMIT 1', (key,))
     res = db.fetchone()
+    if 'lock' in kwargs.keys(): kwargs['lock'].release()
     if res is None: return False
     if res[1] is not None: return res[1]
     return True
 
 
 def insert_hash(kwargs, seed='', obj=None):
+    """ create hash index in database to record query history 
+
+        optionally include an object to be serialized and cached
+    """
+    qry = kwargs.copy()
     conn, db = database_cfg()
-    key = hash_key(kwargs, seed)
+    if 'lock' in qry.keys(): del qry['lock']
+    key = hash_key(qry, seed)
     db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)',
                (key, pickle.dumps(obj)))
     conn.commit()
+    return
 
 
 def deserialize(kwargs, persisting=True, seed=''):
     """ read binary from the database and load it as python object """
     conn, db = bin_db()
     key = hash_key(kwargs, seed)
-    db.execute('SELECT * FROM bin WHERE hash == ? LIMIT 1', (key,))
+    db.execute('SELECT * FROM fetch_map WHERE hash == ?', (key,))
     res = db.fetchone()
     if res is None: raise KeyError('no data found for query')
     if not persisting:
-        db.execute('DELETE FROM bin WHERE hash == ?', (key,))
+        db.execute('DELETE FROM fetch_map WHERE hash == ?', (key,))
         conn.commit()
     return pickle.loads(res[1])
 
@@ -248,6 +263,18 @@ def str_def(self, info, args):
     strlen = list(map(lambda f : len(f), fcns))
     whitespace = ''.join(map(lambda f : ' ', range(0, np.max(strlen) - np.min(strlen))))
     return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
+
+
+@contextmanager
+def dev_null():
+    """ context manager to redirect output to /dev/null """
+    with open(os.devnull, 'w') as null:
+        try:
+            with redirect_stderr(null) as err, redirect_stdout(null) as out: 
+                yield (err, out)
+        finally:
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
 
 
 class Boundary():

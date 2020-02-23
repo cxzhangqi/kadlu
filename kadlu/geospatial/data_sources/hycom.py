@@ -90,7 +90,7 @@ def load_depth():
         900.0, 1000.0, 1250.0, 1500.0, 2000.0, 2500.0, 3000.0, 4000.0, 5000.0])
 
 
-def fetch_hycom(self, var, year, slices):
+def fetch_hycom(self, var, year, slices, kwargs):
     """ download data from hycom, prepare it, and load into db
 
         args:
@@ -129,9 +129,6 @@ def fetch_hycom(self, var, year, slices):
     """
 
     # generate request
-    n = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
-    assert n > 0, f"{n} records available within query boundaries {slices}"
-    print(f"downloading {n} {var} values from hycom...")
     t1 = datetime.now()
     url = f"{hycom_src}/{year}.ascii?{slices_str(var, slices)}"
     with requests.get(url, stream=True) as payload_netcdf:
@@ -165,21 +162,25 @@ def fetch_hycom(self, var, year, slices):
     grid = grid[grid[:,0] != null_value]
 
     # batch database insertion ignoring duplicates
+    if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
     n1 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
     db.executemany(f"INSERT OR IGNORE INTO {var} VALUES "
                     "(?, ?, ?, CAST(? AS INT), CAST(? AS INT), ?)", grid)
     n2 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
     db.execute("COMMIT")
     conn.commit()
+    insert_hash(kwargs, f'fetch_hycom_{var}')
+    if 'lock' in kwargs.keys(): kwargs['lock'].release()
 
     t3 = datetime.now()
 
-    print(f"downloaded {len(payload_netcdf.content)/8/1000:.1f}Kb in "
-          f"{(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s. "
+    print(f"HYCOM {epoch_2_dt([self.epoch[year][slices[0][0]]])[0].date().isoformat()} "
+          f"{var}: downloaded {int(len(payload_netcdf.content)/8/1000)} Kb "
+          f"in {(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s. "
           f"parsed and inserted {n2 - n1} rows in "
-          f"{(t3-t2).seconds}.{str((t3-t2).microseconds)[0:3]}s\n"
-          f"{n - len(grid)} null values removed, "
-          f"{len(grid) - (n2 - n1)} duplicate rows ignored\n")
+          f"{(t3-t2).seconds}.{str((t3-t2).microseconds)[0:3]}s. "
+          f"{flatten - len(grid)} null values removed, "
+          f"{len(grid) - (n2 - n1)} duplicate rows ignored")
 
     return
 
@@ -296,8 +297,12 @@ def fetch_idx(self, var, kwargs):
                 map(index, needles1, haystack), 
                 map(index, needles2, haystack)
             ))
-
-        fetch_hycom(self=self, slices=slices, var=var, year=year)
+        
+        n = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
+        assert n > 0, f"{n} records available within query boundaries: {kwargs}"
+        print(f"HYCOM {kwargs['start'].date().isoformat()} {var}: "
+              f"downloading {n} values...")
+        fetch_hycom(self=self, slices=slices, var=var, year=year, kwargs=kwargs)
 
         return
 
@@ -306,18 +311,13 @@ def fetch_idx(self, var, kwargs):
     assert(kwargs['start'] >= datetime(1994, 1, 1))
     assert(kwargs['end']   <  datetime(2016, 1, 1))
     assert(kwargs['start'] <= kwargs['end'])
-
-    # TODO: 
-    # if start.year != end.year:
-    #     call _idx once per year
     assert kwargs['start'].year == kwargs['end'].year, \
-            "hycom queries spanning multiple years are not supported yet"
+            "use fetch handler for this"
 
     # check if query has been loaded already
     if serialized(kwargs, f'fetch_hycom_{var}'): return False
     
     year = str(kwargs['start'].year)
-
     if kwargs['west'] > kwargs['east']:
         print('partitioning query boundaries at antimeridian for fetching')
         kwargs1, kwargs2 = kwargs.copy(), kwargs.copy()
@@ -325,10 +325,9 @@ def fetch_idx(self, var, kwargs):
         kwargs2['west'] = self.xgrid[0]
         _idx(self, var, year, kwargs1)
         _idx(self, var, year, kwargs2)
-        return True
+    else:
+        _idx(self, var, year, kwargs)
 
-    _idx(self, var, year, kwargs)
-    insert_hash(kwargs, f'fetch_hycom_{var}')
     return True
 
 

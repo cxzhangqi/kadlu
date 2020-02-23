@@ -12,7 +12,8 @@ from kadlu.geospatial.data_sources.data_util    import      \
 from kadlu.geospatial.data_sources.source_map   import      \
         fetch_map,                                          \
         load_map,                                           \
-        default_val
+        default_val,                                        \
+        fetch_handler
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
@@ -102,7 +103,7 @@ class Ocean():
     def __init__(self,
             load_bathymetry=0, load_temp=0, load_salinity=0, load_wavedir=0,
             load_waveheight=0, load_waveperiod=0, load_windspeed=0,
-            fetch=False, **kwargs):
+            fetch=4, **kwargs):
 
         for kw in [k for k in 
                 ('south', 'west', 'north', 'east', 'top', 'bottom', 
@@ -122,8 +123,10 @@ class Ocean():
 
             elif isinstance(load_arg, str):
                 key = f'{v}_{load_arg.lower()}'
-                if fetch == True: fetch_map[key](**kwargs)
+                #if fetch == True: fetch_map[key](**kwargs)
                 callbacks.append(load_map[key])
+                if fetch is not False:
+                    fetch_handler(v, load_arg.lower(), parallel=fetch, **kwargs)
 
             elif isinstance(load_arg, (int, float)):
                 data[f'{v}_val'] = load_arg
@@ -153,9 +156,9 @@ class Ocean():
         pipe = zip(callbacks, vartypes)
         is_3D = [v in ('temp', 'salinity') for v in vartypes]
         is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
-        columns = [fcn(v=v, data=data, **kwargs) for fcn, v in pipe]
+        columns = (fcn(v=v, data=data, **kwargs) for fcn, v in pipe)
         intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
-        reshapers = [reshape_3D if v else reshape_2D for v in is_3D]
+        reshapers = (reshape_3D if v else reshape_2D for v in is_3D)
         # map interpolations to dictionary in parallel
         self.interps = {}
         interpolators = map(lambda x, y: intrpmap[x][y], is_arr, is_3D)

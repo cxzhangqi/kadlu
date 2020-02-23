@@ -26,16 +26,16 @@ def parse_sw_corner(path):
 def fetch_chs(south, north, west, east, band_id=1):
     """ download bathymetric geotiffs, process them, and insert into db
 
-    args:
-        south, north: float
-            ymin, ymax coordinate boundaries to fetch bathymetry. range: -90, 90
-        west, east: float
-            xmin, xmax coordinate boundaries to fetch bathymetry. range: -180, 180
+        args:
+            south, north: float
+                ymin, ymax coordinate boundaries. range: -90, 90
+            west, east: float
+                xmin, xmax coordinate boundaries. range: -180, 180
 
-    return: 
-      nothing
-
+        return: 
+            True if new data was downloaded and processed, else False
     """
+
     # api call: get raster IDs within bounding box
     source = "https://gisp.dfo-mpo.gc.ca/arcgis/rest/services/FGP/CHS_NONNA_100/"
     spatialRel = "esriSpatialRelIntersects"
@@ -62,22 +62,24 @@ def fetch_chs(south, north, west, east, band_id=1):
     # api call: for each tiff image, download the associated rasters
     filepaths = []
     imgnum = 1
-    print()
     for img in imgs:
         fname = img['id'].split('\\')[-1]
         fpath = f"{storage_cfg()}{fname}"
-        print(f"{fname}: downloading {imgnum}/{len(imgs)} from CHS NONNA-100...", end="\r")
-        #if os.path.isfile(fpath): continue
         filepaths.append(fpath)
-        assert(len(img['rasterIds']) == 1)
-        url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
-        tiff = requests.get(url3)
-        assert(tiff.status_code == 200)
-        with open(fpath, "wb") as f: f.write(tiff.content)
-        imgnum += 1
-        
-    print()
-    assert(len(filepaths) > 0)
+        if os.path.isfile(fpath): 
+            print(f'CHS {fname} bathymetry: file found, skipping download')
+        else:
+            print(f"CHS {fname} bathymetry: downloading {imgnum}/{len(imgs)} "
+                   "from CHS NONNA-100...")
+            assert(len(img['rasterIds']) == 1)
+            url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
+            tiff = requests.get(url3)
+            assert(tiff.status_code == 200)
+            with open(fpath, "wb") as f: f.write(tiff.content)
+            imgnum += 1
+
+    print(f'CHS bathymetry: processing {len(filepaths)} '
+          f'file{"s" if len(filepaths)!=1 else ""}')
 
     # read downloaded files and process them for DB insertion
     for filepath in filepaths:
@@ -100,28 +102,28 @@ def fetch_chs(south, north, west, east, band_id=1):
         file_lat = np.linspace(start=file_south, stop=file_ymax, num=tiff_data.RasterYSize)
         file_lon = np.linspace(start=file_west,  stop=file_xmax, num=tiff_data.RasterXSize)
 
-        # select non-masked entries and remove missing
+        # select non-masked entries, remove missing, build grid
         z1 = np.flip(bathy, axis=0)
         x1, y1 = np.meshgrid(file_lon, file_lat)
         ix = z1[~z1.mask] != band.GetNoDataValue()
         x2 = x1[~z1.mask][ix]
         y2 = y1[~z1.mask][ix]
         z2 = np.array(z1[~z1.mask][ix].data, dtype=int)
-
-        # build coordinate grid and insert into db
         source = ['chs' for z in z2]
         grid = list(map(tuple, np.vstack((z2, y2, x2, source)).T))
+
+        # insert into db
         n1 = db.execute(f"SELECT COUNT(*) FROM {chs_table}").fetchall()[0][0]
         db.executemany(f"INSERT OR IGNORE INTO {chs_table} VALUES (?,?,?,?)", grid)
         n2 = db.execute(f"SELECT COUNT(*) FROM {chs_table}").fetchall()[0][0]
         db.execute("COMMIT")
         conn.commit()
-
-        print(f"{filepath.split('/')[-1]} processed and inserted {n2-n1} rows.\t"
+        print(f"CHS {filepath.split('/')[-1]} bathymetry: "
+              f"processed and inserted {n2-n1} rows. "
               f"{len(z1[~z1.mask]) - len(grid)} null values removed, "
               f"{len(grid) - (n2-n1)} duplicate rows ignored")
 
-    return 
+    return True
 
 
 def load_chs(south, north, west, east):
@@ -145,10 +147,13 @@ class Chs():
     """ collection of module functions for fetching and loading """
 
     def fetch_bathymetry(self, **kwargs):
-        if serialized(kwargs, 'fetch_chs'): return False
-        fetch_chs(south=kwargs['south'], north=kwargs['north'], 
-              west=kwargs['west'], east=kwargs['east'], band_id=1)
-        insert_hash(kwargs, 'fetch_chs')
+        for k in ('start', 'lock', 'end', 'top', 'bottom'):
+            if k in kwargs.keys(): del kwargs[k]
+        if serialized(kwargs, 'fetch_chs_bathy'): return False
+
+        if (fetch_chs(south=kwargs['south'], north=kwargs['north'], 
+                west=kwargs['west'], east=kwargs['east'], band_id=1)):
+            insert_hash(kwargs, 'fetch_chs_bathy')
         return True
 
     def load_bathymetry(self, **kwargs):

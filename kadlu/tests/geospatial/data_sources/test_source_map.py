@@ -1,14 +1,21 @@
 from datetime import datetime
 from kadlu.geospatial.data_sources.source_map import fetch_handler
 kwargs = dict(
-    start=datetime(2015, 3, 1), end=datetime(2015, 3, 3),
-    south=45,                   west=-68.4, 
-    north=51.5,                 east=-56.5, 
-    top=0,                      bottom=100,
+        start=datetime(2015, 3, 1), end=datetime(2015, 3, 3),
+        south=45,                   west=-68.4, 
+        north=51.5,                 east=-56.5, 
+        top=0,                      bottom=100,
     )
 
+
+def test_batch_wwiii():
+    fetch_handler('waveheight', 'wwiii', parallel=4, **kwargs)
+
 def test_batch_hycom():
-    fetch_handler('salinity', 'hycom', parallel=8, **kwargs)
+    fetch_handler('salinity', 'hycom', parallel=16, **kwargs)
+
+def test_batch_era5():
+    fetch_handler('waveheight', 'era5', parallel=1, **kwargs)
 
 def test_batch_chs():
     # this is just a wrapper for Chs().fetch_bathymetry,
@@ -16,8 +23,11 @@ def test_batch_chs():
     # non-temporal data is not parallelized
     fetch_handler('bathy', 'chs', parallel=9999, **kwargs)
 
-def test_batch_era5():
-    fetch_handler('waveheight', 'era5', parallel=1, **kwargs)
+
+
+
+
+
 
 
 """ interactive testing

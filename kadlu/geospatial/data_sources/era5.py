@@ -17,20 +17,18 @@ from kadlu.geospatial.data_sources.data_util    import              \
         database_cfg,                                               \
         storage_cfg,                                                \
         insert_hash,                                                \
+        serialized,                                                 \
         dt_2_epoch,                                                 \
         epoch_2_dt,                                                 \
-        serialized,                                                 \
         dev_null,                                                   \
         str_def,                                                    \
         cfg
 
 
 conn, db = database_cfg()
-try:
-    c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
+try: c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
 except KeyError:
-    try:
-        c = cdsapi.Client()
+    try: c = cdsapi.Client()
     except Exception:
         raise KeyError('CDS API has not been configured. obtain an API token '
                        'from the following URL and add it to kadlu/config.ini. '
@@ -54,10 +52,9 @@ def fetch_era5(var, kwargs):
 
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(), 
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
-    assert not kwargs['start'] == kwargs['end'], 'use query builder instead'
-    t = datetime(kwargs['start'].year,   kwargs['start'].month, 
+    t = datetime(kwargs['start'].year,   kwargs['start'].month,
                  kwargs['start'].day,    kwargs['start'].hour)
-    assert t.month == (kwargs['end']-timedelta(hours=1)).month, \
+    assert t.month == (kwargs['end']-timedelta(hours=1)).month,     \
             'use query_builder for this instead'
     if serialized(kwargs, f'fetch_era5_{var}'): return False
 

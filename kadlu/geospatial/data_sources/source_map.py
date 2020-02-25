@@ -109,16 +109,15 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
                 if k in qry.keys(): del qry[k]  # trim hash indexing entropy
         else: cur += step
         if serialized(qry, f'fetch_{source}_{var}') is not False:
-            print(f'FETCH_HANDLER DEBUG MSG: already fetched '
-                  f'{source}_{var} {qry["start"].date().isoformat()}! '
-                  f'continuing...')
+            #print(f'FETCH_HANDLER DEBUG MSG: already fetched '
+            #      f'{source}_{var} {cur.date().isoformat()}! continuing...')
             continue
         job.put((fetch_map[f'{var}_{source}'], qry.copy()))
         num += 1
 
     pxs = [Process(target=fetch_process, args=(job,key)) 
            for n in range(min(num, parallel))]
-    print(f'FETCH_HANDLER DEBUG MSG: beginning downloads in {len(pxs)} processes')
+    #print(f'FETCH_HANDLER DEBUG MSG: beginning downloads in {len(pxs)} processes')
     for p in pxs: p.start()
     for p in pxs: p.join()
     job.close()

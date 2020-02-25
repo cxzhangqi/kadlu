@@ -15,7 +15,7 @@ from os.path import isfile
 import requests
 import shutil
 import pygrib
-import warnings
+from warnings import warn
 
 from kadlu.geospatial.data_sources.data_util import                 \
         ll_2_regionstr,                                             \
@@ -35,8 +35,8 @@ wwiii_src = "https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/"
 # region boundaries as defined in WWIII docs:
 #    https://polar.ncep.noaa.gov/waves/implementations.php
 wwiii_varmap = dict(zip(
-    ('hs','dp','tp', 'wind'),
-    ('waveheight','wavedirection','waveperiod', 'windspeed')))
+        ('hs','dp','tp', 'wind'),
+        ('waveheight','wavedir','waveperiod', 'windspeed')))
 
 wwiii_global = Boundary(-90, 90, -180, 180, 'glo_30m')  # global
 wwiii_regions = [
@@ -78,24 +78,14 @@ def fetch_wwiii(var, kwargs):
     assert t.month == (kwargs['end']-timedelta(hours=1)).month, \
             'use fetch_handler for this'
 
+    if serialized(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}'): return False
 
     def fetchname(var, t, region):
         """ generate filename for given wave variable, time, and region """
         return f"multi_1.{region}.{var}.{t.strftime('%Y%m')}.grb2"
 
 
-    # used for sanity checking the fetch_handler hash index
-    # this can be removed later for increased performance
-    """
-    if 'lock' in kwargs.keys(): 
-        kwargs['lock'].acquire()
-        if serialized(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}'): 
-            print(f'WWIII DEBUG MSG: fetch_handler index check failed')
-            return False
-        kwargs['lock'].release()
-    """
-
-    warnings.warn("resolution selection not implemented yet. defaulting to 0.5°")
+    warn("resolution selection not implemented yet. defaulting to 0.5°")
     regions = ['glo_30m']
 
     assert regions == ['glo_30m'], 'invalid region string'
@@ -130,6 +120,7 @@ def fetch_wwiii(var, kwargs):
         n2 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
         db.execute("COMMIT")
         conn.commit()
+        insert_hash(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}')
         if 'lock' in kwargs.keys(): kwargs['lock'].release()
         print(f"WWIII {kwargs['start'].date().isoformat()} {table}: "
               f"processed and inserted {n2-n1} rows. "
@@ -139,10 +130,11 @@ def fetch_wwiii(var, kwargs):
     null = 0
     agg = np.array([[],[],[],[],[]])
     grbvar = grib[1]['name']
+    table = f'{var}{grbvar[0]}' if var == 'wind' else var
     for msg, num in zip(grib, range(1, grib.messages)):
         if msg['name'] != grbvar:
-            table = f'{var}{msg["name"][0]}' if var == 'wind' else var
             insert(table, agg, null, kwargs)
+            table = f'{var}{msg["name"][0]}' if var == 'wind' else var
             agg = np.array([[],[],[],[],[]])
             grbvar = msg['name']
             null = 0
@@ -150,21 +142,15 @@ def fetch_wwiii(var, kwargs):
         if msg.validDate > kwargs['end']:   continue
         z, y, x = msg.data()
         src = np.array(['wwiii' for each in z[~z.mask].data])
-        grid = np.vstack((
-                z[~z.mask].data, 
-                y[~z.mask], 
-                ((x[~z.mask] + 180) % 360 ) - 180, 
-                dt_2_epoch([msg.validDate for each in z[~z.mask].data]), 
-                src
-            )).astype(object)
+        grid = np.vstack((z[~z.mask].data, 
+                          y[~z.mask], 
+                          ((x[~z.mask] + 180) % 360 ) - 180, 
+                          dt_2_epoch([msg.validDate for each in z[~z.mask].data]), 
+                          src)).astype(object)
         agg = np.hstack((agg, grid))
         null += sum(sum(z.mask))
-        
-    table = f'{var}{msg["name"][0]}' if var == 'wind' else var
     insert(table, agg, null, kwargs)
 
-
-    insert_hash(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}')
     return True
 
 
@@ -230,12 +216,33 @@ class Wwiii():
     def load_wind_u(self,           **kwargs):  return load_wwiii('windU',  kwargs)
     def load_wind_v(self,           **kwargs):  return load_wwiii('windV',  kwargs)
     def load_wind(self,             **kwargs):
-        wind_u = load_wwiii('windU',  kwargs)
-        wind_v = load_wwiii('windV',  kwargs)
-        wind_uv = wind_u.copy()
-        #wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
-        wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
-        return wind_uv
+        #wind_u = load_wwiii('windU',  kwargs)
+        #wind_v = load_wwiii('windV',  kwargs)
+        #wind_uv = wind_u.copy()
+        #wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
+
+        sql = ' AND '.join(['SELECT * FROM windU '\
+            'INNER JOIN windV '\
+            'ON windU.lat == windV.lat',
+            'windU.lon == windV.lon',
+            'windU.time == windV.time '\
+            'WHERE windU.lat >= ?',
+            'windU.lat <= ?',
+            'windU.lon >= ?',
+            'windU.lon <= ?',
+            'windU.time >= ?',
+            'windU.time <= ?']) + ' ORDER BY time, lat, lon ASC'
+
+        db.execute(sql, tuple(map(str, [
+                kwargs['south'],                kwargs['north'], 
+                kwargs['west'],                 kwargs['east'], 
+                dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]
+            ])))
+        wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = np.array(db.fetchall()).T
+        val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))
+        return np.array((val, lat, lon, epoch)).astype(float)
+
+        return 
 
     def __str__(self):
         info = '\n'.join([ "Wavewatch info goes here" ])

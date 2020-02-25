@@ -45,6 +45,10 @@ def test_era5_load_waveperiod():
     assert(len(lat) > 0)
 
 def test_era5_load_wind():
+    kwargs = dict(
+            south=40, west=-70, north=41, east=-69,
+            start=datetime(2018, 2, 1), end=datetime(2018, 2, 2)
+        )
     wind, lat, lon, time = Era5().load_wind(**kwargs)
     assert(len(wind)==len(lat)==len(lon))
     assert(len(lat) > 0)

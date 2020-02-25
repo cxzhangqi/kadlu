@@ -25,6 +25,10 @@ storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def, index, serialized, i
 hycom_src = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data"
 conn, db = database_cfg()  # database connection and cursor objects 
 
+hycom_varmap = dict(zip(
+        ('salinity', 'water_temp', 'water_u', 'water_v'),
+        ('salinity', 'temp', 'water_u', 'water_v')))
+
 
 def slices_str(var, slices, steps=(1, 1, 1, 1)):
     """ build the query to slice the data from the dataset """
@@ -169,7 +173,7 @@ def fetch_hycom(self, var, year, slices, kwargs):
     n2 = db.execute(f"SELECT COUNT(*) FROM {var}").fetchall()[0][0]
     db.execute("COMMIT")
     conn.commit()
-    insert_hash(kwargs, f'fetch_hycom_{var}')
+    insert_hash(kwargs, f'fetch_hycom_{hycom_varmap[var]}')
     if 'lock' in kwargs.keys(): kwargs['lock'].release()
 
     t3 = datetime.now()
@@ -315,7 +319,7 @@ def fetch_idx(self, var, kwargs):
             "use fetch handler for this"
 
     # check if query has been loaded already
-    if serialized(kwargs, f'fetch_hycom_{var}'): return False
+    if serialized(kwargs, f'fetch_hycom_{hycom_varmap[var]}'): return False
     
     year = str(kwargs['start'].year)
     if kwargs['west'] > kwargs['east']:
@@ -323,8 +327,10 @@ def fetch_idx(self, var, kwargs):
         kwargs1, kwargs2 = kwargs.copy(), kwargs.copy()
         kwargs1['east'] = self.xgrid[-1]
         kwargs2['west'] = self.xgrid[0]
-        _idx(self, var, year, kwargs1)
-        _idx(self, var, year, kwargs2)
+        if not serialized(kwargs1, f'fetch_hycom_{hycom_varmap[var]}'):
+            _idx(self, var, year, kwargs1)
+        if not serialized(kwargs2, f'fetch_hycom_{hycom_varmap[var]}'):
+            _idx(self, var, year, kwargs2)
     else:
         _idx(self, var, year, kwargs)
 

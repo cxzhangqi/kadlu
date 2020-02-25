@@ -140,9 +140,9 @@ def hash_key(kwargs, seed, block=('lock',)):
 
 def serialized(kwargs, seed=''):
     """ returns true if fetch query hash exists in database """
-    conn, db = database_cfg()
     key = hash_key(kwargs, seed)
     if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
+    conn, db = database_cfg()
     db.execute('SELECT * FROM fetch_map WHERE hash == ? LIMIT 1', (key,))
     res = db.fetchone()
     if 'lock' in kwargs.keys(): kwargs['lock'].release()
@@ -153,7 +153,6 @@ def serialized(kwargs, seed=''):
 
 def insert_hash(kwargs, seed='', obj=None):
     """ create hash index in database to record query history 
-
         optionally include an object to be serialized and cached
     """
     qry = kwargs.copy()

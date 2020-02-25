@@ -34,14 +34,23 @@ except KeyError:
                        'from the following URL and add it to kadlu/config.ini. '
                        'https://cds.climate.copernicus.eu/api-how-to')
 
+era5_varmap = dict(zip(
+        ('significant_height_of_combined_wind_waves_and_swell',
+         'mean_wave_direction',
+         'mean_wave_period',
+         '10m_u_component_of_wind',
+         '10m_v_component_of_wind'),
+        ('waveheight', 'wavedir', 'waveperiod', 'windspeedU', 'windspeedV')))
+
 
 def fetch_era5(var, kwargs):
     """ fetch global era5 data for specified variable and time range
 
         args:
             var: string
-                the variable short name of desired wave parameter according to ERA5 docs
-                the complete list can be found here (table 7 for wave params)
+                the variable short name of desired wave parameter 
+                according to ERA5 docs.  the complete list can be found 
+                here (table 7 for wave params):
                 https://confluence.ecmwf.int/display/CKB/ERA5+data+documentation#ERA5datadocumentation-Temporalfrequency
             kwargs: dict
                 keyword arguments passed from the Era5() class as a dictionary
@@ -56,7 +65,7 @@ def fetch_era5(var, kwargs):
                  kwargs['start'].day,    kwargs['start'].hour)
     assert t.month == (kwargs['end']-timedelta(hours=1)).month,     \
             'use query_builder for this instead'
-    if serialized(kwargs, f'fetch_era5_{var}'): return False
+    if serialized(kwargs, f'fetch_era5_{era5_varmap[var]}'): return False
 
     fname = f'ERA5_reanalysis_{var}_{t.strftime("%Y-%m-%d")}.grb2'
     fpath = f'{storage_cfg()}{fname}'
@@ -108,12 +117,12 @@ def fetch_era5(var, kwargs):
 
     if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
     n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
-    db.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,CAST(? AS INT),?)", 
-                   agg.T)
+    db.executemany(f"INSERT OR IGNORE INTO {table} "
+                   f"VALUES (?,?,?,CAST(? AS INT),?)", agg.T)
     n2 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
     db.execute("COMMIT")
     conn.commit()
-    insert_hash(kwargs, f'fetch_era5_{var}')
+    insert_hash(kwargs, f'fetch_era5_{era5_varmap[var]}')
     if 'lock' in kwargs.keys(): kwargs['lock'].release()
 
     print(f"ERA5 {msg.validDate.date().isoformat()} {var}: "
@@ -189,14 +198,6 @@ class Era5():
     def load_wind_v(self, **kwargs):
         return load_era5('10m_v_component_of_wind', kwargs)
     def load_wind(self, **kwargs):
-        #wind_u = load_era5('10m_u_component_of_wind', kwargs)
-        #wind_v = load_era5('10m_v_component_of_wind', kwargs)
-        #ix = np.unique(wind_u[1:] == wind_v[1:], axis=2)
-        #wind_uv = wind_u.copy()
-        #wind_uv[0] = tuple(zip(wind_u[0], wind_v[0]))
-        #wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
-
-        #table = var[4:] if var[0:4] == '10m_' else var  # table cant start with int
         sql = ' AND '.join(['SELECT * FROM u_component_of_wind '\
             'INNER JOIN v_component_of_wind '\
             'ON u_component_of_wind.lat == v_component_of_wind.lat',

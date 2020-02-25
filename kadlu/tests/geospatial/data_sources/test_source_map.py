@@ -12,23 +12,18 @@ def test_batch_wwiii():
     fetch_handler('waveheight', 'wwiii', parallel=4, **kwargs)
 
 def test_batch_hycom():
-    fetch_handler('salinity', 'hycom', parallel=16, **kwargs)
+    fetch_handler('temp', 'hycom', parallel=2, **kwargs)
 
 def test_batch_era5():
-    fetch_handler('waveheight', 'era5', parallel=1, **kwargs)
+    fetch_handler('wavedir', 'era5', parallel=4, **kwargs)
 
 def test_batch_chs():
-    # this is just a wrapper for Chs().fetch_bathymetry,
-    # with an additional hash check
-    # non-temporal data is not parallelized
-    fetch_handler('bathy', 'chs', parallel=9999, **kwargs)
-
-
-
-
-
-
-
+    # this is just a wrapper for Chs().fetch_bathymetry
+    # with an additional hash index check.
+    # non-temporal data not parallelized
+    fetch_handler('bathy', 'chs', parallel=9999, 
+            south=45, west=-67, north=46, east=-66,
+            start=datetime.now(), end=datetime.now())
 
 """ interactive testing
 

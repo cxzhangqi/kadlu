@@ -13,6 +13,7 @@ import numpy as np
 from os.path import isfile, dirname
 from configparser import ConfigParser
 from datetime import datetime, timedelta
+import kadlu.geospatial.data_sources.source_map
 from kadlu.geospatial.data_sources.data_util    import              \
         database_cfg,                                               \
         storage_cfg,                                                \
@@ -139,6 +140,10 @@ def load_era5(var, kwargs):
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 
+    # check for missing data
+    kadlu.geospatial.data_sources.source_map.fetch_handler(
+            era5_varmap[var], 'era5', parallel=1, **kwargs)
+
     table = var[4:] if var[0:4] == '10m_' else var  # table cant start with int
     sql = ' AND '.join([f"SELECT * FROM {table} WHERE lat >= ?",
         'lat <= ?',
@@ -153,7 +158,6 @@ def load_era5(var, kwargs):
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
     assert len(rowdata) > 0, "no data found for query"
-
     val, lat, lon, epoch, source = rowdata 
 
     return np.array((val, lat, lon, epoch), dtype=np.float)

@@ -17,6 +17,7 @@ import shutil
 import pygrib
 from warnings import warn
 
+import kadlu.geospatial.data_sources.source_map
 from kadlu.geospatial.data_sources.data_util import                 \
         ll_2_regionstr,                                             \
         database_cfg,                                               \
@@ -178,6 +179,9 @@ def load_wwiii(var, kwargs):
     assert not 'time' in kwargs.keys(), 'nearest time search not implemented yet'
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
+
+    kadlu.geospatial.data_sources.source_map.fetch_handler(
+            wwiii_varmap[var], 'wwiii', parallel=1, **kwargs)
 
     db.execute(' AND '.join([
            f'SELECT * FROM {var} WHERE lat >= ?',

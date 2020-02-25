@@ -5,7 +5,9 @@ import json
 import requests
 from osgeo import gdal
 import warnings
+from datetime import datetime
 
+import kadlu.geospatial.data_sources.source_map
 from kadlu.geospatial.data_sources.data_util import \
 storage_cfg, database_cfg, chs_table, str_def, serialized, insert_hash
 
@@ -127,6 +129,14 @@ def fetch_chs(south, north, west, east, band_id=1):
 
 
 def load_chs(south, north, west, east):
+    qryargs = dict(
+            south=south, west=west,
+            north=north, east=east, 
+            start=datetime.now(), end=datetime.now())
+
+    kadlu.geospatial.data_sources.source_map.fetch_handler(
+            'bathy', 'chs', parallel=1, **qryargs)
+
     db.execute(' AND '.join([f"SELECT * FROM {chs_table} WHERE lat >= ?",
                                                               "lat <= ?",
                                                               "lon >= ?",
@@ -135,11 +145,11 @@ def load_chs(south, north, west, east):
     
     slices = np.array(db.fetchall(), dtype=object).T
     assert len(slices) == 4, "no data found for query range"
-    if len(slices) != 4:
-       warnings.warn("no data found for query range, returning empty arrays")
-       bathy, lat, lon = np.array([]), np.array([]), np.array([])
-    else:
-       bathy, lat, lon, source = slices
+    #if len(slices) != 4:
+    #   warnings.warn("no data found for query range, returning empty arrays")
+    #   bathy, lat, lon = np.array([]), np.array([]), np.array([])
+    #else:
+    bathy, lat, lon, source = slices
     return np.array((bathy, lat, lon)).astype(float)
 
 

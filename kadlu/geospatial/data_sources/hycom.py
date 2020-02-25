@@ -20,6 +20,7 @@ import warnings
 
 from kadlu.geospatial.data_sources.data_util        import          \
 storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def, index, serialized, insert_hash
+import kadlu.geospatial.data_sources.source_map
 
 
 hycom_src = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data"
@@ -189,7 +190,7 @@ def fetch_hycom(self, var, year, slices, kwargs):
     return
 
 
-def load_hycom(self, var, kwargs):
+def load_hycom(self, var, kwargs, recursive=True):
     """ load hycom data from local database
 
         args:
@@ -224,6 +225,10 @@ def load_hycom(self, var, kwargs):
         kwargs1['west'] = self.xgrid[0]
         kwargs2['east'] = self.xgrid[-1]
         return np.hstack((load_hycom(self, var, kwargs1), load_hycom(self, var, kwargs2)))
+    
+    # check for missing data
+    kadlu.geospatial.data_sources.source_map.fetch_handler(
+            hycom_varmap[var], 'hycom', parallel=1, **kwargs)
 
     # perform nearest-time search on values if time keyword arg is supplied
     if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
@@ -270,12 +275,8 @@ def load_hycom(self, var, kwargs):
             kwargs['top'],                  kwargs['bottom']
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
-    #assert len(rowdata[0]) > 0, "no records found"
-    if len(rowdata) == 0:
-        warnings.warn('no records found, returning empty arrays')
-        return np.array([ [], [], [], [], [] ])
-    #if len(rowdata[0]) >= int(kwargs['limit'].split(";")[0]):
-    #    warnings.warn(f'query limit exceeded, returning first {kwargs["limit"].split(";")[0]}')
+
+    assert len(rowdata) > 0, 'no data for query'
 
     return rowdata[0:5].astype(float)
 

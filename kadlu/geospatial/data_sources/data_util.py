@@ -255,10 +255,11 @@ def reshape_3D(cols):
 
 def str_def(self, info, args):
     """ builds string definition for data source class objects """
-    fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and not fcn.startswith("__")]
-    strlen = list(map(lambda f : len(f), fcns))
-    whitespace = ''.join(map(lambda f : ' ', range(0, np.max(strlen) - np.min(strlen))))
-    return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
+    fcns = [fcn for fcn in dir(self) if callable(getattr(self, fcn)) and 'load' in fcn and not fcn.startswith("__")]
+    #strlen = list(map(lambda f : len(f), fcns))
+    #whitespace = ''.join(map(lambda f : ' ', range(0, np.max(strlen) - np.min(strlen))))
+    #return f"{info}\n\nClass functions:\n\t" + "\n\t".join(map(lambda f : f"{f}{whitespace[len(f)-np.min(strlen):]}{args}", fcns ))
+    return f'{info}\n\ninput arguments:\n\t{args}\n\nclass functions:\n\t' + '\n\t'.join(fcns) + '\n'
 
 
 @contextmanager

@@ -216,11 +216,6 @@ class Wwiii():
     def load_wind_u(self,           **kwargs):  return load_wwiii('windU',  kwargs)
     def load_wind_v(self,           **kwargs):  return load_wwiii('windV',  kwargs)
     def load_wind(self,             **kwargs):
-        #wind_u = load_wwiii('windU',  kwargs)
-        #wind_v = load_wwiii('windV',  kwargs)
-        #wind_uv = wind_u.copy()
-        #wind_uv[0] = np.sqrt(np.square(wind_u[0]), np.square(wind_v[0]))
-
         sql = ' AND '.join(['SELECT * FROM windU '\
             'INNER JOIN windV '\
             'ON windU.lat == windV.lat',
@@ -241,8 +236,6 @@ class Wwiii():
         wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = np.array(db.fetchall()).T
         val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))
         return np.array((val, lat, lon, epoch)).astype(float)
-
-        return 
 
     def __str__(self):
         info = '\n'.join([ "Wavewatch info goes here" ])

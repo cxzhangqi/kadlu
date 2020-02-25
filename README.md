@@ -60,9 +60,9 @@ Installation of these libraries is most easily accomplished using Anaconda.
       pip install dist/kadlu-0.0.1.tar.gz
     ```
 
- 5. Generate an API token
+ 5. Configuration
 
-    Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key, using the instructions here for [Windows](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows), [Mac](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+macOS) or [Linux](https://cds.climate.copernicus.eu/api-how-to).
+    Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key as described in the 'Configuration' section below. Additionally, a custom storage location can be provided for downloaded data
  
  6. Check that everything is working by running pytest
     ```terminal

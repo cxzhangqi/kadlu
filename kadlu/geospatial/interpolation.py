@@ -64,8 +64,8 @@ def interp_2D(values, lats=None, lons=None, origin=None,
         else:
             return Interpolator2D(values, lats, lons, origin, method_irreg, lats_reg, lons_reg)
 
-def interp_3D(values, lats=None, lons=None, depths=None, origin=None, method='linear'):
 
+def interp_3D(values, lats=None, lons=None, depths=None, origin=None, method='linear'):
         if isinstance(values, (float, int)):
             return Uniform3D(values)
         

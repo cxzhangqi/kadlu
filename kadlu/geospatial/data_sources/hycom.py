@@ -17,10 +17,16 @@ import time
 from datetime import datetime, timedelta
 from os.path import isfile
 import warnings
-
-from kadlu.geospatial.data_sources.data_util        import          \
-storage_cfg, database_cfg, dt_2_epoch, epoch_2_dt, str_def, index, serialized, insert_hash
 import kadlu.geospatial.data_sources.source_map
+from kadlu.geospatial.data_sources.data_util        import          \
+        database_cfg,                                               \
+        storage_cfg,                                                \
+        insert_hash,                                                \
+        serialized,                                                 \
+        dt_2_epoch,                                                 \
+        epoch_2_dt,                                                 \
+        str_def,                                                    \
+        index
 
 
 hycom_src = "https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data"
@@ -116,10 +122,8 @@ def fetch_hycom(self, var, year, slices, kwargs):
                 https://tds.hycom.org/thredds/dodsC/GLBv0.08/expt_53.X/data/2015.html
             lat: array
                 the first array returned by load_grid()
-                used as a Hycom() class attribute for optimization
             lon: array
                 the second array returned by load_grid()
-                used as a Hycom() class attribute for optimization
             epoch: dictionary
                 dictionary containing temporal grid arrays
                 used to convert epoch index to datetime
@@ -127,7 +131,6 @@ def fetch_hycom(self, var, year, slices, kwargs):
                 of datetimes
             depth: array
                 array returned by load_depth()
-                used as a Hycom() class attribute for optimization
 
         stores data in geospatial database and returns nothing.
         displays status message to standard output
@@ -216,7 +219,6 @@ def load_hycom(self, var, kwargs, recursive=True):
             depth: array
                 measured in meters
     """
-    #if 'limit' not in kwargs.keys() : kwargs['limit'] = '500000;--infinity'
 
     # recursive function call for queries spanning antimeridian
     if (kwargs['west'] > kwargs['east']): 
@@ -225,10 +227,10 @@ def load_hycom(self, var, kwargs, recursive=True):
         kwargs1['west'] = self.xgrid[0]
         kwargs2['east'] = self.xgrid[-1]
         return np.hstack((load_hycom(self, var, kwargs1), load_hycom(self, var, kwargs2)))
-    
+
     # check for missing data
     kadlu.geospatial.data_sources.source_map.fetch_handler(
-            hycom_varmap[var], 'hycom', parallel=1, **kwargs)
+            hycom_varmap[var], 'hycom', parallel=2, **kwargs)
 
     # perform nearest-time search on values if time keyword arg is supplied
     if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
@@ -302,7 +304,7 @@ def fetch_idx(self, var, kwargs):
                 map(index, needles1, haystack), 
                 map(index, needles2, haystack)
             ))
-        
+
         n = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
         assert n > 0, f"{n} records available within query boundaries: {kwargs}"
         print(f"HYCOM {kwargs['start'].date().isoformat()} {var}: "
@@ -311,20 +313,20 @@ def fetch_idx(self, var, kwargs):
 
         return
 
+    assert kwargs['start'] <= kwargs['end']
     assert kwargs['south'] <= kwargs['north']
-    assert(kwargs['top']   <= kwargs['bottom'])
-    assert(kwargs['start'] >= datetime(1994, 1, 1))
-    assert(kwargs['end']   <  datetime(2016, 1, 1))
-    assert(kwargs['start'] <= kwargs['end'])
-    assert kwargs['start'].year == kwargs['end'].year, \
+    assert kwargs['top']   <= kwargs['bottom']
+    assert kwargs['start'] >= datetime(1994, 1, 1)
+    assert kwargs['end']   <  datetime(2016, 1, 1)
+    assert kwargs['end'] - kwargs['start'] <= timedelta(days=1), \
             "use fetch handler for this"
 
     # check if query has been loaded already
     if serialized(kwargs, f'fetch_hycom_{hycom_varmap[var]}'): return False
-    
+
     year = str(kwargs['start'].year)
     if kwargs['west'] > kwargs['east']:
-        print('partitioning query boundaries at antimeridian for fetching')
+        print('splitting request')
         kwargs1, kwargs2 = kwargs.copy(), kwargs.copy()
         kwargs1['east'] = self.xgrid[-1]
         kwargs2['west'] = self.xgrid[0]
@@ -365,15 +367,15 @@ class Hycom():
     def fetch_temp    (self, **kwargs): return fetch_idx(self,  'water_temp', kwargs)
     def fetch_water_u (self, **kwargs): return fetch_idx(self,  'water_u',    kwargs)
     def fetch_water_v (self, **kwargs): return fetch_idx(self,  'water_v',    kwargs)
-    def fetch_water   (self, **kwargs): 
-                                        return fetch_idx(self,  'water_u',    kwargs) and\
+    def fetch_water_uv(self, **kwargs): return fetch_idx(self,  'water_u',    kwargs) and\
                                                fetch_idx(self,  'water_v',    kwargs)
 
     def load_salinity (self, **kwargs): return load_hycom(self, 'salinity',   kwargs)
     def load_temp     (self, **kwargs): return load_hycom(self, 'water_temp', kwargs)
     def load_water_u  (self, **kwargs): return load_hycom(self, 'water_u',    kwargs)
     def load_water_v  (self, **kwargs): return load_hycom(self, 'water_v',    kwargs)
-    def load_water    (self, **kwargs):
+    def load_water_uv (self, **kwargs):
+        warnings.warn('HYCOM LOAD_WATER_UV: code should with SQL JOIN')
         water_u = load_hycom(self, 'water_u', kwargs)
         water_v = load_hycom(self, 'water_v', kwargs)
         water_uv = water_u.copy()
@@ -383,10 +385,9 @@ class Hycom():
     def __str__(self):
         info = '\n'.join([
                 "Native hycom .[ab] data converted to NetCDF at the Naval",
-                "Research Laboratory, interpolated to a uniform 0.08° between",
-                "40°S-40°N (0.04° poleward of these latitudes), and",
-                "interpolated to 40 standard z-levels.",
-                "Historical data available from 1994 to 2015 (inclusive).",
+                "Research Laboratory, interpolated to 0.08° grid between",
+                "40°S-40°N (0.04° poleward) containing 40 z-levels.",
+                "Availability: 1994 to 2015",
                 "\thttps://www.hycom.org/data/glbv0pt08" ])
 
         args = ("(south, north, west, east, "

@@ -25,8 +25,8 @@ fetch_map = dict(
         wavedir_wwiii       = Wwiii().fetch_wavedirection,
         waveheight_wwiii    = Wwiii().fetch_windwaveheight,
         waveperiod_wwiii    = Wwiii().fetch_waveperiod,
-        windspeed_wwiii     = Wwiii().fetch_wind
-    )
+        windspeed_wwiii     = Wwiii().fetch_wind_uv
+        )
 load_map = dict(
         bathy_chs           = Chs().load_bathymetry,
         temp_hycom          = Hycom().load_temp,
@@ -40,8 +40,8 @@ load_map = dict(
         waveperiod_era5     = Era5().load_waveperiod,
         waveperiod_wwiii    = Wwiii().load_waveperiod,
         windspeed_era5      = Era5().load_wind,
-        windspeed_wwiii     = Wwiii().load_wind
-    )
+        windspeed_wwiii     = Wwiii().load_wind_uv
+        )
 
 # some reasonable default kwargs
 default_val = dict(
@@ -50,7 +50,7 @@ default_val = dict(
         top=0, bottom=-5000,
         start=datetime(2015, 3, 1), end=datetime(2015, 3, 1, 3)
         #water_density=1, seafloor_density=1
-    )
+        )
 
 
 def fetch_process(job, key):
@@ -64,8 +64,8 @@ def fetch_process(job, key):
         req = job.get()
         if not req[0](lock=key, **req[1]):
             print('FETCH_PROCESS DEBUG MSG: fetch function returned false, '
-                 f'skipping fetch request\ndebug: {req[1]}')
-    return
+                    f'skipping fetch request\ndebug: {req[1]}')
+            return
 
 
 def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
@@ -88,7 +88,7 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
     """
 
     assert f'{var}_{source}' in fetch_map.keys(), 'invalid query, '\
-           f'could not find source for variable. options are: {list(f.split("_") for f in fetch_map.keys())}'
+            f'could not find source for variable. options are: {list(f.split("_") for f in fetch_map.keys())}'
 
     np.array(list(x for x in range(100)))
     np.array(np.append([1], [x]) for x in range(10))
@@ -111,7 +111,7 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
             cur = kwargs['end']
             for k in ('start', 'end', 'top', 'bottom', 'lock'):
                 if k in qry.keys(): del qry[k]  # trim hash indexing entropy
-        else: cur += step
+                else: cur += step
         if serialized(qry, f'fetch_{source}_{var}') is not False:
             #print(f'FETCH_HANDLER DEBUG MSG: already fetched '
             #      f'{source}_{var} {cur.date().isoformat()}! continuing...')
@@ -120,11 +120,40 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
         num += 1
 
     pxs = [Process(target=fetch_process, args=(job,key)) 
-           for n in range(min(num, parallel))]
+            for n in range(min(num, parallel))]
     #print(f'FETCH_HANDLER DEBUG MSG: beginning downloads in {len(pxs)} processes')
     for p in pxs: p.start()
     for p in pxs: p.join()
     job.close()
 
     return 
+
+
+class source_map():
+    def __str__(self):
+        return (
+        """
+    CHS   (Canadian Hydrography Service)
+          load_bathymetry:          bathymetric data in Canada's waterways. variable resolution \n
+    ERA5  (Global environmental dataset from Copernicus Climate Data Store)
+          load_windwaveswellheight: combined height of wind, waves, and swell. metres
+          load_wavedirection:       mean wave direction, degrees
+          load_waveperiod:          mean wave period, seconds
+          load_wind_uv:             wind speed computed as sqrt(u^2, v^2), where u, v are direction vectors
+          load_wind_u:              wind speed coordinate U-vector, m/s
+          load_wind_v:              wind speed coordinate V-vector, m/s \n
+    HYCOM (Hybrid Coordinate Ocean Model)
+          load_salinity:            g/kg salt in water
+          load_temp:                degrees celsius
+          load_water_uv:            ocean current computed as sqrt(u^2, v^2), where u, v are direction vectors
+          load_water_u:             ocean current coordinate U-vector, m/s
+          load_water_v:             ocean current coordinate V-vector, m/s \n
+    WWIII (WaveWatch Ocean Model Gen 3)
+          load_wavedirection:       primary wave direction, degrees
+          load_waveperiod:          primary mean wave period, seconds
+          load_windwaveheight:      combined height of wind and waves, metres
+          load_wind_uv:             wind speed computed as sqrt(u^2, v^2), where u, v are direction vectors
+          load_wind_u:              wind speed coordinate U-vector, m/s
+          load_wind_v:              wind speed coordinate V-vector, m/s
+        """)
 

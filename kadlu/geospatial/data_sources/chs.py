@@ -145,10 +145,6 @@ def load_chs(south, north, west, east):
     
     slices = np.array(db.fetchall(), dtype=object).T
     assert len(slices) == 4, "no data found for query range"
-    #if len(slices) != 4:
-    #   warnings.warn("no data found for query range, returning empty arrays")
-    #   bathy, lat, lon = np.array([]), np.array([]), np.array([])
-    #else:
     bathy, lat, lon, source = slices
     return np.array((bathy, lat, lon)).astype(float)
 
@@ -171,8 +167,10 @@ class Chs():
               west=kwargs['west'], east=kwargs['east'])
 
     def __str__(self):
-        info = "Non-Navigational 100m (NONNA-100) bathymetry dataset from Canadian Hydrographic Datastore"
-        args = "(south=-90, north=90, west=-180, east=180)"
+        info = "\n".join(["Non-Navigational 100m (NONNA-100) bathymetry dataset",
+            "from the Canadian Hydrographic Datastore",
+            "\thttps://open.canada.ca/data/en/dataset/d3881c4c-650d-4070-bf9b-1e00aabf0a1d"])
+        args = "(south, north, west, east)"
         return str_def(self, info, args)
 
 

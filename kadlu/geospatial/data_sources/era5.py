@@ -64,8 +64,9 @@ def fetch_era5(var, kwargs):
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
     t = datetime(kwargs['start'].year,   kwargs['start'].month,
                  kwargs['start'].day,    kwargs['start'].hour)
-    assert t.month == (kwargs['end']-timedelta(hours=1)).month,     \
+    assert kwargs['end'] - kwargs['start'] <= timedelta(days=1), \
             'use query_builder for this instead'
+        
     if serialized(kwargs, f'fetch_era5_{era5_varmap[var]}'): return False
 
     fname = f'ERA5_reanalysis_{var}_{t.strftime("%Y-%m-%d")}.grb2'
@@ -224,9 +225,10 @@ class Era5():
 
     def __str__(self):
         info = '\n'.join([
-                "Era5 Global Dataset from Copernicus Climate Datastore",
-                "\thttps://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=overview"
-            ])
-        args = "(south=-90, north=90, west=-180, east=180, start=datetime(), end=datetime())"
+                "Era5 Global Dataset from Copernicus Climate Datastore.",
+                "Combines model data with observations from across",
+                "the world into a globally complete and consistent dataset",
+                "\thttps://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels"])
+        args = "(south, north, west, east, datetime, end)"
         return str_def(self, info, args)
 

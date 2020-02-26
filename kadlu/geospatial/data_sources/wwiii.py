@@ -76,7 +76,7 @@ def fetch_wwiii(var, kwargs):
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
     #assert kwargs['start'] < kwargs['end']
     t = datetime(kwargs['start'].year, kwargs['start'].month, 1)
-    assert t.month == (kwargs['end']-timedelta(hours=1)).month, \
+    assert kwargs['end'] - kwargs['start'] <= timedelta(days=1), \
             'use fetch_handler for this'
 
     if serialized(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}'): return False
@@ -207,19 +207,19 @@ def load_wwiii(var, kwargs):
 class Wwiii():
     """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
 
-    def fetch_windwaveheight(self,  **kwargs):  return fetch_wwiii('hs',    kwargs)
     def fetch_wavedirection(self,   **kwargs):  return fetch_wwiii('dp',    kwargs)
     def fetch_waveperiod(self,      **kwargs):  return fetch_wwiii('tp',    kwargs)
+    def fetch_windwaveheight(self,  **kwargs):  return fetch_wwiii('hs',    kwargs)
     def fetch_wind_u(self,          **kwargs):  return fetch_wwiii('wind',  kwargs)
     def fetch_wind_v(self,          **kwargs):  return fetch_wwiii('wind',  kwargs)
-    def fetch_wind(self,            **kwargs):  return fetch_wwiii('wind',  kwargs)
+    def fetch_wind_uv(self,         **kwargs):  return fetch_wwiii('wind',  kwargs)
 
-    def load_windwaveheight(self,   **kwargs):  return load_wwiii('hs',     kwargs)
     def load_wavedirection(self,    **kwargs):  return load_wwiii('dp',     kwargs)
     def load_waveperiod(self,       **kwargs):  return load_wwiii('tp',     kwargs)
+    def load_windwaveheight(self,   **kwargs):  return load_wwiii('hs',     kwargs)
     def load_wind_u(self,           **kwargs):  return load_wwiii('windU',  kwargs)
     def load_wind_v(self,           **kwargs):  return load_wwiii('windV',  kwargs)
-    def load_wind(self,             **kwargs):
+    def load_wind_uv(self,          **kwargs):
         sql = ' AND '.join(['SELECT * FROM windU '\
             'INNER JOIN windV '\
             'ON windU.lat == windV.lat',
@@ -242,7 +242,12 @@ class Wwiii():
         return np.array((val, lat, lon, epoch)).astype(float)
 
     def __str__(self):
-        info = '\n'.join([ "Wavewatch info goes here" ])
-        args = "(south=-90, north=90, west=-180, east=180, start=datetime(), end=datetime())"
+        info = '\n'.join(["WAVEWATCH III: a third generation wave height,",
+            "water depth, and current hindcasting modeling framework.",
+            "Developed for the community at NOAA/NCEP. About WWIII:",
+            "\thttps://github.com/NOAA-EMC/WW3/wiki/About-WW3",
+            "Model descriptions:",
+            "\thttps://polar.ncep.noaa.gov/waves/implementations.php"])
+        args = "(south, north, west, east, start, end)"
         return str_def(self, info, args)
 

@@ -102,7 +102,7 @@ def test_interp_chs_bathy():
     #    load_bathymetry='chs', south=43.1, west=-59.8, 
     #    north=43.8, east=-59.2)
     #b = o.bathy(x=1, y=2)
-    o = Ocean(fetch=True, load_bathymetry='chs', 
+    o = Ocean(load_bathymetry='chs', 
             south=43.1, west=-59.8, north=43.8, east=-59.2, 
             top=0, bottom=0, start=default_val['start'], end=default_val['end'])
     b = o.bathy(lat=1, lon=2)
@@ -124,7 +124,7 @@ def test_hycom_temp_time_interval():
     #    start=datetime(2015,1,1),
     #    end=datetime(2015,1,2)
     #    )
-    o = Ocean(fetch=True, #cache=False,
+    o = Ocean(#fetch=True, #cache=False,
         load_temp='hycom', 
         south=43.1, west=-59.8, 
         north=43.8, east=-59.2,

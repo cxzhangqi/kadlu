@@ -10,13 +10,15 @@
         - support queries ranging more than one year
 """
 
-import numpy as np
-from functools import reduce
-import requests
 import time
+import requests
+import warnings
+from functools import reduce
 from datetime import datetime, timedelta
 from os.path import isfile
-import warnings
+
+import numpy as np
+
 import kadlu.geospatial.data_sources.source_map
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \

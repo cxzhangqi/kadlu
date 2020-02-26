@@ -1,6 +1,8 @@
-import numpy as np
 from datetime import datetime, timedelta
 from multiprocessing import Queue, Lock, Process
+
+import numpy as np
+
 from kadlu.geospatial.data_sources.chs      import Chs
 from kadlu.geospatial.data_sources.hycom    import Hycom
 from kadlu.geospatial.data_sources.era5     import Era5

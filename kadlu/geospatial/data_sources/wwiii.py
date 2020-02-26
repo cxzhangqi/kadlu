@@ -8,14 +8,15 @@
         https://polar.ncep.noaa.gov/waves/implementations.php
 """
 
-import numpy as np
-from datetime import datetime, timedelta
 import os
-from os.path import isfile
-import requests
 import shutil
-import pygrib
+import requests
+from os.path import isfile
 from warnings import warn
+from datetime import datetime, timedelta
+
+import numpy as np
+import pygrib
 
 import kadlu.geospatial.data_sources.source_map
 from kadlu.geospatial.data_sources.data_util import                 \

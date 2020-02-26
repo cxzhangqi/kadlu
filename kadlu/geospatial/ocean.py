@@ -1,5 +1,7 @@
-import numpy as np
 from multiprocessing import Process, Queue
+
+import numpy as np
+
 from kadlu.geospatial.interpolation             import      \
         Interpolator2D,                                     \
         Interpolator3D,                                     \
@@ -10,10 +12,10 @@ from kadlu.geospatial.data_sources.data_util    import      \
         reshape_3D,                                         \
         dt_2_epoch
 from kadlu.geospatial.data_sources.source_map   import      \
-        fetch_map,                                          \
-        load_map,                                           \
+        fetch_handler,                                      \
         default_val,                                        \
-        fetch_handler
+        fetch_map,                                          \
+        load_map
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5

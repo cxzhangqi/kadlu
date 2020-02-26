@@ -1,16 +1,18 @@
-import os, sys
-from os import path
-from os.path import dirname
+import os
+import sys
 import json
 import pickle
 import sqlite3
+import warnings
+import configparser
+from os import path
+from os.path import dirname
 from hashlib import md5
 from functools import reduce
-import numpy as np
-import configparser
-import warnings
 from datetime import datetime, timedelta
 from contextlib import contextmanager, redirect_stdout, redirect_stderr
+
+import numpy as np
 
 
 # database tables for data fetching and loading

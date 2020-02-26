@@ -129,31 +129,29 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
     return 
 
 
-class source_map():
-    def __str__(self):
-        return (
-        """
+source_map = (
+    """
     CHS   (Canadian Hydrography Service)
           load_bathymetry:          bathymetric data in Canada's waterways. variable resolution \n
     ERA5  (Global environmental dataset from Copernicus Climate Data Store)
           load_windwaveswellheight: combined height of wind, waves, and swell. metres
           load_wavedirection:       mean wave direction, degrees
           load_waveperiod:          mean wave period, seconds
-          load_wind_uv:             wind speed computed as sqrt(u^2, v^2), where u, v are direction vectors
+          load_wind_uv:             wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
           load_wind_u:              wind speed coordinate U-vector, m/s
           load_wind_v:              wind speed coordinate V-vector, m/s \n
     HYCOM (Hybrid Coordinate Ocean Model)
           load_salinity:            g/kg salt in water
           load_temp:                degrees celsius
-          load_water_uv:            ocean current computed as sqrt(u^2, v^2), where u, v are direction vectors
+          load_water_uv:            ocean current computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
           load_water_u:             ocean current coordinate U-vector, m/s
           load_water_v:             ocean current coordinate V-vector, m/s \n
     WWIII (WaveWatch Ocean Model Gen 3)
           load_wavedirection:       primary wave direction, degrees
           load_waveperiod:          primary mean wave period, seconds
           load_windwaveheight:      combined height of wind and waves, metres
-          load_wind_uv:             wind speed computed as sqrt(u^2, v^2), where u, v are direction vectors
+          load_wind_uv:             wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
           load_wind_u:              wind speed coordinate U-vector, m/s
           load_wind_v:              wind speed coordinate V-vector, m/s
-        """)
+    """)
 

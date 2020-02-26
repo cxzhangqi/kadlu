@@ -8,8 +8,13 @@ import warnings
 from datetime import datetime
 
 import kadlu.geospatial.data_sources.source_map
-from kadlu.geospatial.data_sources.data_util import \
-storage_cfg, database_cfg, chs_table, str_def, serialized, insert_hash
+from kadlu.geospatial.data_sources.data_util        import          \
+        database_cfg,                                               \
+        storage_cfg,                                                \
+        insert_hash,                                                \
+        serialized,                                                 \
+        chs_table,                                                  \
+        str_def
 
 
 conn, db = database_cfg()

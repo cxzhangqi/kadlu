@@ -145,7 +145,7 @@ def serialized(kwargs, seed=''):
     key = hash_key(kwargs, seed)
     if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
     conn, db = database_cfg()
-    db.execute('SELECT * FROM fetch_map WHERE hash == ? LIMIT 1', (key,))
+    db.execute('SELECT * FROM fetch_map WHERE hash == ?', (key,))
     res = db.fetchone()
     if 'lock' in kwargs.keys(): kwargs['lock'].release()
     if res is None: return False

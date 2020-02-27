@@ -11,6 +11,7 @@ from kadlu.geospatial.data_sources.data_util import                 \
         database_cfg,                                               \
         serialized
 
+
 # dicts for mapping strings to callback functions
 # helpful for doing stuff like passing a string 'chs' to the ocean module,
 # and having the module determine which function to use for loading
@@ -113,13 +114,13 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
             cur = kwargs['end']
             for k in ('start', 'end', 'top', 'bottom', 'lock'):
                 if k in qry.keys(): del qry[k]  # trim hash indexing entropy
-                else: cur += step
         if serialized(qry, f'fetch_{source}_{var}') is not False:
             #print(f'FETCH_HANDLER DEBUG MSG: already fetched '
             #      f'{source}_{var} {cur.date().isoformat()}! continuing...')
-            continue
-        job.put((fetch_map[f'{var}_{source}'], qry.copy()))
-        num += 1
+        else:
+            job.put((fetch_map[f'{var}_{source}'], qry.copy()))
+            num += 1
+        cur += step
 
     pxs = [Process(target=fetch_process, args=(job,key)) 
             for n in range(min(num, parallel))]

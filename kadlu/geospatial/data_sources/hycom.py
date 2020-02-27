@@ -36,7 +36,7 @@ conn, db = database_cfg()  # database connection and cursor objects
 
 hycom_varmap = dict(zip(
         ('salinity', 'water_temp', 'water_u', 'water_v'),
-        ('salinity', 'temp', 'water_u', 'water_v')))
+        ('salinity',       'temp', 'water_u', 'water_v')))
 
 
 def slices_str(var, slices, steps=(1, 1, 1, 1)):
@@ -377,7 +377,7 @@ class Hycom():
     def load_water_u  (self, **kwargs): return load_hycom(self, 'water_u',    kwargs)
     def load_water_v  (self, **kwargs): return load_hycom(self, 'water_v',    kwargs)
     def load_water_uv (self, **kwargs):
-        warnings.warn('HYCOM LOAD_WATER_UV: code should with SQL JOIN')
+        warnings.warn('HYCOM LOAD_WATER_UV: this part should use an SQL JOIN')
         water_u = load_hycom(self, 'water_u', kwargs)
         water_v = load_hycom(self, 'water_v', kwargs)
         water_uv = water_u.copy()

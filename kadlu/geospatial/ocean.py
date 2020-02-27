@@ -14,7 +14,6 @@ from kadlu.geospatial.data_sources.data_util    import      \
 from kadlu.geospatial.data_sources.source_map   import      \
         fetch_handler,                                      \
         default_val,                                        \
-        fetch_map,                                          \
         load_map
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
@@ -125,7 +124,6 @@ class Ocean():
 
             elif isinstance(load_arg, str):
                 key = f'{v}_{load_arg.lower()}'
-                #if fetch == True: fetch_map[key](**kwargs)
                 callbacks.append(load_map[key])
                 if fetch is not False:
                     fetch_handler(v, load_arg.lower(), parallel=fetch, **kwargs)

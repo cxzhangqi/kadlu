@@ -11,15 +11,15 @@
 
 """
 
-import pytest
 import os
-import numpy as np
 from datetime import datetime
-#from kadlu.utils import LatLon
+
+import pytest
+import numpy as np
+
 from kadlu.geospatial.ocean import Ocean
 from kadlu.geospatial.data_sources.source_map import default_val
 
-#path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
 
 bounds = dict(
         start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),

@@ -12,7 +12,6 @@ import os
 import shutil
 import requests
 from os.path import isfile
-from warnings import warn
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -37,8 +36,8 @@ wwiii_src = "https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/"
 # region boundaries as defined in WWIII docs:
 #    https://polar.ncep.noaa.gov/waves/implementations.php
 wwiii_varmap = dict(zip(
-        ('hs','dp','tp', 'wind'),
-        ('waveheight','wavedir','waveperiod', 'windspeed')))
+        ('hs','dp','tp', 'windU', 'windV', 'wind'),
+        ('waveheight','wavedir','waveperiod', 'windspeedU', 'windspeedV', 'windspeed')))
 
 wwiii_global = Boundary(-90, 90, -180, 180, 'glo_30m')  # global
 wwiii_regions = [
@@ -87,7 +86,7 @@ def fetch_wwiii(var, kwargs):
         return f"multi_1.{region}.{var}.{t.strftime('%Y%m')}.grb2"
 
 
-    warn("resolution selection not implemented yet. defaulting to 0.5°")
+    print("WWIII NOTICE: resolution selection not implemented yet. defaulting to 0.5°")
     regions = ['glo_30m']
 
     assert regions == ['glo_30m'], 'invalid region string'
@@ -102,7 +101,7 @@ def fetch_wwiii(var, kwargs):
         if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
         print(f'WWIII {kwargs["start"].date().isoformat()} {var}: '
               f'downloading {fname} from NOAA WaveWatch III...')
-        if reg == 'glo_30m' and t.year >= 2018:
+        if reg == 'glo_30m' and not 'wind' in var:# and t.year >= 2018:
             fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/gribs/{fname}"
         else:
             fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/{reg}/{fname}"

@@ -1,21 +1,22 @@
+import os
+from datetime import datetime, timedelta
+
 import numpy as np
 import matplotlib
 #matplotlib.use('TkAgg')
 #matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
-from datetime import datetime
 from scipy.interpolate import griddata
 import cartopy
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import os
-from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.geospatial.data_sources.hycom import Hycom
 from kadlu.geospatial.data_sources.era5 import Era5
 from kadlu.geospatial.data_sources.wwiii import Wwiii
-from kadlu.geospatial.data_sources.source_map import fetch_handler
+from kadlu.geospatial.data_sources.source_map import fetch_handler, load_map
 import imageio
+
 
 proj = ccrs.Mercator()
 config = dict(
@@ -50,7 +51,7 @@ config = dict(
 
 
 
-def plot2D(val, lat, lon, var, plot_wind=False, **kwargs): 
+def plot2D(var, source, plot_wind=False, save=False, **kwargs): 
     """
 
     kwargs = dict(
@@ -76,6 +77,17 @@ def plot2D(val, lat, lon, var, plot_wind=False, **kwargs):
 
     """
 
+    if f'{var}_{source}' not in load_map.keys():
+        raise KeyError(f'could not find source for variable. valid vars and '
+                       f'sources: {[k.split("_") for k in load_map.keys()]}')
+
+    if 'start' not in kwargs.keys():
+        kwargs['start'], kwargs['end'] = datetime.now(), datetime.now()
+
+    loadfcn = load_map[f'{var}_{source}']
+    data = loadfcn(**kwargs)
+    val, lat, lon = data[:3]
+
     # project data onto coordinate space
     extent = proj.transform_points(
             ccrs.Geodetic(),
@@ -98,7 +110,6 @@ def plot2D(val, lat, lon, var, plot_wind=False, **kwargs):
     fg = (.92, .92, .92, 1)
     #fg = (0.66,0.66,0.66, 1)
     fname = f'{var}_{kwargs["start"].date().isoformat()}.png'
-    print('saving ' + fname + '...')
     fig = plt.figure()
 
     ax = fig.add_subplot(1, 1, 1, 
@@ -123,15 +134,17 @@ def plot2D(val, lat, lon, var, plot_wind=False, **kwargs):
                 zorder=9
             )
 
-    if plot_wind == 'era5':
-        Era5().fetch_wind(**kwargs)
-        uval, ulat, ulon, utime = Era5().load_wind_u(**kwargs)
-        vval, vlat, vlon, vtime = Era5().load_wind_v(**kwargs)
-        assert(len(vval) == len(uval))  # this can be fixed with an SQL JOIN in load module
-    elif plot_wind is False: pass
-    else: raise ValueError('invalid plot_wind source string')
-
     if plot_wind is not False:
+        if plot_wind.lower() == 'era5': 
+            windfcnU, windfcnV = (Era5().load_wind_u, Era5().load_wind_v)
+        elif plot_wind.lower() == 'wwiii': 
+            windfcnU, windfcnV = (Wwiii().load_wind_u, Wwiii().load_wind_v)
+        else: 
+            raise ValueError('invalid wind source. must be \'era5\' or \'wwiii\'')
+
+        uval, ulat, ulon, utime = windfcnU(**kwargs)
+        vval, vlat, vlon, vtime = windfcnV(**kwargs)
+        assert(len(vval) == len(uval))  # this can be fixed with an SQL JOIN in load module
         ax.quiver(ulon, ulat, uval, vval, transform=ccrs.PlateCarree(), 
                 regrid_shape=20, zorder=10)
 
@@ -146,13 +159,14 @@ def plot2D(val, lat, lon, var, plot_wind=False, **kwargs):
     plt.colorbar(matplotlib.cm.ScalarMappable(norm=config[var]['norm'], 
                 cmap=config[var]['cm']))
 
-    plt.savefig(f'http/{var}/{fname}', bbox_inches='tight', 
-                dpi=250, optimize=True)
-    """
-    plt.tight_layout()
-    plt.show()
-    """
-    plt.close()
+    if save:
+        if not os.path.isdir('figures'): os.mkdir('figures')
+        print(f'saving figure to {os.getcwd()}/figures/{fname}')
+        plt.savefig(f'figures/{fname}', bbox_inches='tight', 
+                    dpi=200, optimize=True)
+        plt.close()
+    else: 
+        plt.show()
 
     return
 
@@ -183,7 +197,6 @@ def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1),
     fetchfcn = Hycom().fetch_salinity
     loadfcn = Hycom().load_salinity
 
-
     """
     fetch_handler(var, source, kwargs)
 
@@ -202,12 +215,13 @@ def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1),
         qry['end'] = cur + step
         fname = f'http/{var}/{var}_{t.date().isoformat()}.png'
         if not os.path.isfile(fname):
-            #fetchfcn(**qry)
             if var in ('temp', 'salinity'): 
                 val, lat, lon, time, depth = loadfcn(**qry)
-            else:
+            elif var not in ('bathy',):
                 val, lat, lon, time = loadfcn(**qry)
-            plot2D(val, lat, lon, var, **qry)
+            else: 
+                val, lat, lon = loadfcn(**qry)
+            plot2D(val, lat, lon, var, save=True, **qry)
         cur += step
 
     print(f'animating {var}.gif...')
@@ -231,15 +245,14 @@ plt.show()
 """
 
 
-
-
-
+"""
 def fetch_topo():
     url = 'ftp.maps.canada.ca/pub/nrcan_rncan/vector/canvec/shp/Elevation/canvec_50K_NS_Elevation_shp.zip'
     with requests.get(url, stream=True) as payload:
         assert payload.status_code == 200, 'error bad request'
         fname = storage_cfg()+'topo_NS.zip'
         with open(fname, 'wb') as f: f.write(payload.content)
+"""
         
 
 

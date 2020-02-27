@@ -66,8 +66,8 @@ def fetch_era5(var, kwargs):
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
     t = datetime(kwargs['start'].year,   kwargs['start'].month,
                  kwargs['start'].day,    kwargs['start'].hour)
-    assert kwargs['end'] - kwargs['start'] <= timedelta(days=1), \
-            'use query_builder for this instead'
+    assert kwargs['end'] - kwargs['start'] <= timedelta(days=1, hours=1), \
+            'use fetch_handler for this instead'
         
     if serialized(kwargs, f'fetch_era5_{era5_varmap[var]}'): return False
 
@@ -190,7 +190,7 @@ class Era5():
         return fetch_era5('10m_u_component_of_wind', kwargs)
     def fetch_wind_v(self, **kwargs):
         return fetch_era5('10m_v_component_of_wind', kwargs)
-    def fetch_wind(self, **kwargs):
+    def fetch_wind_uv(self, **kwargs):
         return fetch_era5('10m_u_component_of_wind', kwargs) and\
                fetch_era5('10m_v_component_of_wind', kwargs)
 
@@ -204,7 +204,10 @@ class Era5():
         return load_era5('10m_u_component_of_wind', kwargs)
     def load_wind_v(self, **kwargs):
         return load_era5('10m_v_component_of_wind', kwargs)
-    def load_wind(self, **kwargs):
+    def load_wind_uv(self, **kwargs):
+        fetch_era5('10m_u_component_of_wind', kwargs)
+        fetch_era5('10m_v_component_of_wind', kwargs)
+
         sql = ' AND '.join(['SELECT * FROM u_component_of_wind '\
             'INNER JOIN v_component_of_wind '\
             'ON u_component_of_wind.lat == v_component_of_wind.lat',

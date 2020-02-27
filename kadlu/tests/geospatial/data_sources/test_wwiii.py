@@ -54,22 +54,18 @@ def test_wwiii_fetch_windwaveheight():
     if not Wwiii().fetch_windwaveheight(south=south, north=north, west=west, east=east, start=start, end=end):
         print('wwiii query was fetched already, skipping...')
     return 
-def test_wwiii_fetch_wind():
-    if not Wwiii().fetch_wind(south=south, north=north, west=west, east=east, start=start, end=end):
-        print('wwiii query was fetched already, skipping...')
-    return 
 
 def test_wwiii_load_windwaveheight():
     wave, lat, lon, time = Wwiii().load_windwaveheight(south=south, west=west, north=north, east=east, start=start, end=end)
 
 
 def test_wwiii_fetch_wind():
-    if not Wwiii().fetch_wind(south=south, north=north, west=west, east=east, start=start, end=end):
+    if not Wwiii().fetch_wind_uv(south=south, north=north, west=west, east=east, start=start, end=end):
         print('wwiii query was fetched already, skipping...')
     return 
 
 def test_wwiii_load_wind():
-    wave, lat, lon, time = Wwiii().load_wind(south=south, west=west, north=north, east=east, start=start, end=end)
+    wave, lat, lon, time = Wwiii().load_wind_uv(south=south, west=west, north=north, east=east, start=start, end=end)
 
 
 def test_wwiii_fetch_waveperiod():

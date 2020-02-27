@@ -24,11 +24,15 @@ fetch_map = dict(
         wavedir_era5        = Era5().fetch_wavedirection,
         waveheight_era5     = Era5().fetch_windwaveswellheight,
         waveperiod_era5     = Era5().fetch_waveperiod,
-        windspeed_era5      = Era5().fetch_wind,
+        #windspeed_era5      = Era5().fetch_wind_uv,
+        windspeedU_era5      = Era5().fetch_wind_u,
+        windspeedV_era5      = Era5().fetch_wind_v,
         wavedir_wwiii       = Wwiii().fetch_wavedirection,
         waveheight_wwiii    = Wwiii().fetch_windwaveheight,
         waveperiod_wwiii    = Wwiii().fetch_waveperiod,
-        windspeed_wwiii     = Wwiii().fetch_wind_uv
+        #windspeed_wwiii     = Wwiii().fetch_wind_uv
+        windspeedU_wwiii     = Wwiii().fetch_wind_u,
+        windspeedV_wwiii     = Wwiii().fetch_wind_v
         )
 load_map = dict(
         bathy_chs           = Chs().load_bathymetry,
@@ -42,7 +46,7 @@ load_map = dict(
         waveheight_wwiii    = Wwiii().load_windwaveheight,
         waveperiod_era5     = Era5().load_waveperiod,
         waveperiod_wwiii    = Wwiii().load_waveperiod,
-        windspeed_era5      = Era5().load_wind,
+        windspeed_era5      = Era5().load_wind_uv,
         windspeed_wwiii     = Wwiii().load_wind_uv
         )
 
@@ -66,9 +70,10 @@ def fetch_process(job, key):
     while not job.empty():
         req = job.get()
         if not req[0](lock=key, **req[1]):
-            print('FETCH_PROCESS DEBUG MSG: fetch function returned false, '
-                    f'skipping fetch request\ndebug: {req[1]}')
-            return
+            #print('FETCH_PROCESS DEBUG MSG: fetch function returned false, '
+            #        f'skipping fetch request\ndebug: {req[1]}')
+            pass
+    return
 
 
 def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
@@ -90,8 +95,10 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
 
     """
 
-    assert f'{var}_{source}' in fetch_map.keys(), 'invalid query, '\
-            f'could not find source for variable. options are: {list(f.split("_") for f in fetch_map.keys())}'
+    assert f'{var}_{source}' in fetch_map.keys() \
+            or f'{var}U_{source}' in fetch_map.keys(), 'invalid query, '\
+        f'could not find source for variable. options are: '\
+        f'{list(f.split("_")[::-1] for f in fetch_map.keys())}'
 
     np.array(list(x for x in range(100)))
     np.array(np.append([1], [x]) for x in range(10))
@@ -117,8 +124,12 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
         if serialized(qry, f'fetch_{source}_{var}') is not False:
             #print(f'FETCH_HANDLER DEBUG MSG: already fetched '
             #      f'{source}_{var} {cur.date().isoformat()}! continuing...')
+            pass
         else:
-            job.put((fetch_map[f'{var}_{source}'], qry.copy()))
+            if var == 'windspeed':
+                job.put((fetch_map[f'windspeedU_{source}'], qry.copy()))
+                job.put((fetch_map[f'windspeedV_{source}'], qry.copy()))
+            else: job.put((fetch_map[f'{var}_{source}'], qry.copy()))
             num += 1
         cur += step
 

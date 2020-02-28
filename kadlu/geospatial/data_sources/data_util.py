@@ -130,27 +130,15 @@ def bin_db():
     #return conn, db
 
 
-def hash_key(kwargs, seed, block=('lock',)):
+def hash_key(kwargs, seed, keep=('south','west', 'north', 'east', 'top', 'bottom', 'start', 'end')):
     """ compute unique hash and convert to 8-byte int as serialization key """
     qry = kwargs.copy()
-    for x in block:
-        if x in qry.keys(): del qry[x]
+    dim = kwargs.keys()
+    for dimension in dim:
+        if dimension not in keep: del qry[dimension]
     string = seed + json.dumps(qry, sort_keys=True, default=str)
     key = int(md5(string.encode('utf-8')).hexdigest(), base=16)
     return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
-
-
-def serialized(kwargs, seed=''):
-    """ returns true if fetch query hash exists in database """
-    key = hash_key(kwargs, seed)
-    if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
-    conn, db = database_cfg()
-    db.execute('SELECT * FROM fetch_map WHERE hash == ?', (key,))
-    res = db.fetchone()
-    if 'lock' in kwargs.keys(): kwargs['lock'].release()
-    if res is None: return False
-    if res[1] is not None: return res[1]
-    return True
 
 
 def insert_hash(kwargs, seed='', obj=None):
@@ -167,23 +155,23 @@ def insert_hash(kwargs, seed='', obj=None):
     return
 
 
-def deserialize(kwargs, persisting=True, seed=''):
-    """ read binary from the database and load it as python object """
-    conn, db = bin_db()
+def serialized(kwargs, seed=''):
+    """ returns true if fetch query hash exists in database """
     key = hash_key(kwargs, seed)
+    if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
+    conn, db = database_cfg()
     db.execute('SELECT * FROM fetch_map WHERE hash == ?', (key,))
     res = db.fetchone()
-    if res is None: raise KeyError('no data found for query')
-    if not persisting:
-        db.execute('DELETE FROM fetch_map WHERE hash == ?', (key,))
-        conn.commit()
-    return pickle.loads(res[1])
+    if 'lock' in kwargs.keys(): kwargs['lock'].release()
+    if res is None: return False
+    if res[1] is not None: return res[1]
+    return True
 
 
 def dt_2_epoch(dt_arr):
     """ convert datetimes to epoch hours """
     t0 = datetime(2000, 1, 1, 0, 0, 0)
-    delta = lambda dt : (dt - t0).total_seconds()/60/60
+    delta = lambda dt: (dt - t0).total_seconds()/60/60
     dt_arr = np.array([dt_arr]) if np.array([dt_arr]).shape == (1,) else dt_arr
     return list(map(int, map(delta, dt_arr)))
 
@@ -205,15 +193,21 @@ def flatten(cols, frames):
     # assert that frames are of equal size
     assert reduce(lambda a, b: (a==b)*a, frames[1:] - frames[:-1])
 
-    ix = range(len(frames) -1)
-    fsplit= np.array([cols[3][frames[f] : frames[f +1]] for f in ix])
-    vals = (reduce(np.add, fsplit) / len(fsplit))
+    # aggregate time frame splits and reduce them to average
+    frames_ix = np.append([0], frames)
+    split_num = range(len(frames_ix) -1)
+    val_split = np.array([cols[0][frames_ix[f] : frames_ix[f+1]] for f in split_num])
+    value_avg = (reduce(np.add, val_split) / len(val_split))
 
     if len(cols) == 4:
-        _, y, x, _ = cols[:, frames[0] : frames[1]]
+        assert False, 'this should never happen'
+        #_, y, x, _ = cols[:, frames_ix[0] : frames_ix[1]]
+    elif len(cols) == 5:
+        _, y, x, _, z = cols[:, frames_ix[0] : frames_ix[1]]
     else:
-        _, y, x, _, z = cols[:, frames[0] : frames[1]]
-        return vals, y, x, z
+        assert False, 'this is not good'
+
+    return value_avg, y, x, z
 
 
 def reshape_2D(cols):

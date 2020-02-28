@@ -144,7 +144,8 @@ class Ocean():
                 data[f'{v}_val'] = load_arg[0]
                 data[f'{v}_lat'] = load_arg[1]
                 data[f'{v}_lon'] = load_arg[2]
-                if len(load_arg) == 4: data[f'{v}_depth'] = load_arg[3]
+                if len(load_arg) >= 4: data[f'{v}_time'] = load_arg[3]
+                if len(load_arg) == 5: data[f'{v}_depth'] = load_arg[4]
                 callbacks.append(load_callback)
 
             else: raise TypeError(f'invalid type for load_{v}. '

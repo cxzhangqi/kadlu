@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+from multiprocessing import Process, Queue
 
 import numpy as np
 import matplotlib
@@ -159,10 +160,10 @@ def plot2D(var, source, plot_wind=False, save=False, **kwargs):
     plt.colorbar(matplotlib.cm.ScalarMappable(norm=config[var]['norm'], 
                 cmap=config[var]['cm']))
 
-    if save:
+    if save is not False:
         if not os.path.isdir('figures'): os.mkdir('figures')
-        print(f'saving figure to {os.getcwd()}/figures/{fname}')
-        plt.savefig(f'figures/{fname}', bbox_inches='tight', 
+        print(f'saving figure to {os.getcwd()}/figures/{fname if save is True else save}')
+        plt.savefig(f'figures/{fname if save is True else save}', bbox_inches='tight', 
                     dpi=200, optimize=True)
         plt.close()
     else: 
@@ -198,39 +199,50 @@ def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1),
     loadfcn = Hycom().load_salinity
 
     """
-    fetch_handler(var, source, kwargs)
+    # download all the data
+    fetch_handler(var, source, **kwargs)
 
-    dirname = f'http/{var}'
+    # prepare folder and check for existing frames
+    dirname = os.getcwd() + f'/figures'
     if not os.path.isdir(dirname): os.mkdir(dirname)
     png = lambda f: f if '.png' in f else None
-    old = map(png, list(os.walk(f'http/{var}'))[0][2])
-    _rm = [os.remove(f'http/{var}/{x}') for x in old if debug and x is not None]
-    qry = kwargs.copy()
-    cur = datetime(qry['start'].year, 
-                   qry['start'].month, 
-                   qry['start'].day)
+    old = map(png, list(os.walk(dirname))[0][2])
+    _rm = [os.remove(f'{dirname}/{x}') for x in old if debug and x is not None]
 
+    # generate image frames
+    qry = kwargs.copy()
+    cur = datetime(kwargs['start'].year, kwargs['start'].month, kwargs['start'].day)
     while cur <= kwargs['end']:
         qry['start'] = cur
         qry['end'] = cur + step
-        fname = f'http/{var}/{var}_{t.date().isoformat()}.png'
-        if not os.path.isfile(fname):
-            if var in ('temp', 'salinity'): 
-                val, lat, lon, time, depth = loadfcn(**qry)
-            elif var not in ('bathy',):
-                val, lat, lon, time = loadfcn(**qry)
-            else: 
-                val, lat, lon = loadfcn(**qry)
-            plot2D(val, lat, lon, var, save=True, **qry)
+        fname = f'{dirname}/{var}_{cur.date().isoformat()}.png'
+        if not os.path.isfile(fname): 
+            plot2D(var, source, plot_wind=plot_wind, save=fname, **qry)
         cur += step
 
     print(f'animating {var}.gif...')
-    frames = sorted([f'http/{var}/{i}' for i in 
-            map(png, list(os.walk(f'http/{var}'))[0][2]) 
-            if  datetime.strptime(i, f'{var}_%Y-%m-%d.png') >= kwargs['start']
-            and datetime.strptime(i, f'{var}_%Y-%m-%d.png') <  kwargs['end']])
-    with imageio.get_writer(f'http/{var}.gif', mode='I') as w:
+    frames = sorted([f'{dirname}{i}' for i in 
+            map(png, list(os.walk(f'{dirname}'))[0][2]) if i is not None
+            and datetime.strptime(i, f'{var}_%Y-%m-%d.png') >= kwargs['start']
+            and datetime.strptime(i, f'{var}_%Y-%m-%d.png') <= kwargs['end']])
+    #with imageio.get_writer(f'http/{var}.gif', mode='I') as w:
+    with imageio.get_writer(f'{dirname}/animated/{var}2.mp4', mode='I', format='FFMPEG') as w:
         list(map(w.append_data, map(imageio.imread, frames)))
+    """
+https://imageio.readthedocs.io/en/stable/examples.html#writing-videos-with-ffmpeg-and-vaapi
+
+    w = imageio.get_writer(f'{dirname}/salinity.mp4', 
+            format='FFMPEG', mode='I', fps=30,
+            codec='h264_vaapi',
+            output_params=['-vaapi_device',
+                           '/dev/dri/renderD128',
+                           '-vf',
+                           'format=gray|nv12,hwupload'],
+            pixelformat='vaapi_vld')
+
+    with imageio.get_writer(f'{dirname}/{var}.mp4', mode='I', format='FFMPEG') as w:
+        list(map(w.append_data, map(imageio.imread, frames)))
+    """
 
     return
 

@@ -76,7 +76,7 @@ def fetch_process(job, key):
     return
 
 
-def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
+def fetch_handler(var, source, step=timedelta(days=1), parallel=3, **kwargs):
     """ check fetch query hash history and generate fetch requests
 
         requests are batched into 24h segments and paralellized.
@@ -127,8 +127,8 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=8, **kwargs):
             pass
         else:
             if var == 'windspeed':
-                job.put((fetch_map[f'windspeedU_{source}'], qry.copy()))
-                job.put((fetch_map[f'windspeedV_{source}'], qry.copy()))
+                job.put((fetch_map[f'{var}U_{source}'], qry.copy()))
+                job.put((fetch_map[f'{var}V_{source}'], qry.copy()))
             else: job.put((fetch_map[f'{var}_{source}'], qry.copy()))
             num += 1
         cur += step

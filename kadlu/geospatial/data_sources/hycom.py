@@ -190,7 +190,7 @@ def fetch_hycom(self, var, year, slices, kwargs):
           f"parsed and inserted {n2 - n1} rows in "
           f"{(t3-t2).seconds}.{str((t3-t2).microseconds)[0:3]}s. "
           f"{flatten - len(grid)} null values removed, "
-          f"{len(grid) - (n2 - n1)} duplicate rows ignored")
+          f"{len(grid) - (n2 - n1)} duplicates ignored")
 
     return
 

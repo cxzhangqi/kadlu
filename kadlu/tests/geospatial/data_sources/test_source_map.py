@@ -12,7 +12,7 @@ def test_batch_wwiii():
     fetch_handler('waveheight', 'wwiii', parallel=4, **kwargs)
 
 def test_batch_hycom():
-    fetch_handler('temp', 'hycom', parallel=2, **kwargs)
+    fetch_handler('salinity', 'hycom', parallel=3, **kwargs)
 
 def test_batch_era5():
     fetch_handler('wavedir', 'era5', parallel=4, **kwargs)
@@ -37,3 +37,15 @@ def test_batch_chs():
 
 """
 
+"""
+
+kwargs = dict(
+        start=datetime(2015, 1, 1), end=datetime(2016, 1, 1),
+        south=45,                   west=-68.5, 
+        north=52,                 east=-56.5, 
+        top=0,                      bottom=100,
+    )
+
+    start time 9:31pm
+
+"""

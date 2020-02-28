@@ -27,6 +27,7 @@ bounds = dict(
         north=46,                   east=-62.5, 
         top=0,                      bottom=5000
     )
+
 test_lat, test_lon, test_depth = bounds['south'], bounds['west'], bounds['top']
 
 def test_null_ocean():

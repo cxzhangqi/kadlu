@@ -74,7 +74,8 @@ def fetch_chs(south, north, west, east, band_id=1):
         fpath = f"{storage_cfg()}{fname}"
         filepaths.append(fpath)
         if os.path.isfile(fpath): 
-            print(f'CHS {fname} bathymetry: file found, skipping download')
+            #print(f'CHS {fname} bathymetry: file found, skipping download')
+            pass
         else:
             print(f"CHS {fname} bathymetry: downloading {imgnum}/{len(imgs)} "
                    "from CHS NONNA-100...")

@@ -10,12 +10,11 @@
     License:
 
 """
-
 import pytest
 import os
 import numpy as np
 from kadlu.geospatial.geospatial import load_data_from_file
-from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D, interp_2D, interp_3D
+from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D
 from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
 
@@ -333,10 +332,10 @@ def test_can_interpolate_irregular_grid_by_mapping_to_regular_grid():
     lon = np.array([0.0, 2.0, 0.2, 0.7, 1.2])
     bathy = np.array([-90.0, -200.0, -140.0, -44.0, -501.0])
     # regular grid that data will be mapped to
-    lat_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
-    lon_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+#    lat_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
+#    lon_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
     # initialize interpolator
-    ip = Interpolator2D(bathy, lat, lon, method_irreg='regular', lats_reg=lat_reg, lons_reg=lon_reg)
+    ip = Interpolator2D(bathy, lat, lon, method_irreg='regular', reg_bin=0.5)
     # --- 4 latitudes ---
     lats = [0.01, 1.0, 0.5, 2.1]
     # --- 4 longitudes --- 

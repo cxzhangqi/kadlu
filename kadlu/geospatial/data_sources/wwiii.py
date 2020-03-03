@@ -73,34 +73,25 @@ def fetch_wwiii(var, kwargs):
     """
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
-    #assert kwargs['start'] < kwargs['end']
     t = datetime(kwargs['start'].year, kwargs['start'].month, 1)
     assert kwargs['end'] - kwargs['start'] <= timedelta(days=1), \
             'use fetch_handler for this'
 
     if serialized(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}'): return False
 
-    def fetchname(var, t, region):
-        """ generate filename for given wave variable, time, and region """
-        return f"multi_1.{region}.{var}.{t.strftime('%Y%m')}.grb2"
-
-
-    print("WWIII NOTICE: resolution selection not implemented yet. defaulting to 0.5°")
+    #print("WWIII NOTICE: resolution selection not implemented yet. defaulting to 0.5°")
     regions = ['glo_30m']
 
     assert regions == ['glo_30m'], 'invalid region string'
     reg = regions[0]
-    fname = fetchname(var, t, reg)
+    fname = f"multi_1.{reg}.{var}.{t.strftime('%Y%m')}.grb2"
     fetchfile = f"{storage_cfg()}{fname}"
-    if not isfile(fetchfile) and kwargs['start'].day != 1:
-        while not isfile(fetchfile): pass  # hang thread until done downloading
-        if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
-        if 'lock' in kwargs.keys(): kwargs['lock'].release()
-    elif not isfile(fetchfile) and kwargs['start'].day == 1: 
+
+    if not isfile(fetchfile):# and kwargs['start'].day == 1: 
         if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
         print(f'WWIII {kwargs["start"].date().isoformat()} {var}: '
               f'downloading {fname} from NOAA WaveWatch III...')
-        if reg == 'glo_30m' and not 'wind' in var:# and t.year >= 2018:
+        if reg == 'glo_30m' and not 'wind' in var and t.year >= 2018:
             fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/gribs/{fname}"
         else:
             fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/{reg}/{fname}"

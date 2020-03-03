@@ -132,7 +132,7 @@ class Ocean():
                 data[f'{v}_val'] = load_arg
                 data[f'{v}_lat'] = kwargs['south']
                 data[f'{v}_lon'] = kwargs['west']
-                data[f'{v}_time'] = dt_2_epoch(kwargs['start'])[0]
+                data[f'{v}_time'] = dt_2_epoch(kwargs['start'])
                 if v in ('temp', 'salinity'): data[f'{v}_depth'] = kwargs['top']
                 callbacks.append(load_callback)
 

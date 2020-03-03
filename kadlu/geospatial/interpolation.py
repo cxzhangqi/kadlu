@@ -55,24 +55,6 @@ if sys_pf == 'darwin':
 from matplotlib import pyplot as plt
 
 
-def interp_2D(values, lats=None, lons=None, origin=None, 
-            method_irreg='cubic',lats_reg=None, lons_reg=None):
-
-        if isinstance(values, (float, int)):
-            return Uniform2D(values)
-        
-        else:
-            return Interpolator2D(values, lats, lons, origin, method_irreg, lats_reg, lons_reg)
-
-
-def interp_3D(values, lats=None, lons=None, depths=None, origin=None, method='linear'):
-        if isinstance(values, (float, int)):
-            return Uniform3D(values)
-        
-        else:
-            return Interpolator3D(values, lats, lons, depths, origin, method)
-
-
 class GridData2D():
     """ Interpolation of data on a two-dimensional irregular grid.
     
@@ -226,22 +208,14 @@ class Interpolator2D():
                 Note that 'nearest' is usually significantly faster than 
                 the 'linear' and 'cubic'.
                 If the 'regular' is selected, the data is first mapped onto 
-                a regular grid by means of a cubic interpolation (for points outside 
+                a regular grid by means of a linear interpolation (for points outside 
                 the area covered by the data, a nearest-point interpolation is used).
-                The coordiantes of the regular grid onto which the data is mapped 
-                is given by the arguments 'lats_reg' and 'lons_reg'.
-            lats_reg: 1d numpy array
-                Latitude values for regular interpolation grid.
-                Must be specified for irregular grids if the interpolation method 
-                'regular' is chosen. In all other cases, the argument is ignored.
-            lons_reg: 1d numpy array
-                Longitude values for regular interpolation grid.
-                Must be specified for irregular grids if the interpolation method 
-                'regular' is chosen. In all other cases, the argument is ignored.
+                The bin size of the regular grid is specified via the reg_bin argument.
+            reg_bin: float
+                Bin size (in degrees) of regular grid onto which irregular data is mapped. 
+                Only relevant if method_irreg is set to 'regular'
     """
-    def __init__(self, values, lats, lons,
-            origin=None, method_irreg='cubic',
-            lats_reg=None, lons_reg=None):
+    def __init__(self, values, lats, lons, origin=None, method_irreg='regular', reg_bin=0.01):
         
         # compute coordinates of origin, if not provided
         if origin is None:
@@ -280,8 +254,16 @@ class Interpolator2D():
 
         else:
             if method_irreg == 'regular':
-                assert lats_reg is not None and lons_reg is not None,\
-                    'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
+
+                # regular grid that data will be mapped to
+                lats_min = np.min(lats)
+                lats_max = np.max(lats)
+                lats_num = max(3, int((lats_max - lats_min) / reg_bin) + 1)
+                lons_min = np.min(lons)
+                lons_max = np.max(lons)
+                lons_num = max(3, int((lons_max - lons_min) / reg_bin) + 1)
+                lats_reg = np.linspace(lats_min, lats_max, num=lats_num)
+                lons_reg = np.linspace(lons_min, lons_max, num=lons_num)
     
                 # interpolators on irregular grid
                 gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='linear') #method='cubic')

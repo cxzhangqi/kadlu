@@ -25,7 +25,6 @@ from kadlu.geospatial.data_sources.data_util import                 \
         insert_hash,                                                \
         serialized,                                                 \
         dt_2_epoch,                                                 \
-        epoch_2_dt,                                                 \
         Boundary,                                                   \
         str_def
 
@@ -193,7 +192,7 @@ def load_wwiii(var, kwargs):
            tuple(map(str, [
                kwargs['south'], kwargs['north'],
                kwargs['west'],  kwargs['east'], 
-               dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]]))
+               dt_2_epoch(kwargs['start']), dt_2_epoch(kwargs['end'])]))
        )
 
     slices = np.array(db.fetchall(), dtype=object).T
@@ -235,7 +234,7 @@ class Wwiii():
         db.execute(sql, tuple(map(str, [
                 kwargs['south'],                kwargs['north'], 
                 kwargs['west'],                 kwargs['east'], 
-                dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]
+                dt_2_epoch(kwargs['start']),    dt_2_epoch(kwargs['end'])
             ])))
         wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = np.array(db.fetchall()).T
         val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))

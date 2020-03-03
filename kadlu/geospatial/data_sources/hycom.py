@@ -249,7 +249,7 @@ def load_hycom(self, var, kwargs, recursive=True):
                 kwargs['south'], kwargs['north'], 
                 kwargs['west'],  kwargs['east'],
                 kwargs['top'],   kwargs['bottom'],
-                dt_2_epoch(kwargs['time'])[0]
+                dt_2_epoch(kwargs['time'])
             ])))
         nearest = epoch_2_dt([db.fetchall()[0][3]])[0]
         kwargs['start'], kwargs['end'] = nearest, nearest
@@ -275,7 +275,7 @@ def load_hycom(self, var, kwargs, recursive=True):
     db.execute(sql, tuple(map(str, [
             kwargs['south'],                kwargs['north'], 
             kwargs['west'],                 kwargs['east'],
-            dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0],
+            dt_2_epoch(kwargs['start']), dt_2_epoch(kwargs['end']),
             kwargs['top'],                  kwargs['bottom']
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
@@ -291,13 +291,13 @@ def fetch_idx(self, var, kwargs):
         """ build indices for query and call fetch_hycom """
         haystack = np.array([self.epoch[year], self.depth, self.ygrid, self.xgrid])
         needles1 = np.array([
-                dt_2_epoch(kwargs['start'])[0],
+                dt_2_epoch(kwargs['start']),
                 kwargs['top'], 
                 kwargs['south'],
                 kwargs['west']
             ])
         needles2 = np.array([
-                dt_2_epoch(kwargs['end'])[0],
+                dt_2_epoch(kwargs['end']),
                 kwargs['bottom'],
                 kwargs['north'],
                 kwargs['east']

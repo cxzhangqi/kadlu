@@ -157,7 +157,7 @@ def load_era5(var, kwargs):
     db.execute(sql, tuple(map(str, [
             kwargs['south'],                kwargs['north'], 
             kwargs['west'],                 kwargs['east'], 
-            dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]
+            dt_2_epoch(kwargs['start']), dt_2_epoch(kwargs['end'])
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
     assert len(rowdata) > 0, "no data found for query"
@@ -222,7 +222,7 @@ class Era5():
         db.execute(sql, tuple(map(str, [
                 kwargs['south'],                kwargs['north'], 
                 kwargs['west'],                 kwargs['east'], 
-                dt_2_epoch(kwargs['start'])[0], dt_2_epoch(kwargs['end'])[0]
+                dt_2_epoch(kwargs['start']), dt_2_epoch(kwargs['end'])
             ])))
         wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = np.array(db.fetchall()).T
         val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))

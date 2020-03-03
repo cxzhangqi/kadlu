@@ -21,11 +21,12 @@ hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 wwiii_tables = ['hs', 'dp', 'tp', 'windU', 'windV']
 era5_tables  = [
         'significant_height_of_combined_wind_waves_and_swell',
-        'mean_wave_direction', 
-        'mean_wave_period', 
-        'u_component_of_wind', 
+        'mean_wave_direction',
+        'mean_wave_period',
+        'u_component_of_wind',
         'v_component_of_wind'
     ]
+
 
 cfg = configparser.ConfigParser()       # read .ini into dictionary object
 cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
@@ -173,14 +174,18 @@ def dt_2_epoch(dt_arr):
     """ convert datetimes to epoch hours """
     t0 = datetime(2000, 1, 1, 0, 0, 0)
     delta = lambda dt: (dt - t0).total_seconds()/60/60
-    dt_arr = np.array([dt_arr]) if np.array([dt_arr]).shape == (1,) else dt_arr
-    return list(map(int, map(delta, dt_arr)))
+    if isinstance(dt_arr, (list, np.ndarray)): return list(map(int, map(delta, dt_arr)))
+    elif isinstance(dt_arr, (datetime)): return int(delta(dt_arr))
+    else: raise ValueError('input must be datetime or array of datetimes')
 
 
 def epoch_2_dt(ep_arr):
     """ convert epoch hours to datetimes """
     t0 = datetime(2000, 1, 1)
-    return list(map(lambda ep : t0 + timedelta(hours=ep), ep_arr))
+    delta = lambda ep : t0 + timedelta(hours=ep)
+    if isinstance(ep_arr, (list, np.ndarray)): return list(map(delta, ep_arr))
+    elif isinstance(ep_arr, (float, int)): return delta(ep_arr)
+    else: raise ValueError('input must be integer or array of integers')
 
 
 def index(val, sorted_arr):
@@ -311,4 +316,5 @@ class DataUtil():
     def index(sorted_arr):  return index(sorted_arr)
     def reshape_2D(cols):   return reshape_2D(cols)
     def reshape_3D(cols):   return reshape_3D(cols)
+
 

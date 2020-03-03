@@ -43,7 +43,7 @@ def storage_cfg():
         storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
         if not os.path.isdir(storage_location):
             os.mkdir(storage_location)
-        print(f"NOTICE: {msg} storage location will be set to {storage_location}")
+        #print(f"NOTICE: {msg} storage location will be set to {storage_location}")
         return storage_location
 
     try:
@@ -130,7 +130,8 @@ def bin_db():
     #return conn, db
 
 
-def hash_key(kwargs, seed, keep=('south','west', 'north', 'east', 'top', 'bottom', 'start', 'end')):
+def hash_key(kwargs, seed, 
+        keep=('south','west', 'north', 'east', 'top', 'bottom', 'start', 'end')):
     """ compute unique hash and convert to 8-byte int as serialization key """
     qry = kwargs.copy()
     dim = kwargs.keys()
@@ -299,4 +300,15 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
         return default
 
     return np.unique(matching)
+
+
+class DataUtil():
+    """ user API for data utils """
+
+    def epoch_2_dt(arr):    return epoch_2_dt(arr)
+    def dt_2_epoch(arr):    return dt_2_epoch(arr)
+    def database_cfg():     return database_cfg()
+    def index(sorted_arr):  return index(sorted_arr)
+    def reshape_2D(cols):   return reshape_2D(cols)
+    def reshape_3D(cols):   return reshape_3D(cols)
 

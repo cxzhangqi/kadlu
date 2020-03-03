@@ -215,8 +215,8 @@ def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1),
     while cur <= kwargs['end']:
         qry['start'] = cur
         qry['end'] = cur + step
-        fname = f'{dirname}/{var}_{cur.date().isoformat()}.png'
-        if not os.path.isfile(fname): 
+        fname = f'{var}_{cur.date().isoformat()}.png'
+        if not os.path.isfile(f'{dirname}/{fname}'): 
             plot2D(var, source, plot_wind=plot_wind, save=fname, **qry)
         cur += step
 
@@ -225,9 +225,13 @@ def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1),
             map(png, list(os.walk(f'{dirname}'))[0][2]) if i is not None
             and datetime.strptime(i, f'{var}_%Y-%m-%d.png') >= kwargs['start']
             and datetime.strptime(i, f'{var}_%Y-%m-%d.png') <= kwargs['end']])
+
     #with imageio.get_writer(f'http/{var}.gif', mode='I') as w:
-    with imageio.get_writer(f'{dirname}/animated/{var}2.mp4', mode='I', format='FFMPEG') as w:
+
+    with imageio.get_writer(f'{dirname}/animated/{var}.mp4', mode='I', 
+            macro_block_size=4, format='FFMPEG') as w:
         list(map(w.append_data, map(imageio.imread, frames)))
+
     """
 https://imageio.readthedocs.io/en/stable/examples.html#writing-videos-with-ffmpeg-and-vaapi
 
@@ -242,6 +246,17 @@ https://imageio.readthedocs.io/en/stable/examples.html#writing-videos-with-ffmpe
 
     with imageio.get_writer(f'{dirname}/{var}.mp4', mode='I', format='FFMPEG') as w:
         list(map(w.append_data, map(imageio.imread, frames)))
+
+    for f in frames[250:]:
+        fdat = imageio.imread(f)
+        print(fdat.shape, f)
+
+    for f in frames[256:]:
+        im = Image.open(f)
+        im = im.resize((1085, 839))
+        im.save(f)
+        im.close()
+
     """
 
     return

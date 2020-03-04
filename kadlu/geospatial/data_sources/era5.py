@@ -161,8 +161,11 @@ def load_era5(var, kwargs):
             epoch:
                 timestamps in epoch hours since jan 1 2000
     """
-    if 'time' in kwargs.keys():
-        assert False, 'nearest time search not implemented'
+    if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
+        kwargs['start'] = kwargs['time']
+        del kwargs['time']
+    if not 'end' in kwargs.keys(): 
+        kwargs['end'] = kwargs['start'] + timedelta(hours=3)
 
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'

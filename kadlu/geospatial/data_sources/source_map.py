@@ -103,13 +103,18 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=3, **kwargs):
             )
 
         return: nothing
-
     """
 
     assert f'{var}_{source}' in fetch_map.keys() \
             or f'{var}U_{source}' in fetch_map.keys(), 'invalid query, '\
         f'could not find source for variable. options are: '\
         f'{list(f.split("_")[::-1] for f in fetch_map.keys())}'
+
+    if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
+        kwargs['start'] = kwargs['time']
+        del kwargs['time']
+    if not 'end' in kwargs.keys(): 
+        kwargs['end'] = kwargs['start'] + timedelta(hours=3)
 
     np.array(list(x for x in range(100)))
     np.array(np.append([1], [x]) for x in range(10))

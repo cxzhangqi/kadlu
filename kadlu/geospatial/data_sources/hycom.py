@@ -233,6 +233,7 @@ def load_hycom(self, var, kwargs, recursive=True):
     kadlu.geospatial.data_sources.source_map.fetch_handler(
             hycom_varmap[var], 'hycom', parallel=2, **kwargs)
 
+    """
     # perform nearest-time search on values if time keyword arg is supplied
     if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
         sql = ' AND '.join([
@@ -255,6 +256,13 @@ def load_hycom(self, var, kwargs, recursive=True):
 
         if kwargs['time'] != nearest: 
             print(f"loading data nearest to {kwargs['time']} at time {nearest}")
+    """
+
+    if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
+        kwargs['start'] = kwargs['time']
+        del kwargs['time']
+    if not 'end' in kwargs.keys(): 
+        kwargs['end'] = kwargs['start'] + timedelta(hours=3)
 
     # validate and execute query
     assert 8 == sum(map(lambda kw: kw in kwargs.keys(),

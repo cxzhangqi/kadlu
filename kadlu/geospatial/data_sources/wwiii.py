@@ -166,7 +166,12 @@ def load_wwiii(var, kwargs):
     return:
         val, lat, lon, epoch as np arrays of floats
     """
-    assert not 'time' in kwargs.keys(), 'nearest time search not implemented yet'
+    if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
+        kwargs['start'] = kwargs['time']
+        del kwargs['time']
+    if not 'end' in kwargs.keys(): 
+        kwargs['end'] = kwargs['start'] + timedelta(hours=3)
+
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 

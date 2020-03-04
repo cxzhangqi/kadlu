@@ -104,7 +104,7 @@ def load_depth():
 
 
 def fetch_hycom(self, var, year, slices, kwargs):
-    """ download data from hycom, prepare it, and load into db
+    """ download data from hycom, prepare it, and load into database
 
         args:
             year: string
@@ -134,8 +134,7 @@ def fetch_hycom(self, var, year, slices, kwargs):
             depth: array
                 array returned by load_depth()
 
-        stores data in geospatial database and returns nothing.
-        displays status message to standard output
+        return: nothing
     """
 
     # generate request
@@ -286,7 +285,8 @@ def load_hycom(self, var, kwargs, recursive=True):
 
 
 def fetch_idx(self, var, kwargs): 
-    """ convert user query to slices and handle edge cases """
+    """ convert user query to grid index slices, handle edge cases """
+
     def _idx(self, var, year, kwargs): 
         """ build indices for query and call fetch_hycom """
         haystack = np.array([self.epoch[year], self.depth, self.ygrid, self.xgrid])
@@ -326,6 +326,7 @@ def fetch_idx(self, var, kwargs):
     # check if query has been loaded already
     if serialized(kwargs, f'fetch_hycom_{hycom_varmap[var]}'): return False
 
+    # if query spans antimeridian, make two seperate fetch requests
     year = str(kwargs['start'].year)
     if kwargs['west'] > kwargs['east']:
         print('splitting request')
@@ -344,8 +345,6 @@ def fetch_idx(self, var, kwargs):
 
 class Hycom():
     """ collection of module functions for fetching and loading. 
-    abstracted to include a fetch and load function for every variable
-    fetched from the source
 
         attributes:
             lat, lon: arrays
@@ -377,7 +376,7 @@ class Hycom():
     def load_water_u  (self, **kwargs): return load_hycom(self, 'water_u',    kwargs)
     def load_water_v  (self, **kwargs): return load_hycom(self, 'water_v',    kwargs)
     def load_water_uv (self, **kwargs):
-        warnings.warn('HYCOM LOAD_WATER_UV: this part should use an SQL JOIN')
+        warnings.warn('HYCOM LOAD_WATER_UV: this might break without an SQL JOIN')
         water_u = load_hycom(self, 'water_u', kwargs)
         water_v = load_hycom(self, 'water_v', kwargs)
         water_uv = water_u.copy()

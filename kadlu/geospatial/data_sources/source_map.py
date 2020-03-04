@@ -24,15 +24,13 @@ fetch_map = dict(
         wavedir_era5        = Era5().fetch_wavedirection,
         waveheight_era5     = Era5().fetch_windwaveswellheight,
         waveperiod_era5     = Era5().fetch_waveperiod,
-        #windspeed_era5      = Era5().fetch_wind_uv,
-        windspeedU_era5      = Era5().fetch_wind_u,
-        windspeedV_era5      = Era5().fetch_wind_v,
+        windspeedU_era5     = Era5().fetch_wind_u,
+        windspeedV_era5     = Era5().fetch_wind_v,
         wavedir_wwiii       = Wwiii().fetch_wavedirection,
         waveheight_wwiii    = Wwiii().fetch_windwaveheight,
         waveperiod_wwiii    = Wwiii().fetch_waveperiod,
-        #windspeed_wwiii     = Wwiii().fetch_wind_uv
-        windspeedU_wwiii     = Wwiii().fetch_wind_u,
-        windspeedV_wwiii     = Wwiii().fetch_wind_v
+        windspeedU_wwiii    = Wwiii().fetch_wind_u,
+        windspeedV_wwiii    = Wwiii().fetch_wind_v
         )
 load_map = dict(
         bathy_chs           = Chs().load_bathymetry,
@@ -56,8 +54,7 @@ default_val = dict(
         north=51.5, east=-56.5,
         top=0, bottom=-5000,
         start=datetime(2015, 3, 1), end=datetime(2015, 3, 1, 3)
-        #water_density=1, seafloor_density=1
-        )
+    )
 
 
 def fetch_process(job, key):
@@ -83,15 +80,29 @@ def fetch_handler(var, source, step=timedelta(days=1), parallel=3, **kwargs):
         coordinates are rounded to nearest outer-boundary degree integer,
         a query hash is stored if a fetch request is successful
 
-        kwargs=dict(
-            start=datetime(2013, 3, 1), end=datetime(2013, 3, 31),
-            south=45, west=-65.5, north=50.5, east=-56.5,
-            top=0, bottom=100
-        )
+        args:
+            var:
+                variable type (string)
+            source:
+                data source (string)
+            step:
+                timestep size for batching fetch requests. by default, make 1 
+                request per day of data
+            parallel:
+                number of processes to run fetch jobs
 
-        var='temp'
-        source='hycom'
-        parallel=8
+        example arguments:
+            var='temp'
+            source='hycom'
+            step=timedelta(days=1)
+            parallel=4
+            kwargs=dict(
+                start=datetime(2013, 3, 1), end=datetime(2013, 3, 31),
+                south=45, west=-65.5, north=50.5, east=-56.5,
+                top=0, bottom=100
+            )
+
+        return: nothing
 
     """
 

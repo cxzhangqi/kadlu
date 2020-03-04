@@ -69,8 +69,10 @@ def fetch_era5(var, kwargs):
     assert kwargs['end'] - kwargs['start'] <= timedelta(days=1, hours=1), \
             'use fetch_handler for this instead'
         
+    # check if data has been fetched already
     if serialized(kwargs, f'fetch_era5_{era5_varmap[var]}'): return False
 
+    # fetch the data
     fname = f'ERA5_reanalysis_{var}_{t.strftime("%Y-%m-%d")}.grb2'
     fpath = f'{storage_cfg()}{fname}'
     if not isfile(fpath):
@@ -86,6 +88,7 @@ def fetch_era5(var, kwargs):
                                          .strftime('%H:00') for h in range(24)]
                     }, fpath)
     
+    # load the data file and insert it into the database
     assert isfile(fpath)
     grb = pygrib.open(fpath)
     agg = np.array([[],[],[],[],[]])
@@ -119,6 +122,7 @@ def fetch_era5(var, kwargs):
                                dt_2_epoch([msg.validDate for i in z2[idx]]),
                                ['era5' for i in z2[idx]]]))
 
+    # perform the insertion
     if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
     n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
     db.executemany(f"INSERT OR IGNORE INTO {table} "
@@ -137,6 +141,26 @@ def fetch_era5(var, kwargs):
 
 
 def load_era5(var, kwargs):
+    """ load era5 data from local database
+
+        args:
+            var:
+                variable to be fetched (string)
+            kwargs:
+                dictionary containing the keyword arguments used for the
+                fetch request. must contain south, north, west, east
+                keys as float values, and start, end keys as datetimes
+
+        return:
+            values:
+                values of the fetched var
+            lat:
+                y grid coordinates
+            lon:
+                x grid coordinates
+            epoch:
+                timestamps in epoch hours since jan 1 2000
+    """
     if 'time' in kwargs.keys():
         assert False, 'nearest time search not implemented'
 
@@ -147,6 +171,7 @@ def load_era5(var, kwargs):
     kadlu.geospatial.data_sources.source_map.fetch_handler(
             era5_varmap[var], 'era5', parallel=1, **kwargs)
 
+    # load the data
     table = var[4:] if var[0:4] == '10m_' else var  # table cant start with int
     sql = ' AND '.join([f"SELECT * FROM {table} WHERE lat >= ?",
         'lat <= ?',
@@ -167,18 +192,7 @@ def load_era5(var, kwargs):
 
 
 class Era5():
-    """ collection of module functions for fetching and loading. 
-    
-        fetch function kwargs:
-            start:
-                datetime for beginning of time range to be fetched
-            end:
-                datetime for end of time range to be fetched
-
-        load function kwargs:
-            start:
-            end:
-    """
+    """ collection of module functions for fetching and loading  """
 
     def fetch_windwaveswellheight(self, **kwargs):
         return fetch_era5('significant_height_of_combined_wind_waves_and_swell', kwargs)
@@ -205,6 +219,12 @@ class Era5():
     def load_wind_v(self, **kwargs):
         return load_era5('10m_v_component_of_wind', kwargs)
     def load_wind_uv(self, **kwargs):
+        """ an SQL join is used for loading wind data to deal with the
+            edge case where u,v coordinates are not in matching pairs in
+            the data. the JOIN ensures only values with a matching pair
+            are loaded
+        """
+
         fetch_era5('10m_u_component_of_wind', kwargs)
         fetch_era5('10m_v_component_of_wind', kwargs)
 

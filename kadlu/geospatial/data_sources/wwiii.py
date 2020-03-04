@@ -69,7 +69,7 @@ def fetch_wwiii(var, kwargs):
                 the end of the desired time range
 
         return:
-            nothing. some status messages are printed to stdout
+            True if new data was fetched, else False
     """
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
@@ -78,7 +78,6 @@ def fetch_wwiii(var, kwargs):
             'use fetch_handler for this'
 
     if serialized(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}'): return False
-
     #print("WWIII NOTICE: resolution selection not implemented yet. defaulting to 0.5°")
     regions = ['glo_30m']
 
@@ -87,6 +86,7 @@ def fetch_wwiii(var, kwargs):
     fname = f"multi_1.{reg}.{var}.{t.strftime('%Y%m')}.grb2"
     fetchfile = f"{storage_cfg()}{fname}"
 
+    # if file hasnt been downloaded, fetch it
     if not isfile(fetchfile):# and kwargs['start'].day == 1: 
         if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
         print(f'WWIII {kwargs["start"].date().isoformat()} {var}: '
@@ -101,9 +101,7 @@ def fetch_wwiii(var, kwargs):
                 shutil.copyfileobj(payload.raw, f)
         if 'lock' in kwargs.keys(): kwargs['lock'].release()
 
-    grib = pygrib.open(fetchfile)
-    assert grib.messages > 0, f'problem opening {fetchfile}'
-
+    # function to insert the parsed data to local database
     def insert(table, agg, null, kwargs):
         if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
         n1 = db.execute(f"SELECT COUNT(*) FROM {table}").fetchall()[0][0]
@@ -117,7 +115,10 @@ def fetch_wwiii(var, kwargs):
               f"processed and inserted {n2-n1} rows. "
               f"{null} null values removed, "
               f"{len(agg[0]) - (n2-n1)} duplicates ignored")
-    
+
+    # open the file, parse data, insert values
+    grib = pygrib.open(fetchfile)
+    assert grib.messages > 0, f'problem opening {fetchfile}'
     null = 0
     agg = np.array([[],[],[],[],[]])
     grbvar = grib[1]['name']
@@ -163,8 +164,7 @@ def load_wwiii(var, kwargs):
             the end of the desired time range
 
     return:
-        val, lat, lon, time as np arrays
-        (time is datetime)
+        val, lat, lon, epoch as np arrays of floats
     """
     assert not 'time' in kwargs.keys(), 'nearest time search not implemented yet'
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
@@ -189,13 +189,13 @@ def load_wwiii(var, kwargs):
     slices = np.array(db.fetchall(), dtype=object).T
     assert len(slices) == 5, \
             "no data found, try adjusting query bounds or fetching some"
-    val, lat, lon, time, source = slices
+    val, lat, lon, epoch, source = slices
 
-    return np.array((val, lat, lon, time), dtype=np.float)
+    return np.array((val, lat, lon, epoch), dtype=np.float)
 
 
 class Wwiii():
-    """ collection of module functions for fetching and loading. abstracted to include a seperate function for each variable """
+    """ collection of module functions for fetching and loading """
 
     def fetch_wavedirection(self,   **kwargs):  return fetch_wwiii('dp',    kwargs)
     def fetch_waveperiod(self,      **kwargs):  return fetch_wwiii('tp',    kwargs)

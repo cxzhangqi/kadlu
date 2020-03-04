@@ -35,8 +35,8 @@ cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.in
 def storage_cfg():
     """ return filepath containing storage configuration string
 
-    first checks the config.ini file in kadlu root folder, if there's a 
-    problem defaults to kadlu/storage and issues a warning
+        first checks the config.ini file in kadlu root folder, then
+        defaults to kadlu/storage
     """
 
     def default_storage(msg):
@@ -118,7 +118,11 @@ def database_cfg():
 
 
 def bin_db():
-    """ database for storing serialized objects in memory """
+    """ database for storing serialized objects in memory 
+        
+        code was previously used for caching results quickly but
+        is currently not in use
+    """
     conn = sqlite3.connect('file::memory:?cache=shared', uri=True)
     db = conn.cursor()
     db.execute('CREATE TABLE IF NOT EXISTS bin'
@@ -144,7 +148,8 @@ def hash_key(kwargs, seed,
 
 
 def insert_hash(kwargs, seed='', obj=None):
-    """ create hash index in database to record query history 
+    """ create hash index in database to record query history.
+        this is used for mapping the coverage of fetched data.
         optionally include an object to be serialized and cached
     """
     qry = kwargs.copy()
@@ -158,7 +163,7 @@ def insert_hash(kwargs, seed='', obj=None):
 
 
 def serialized(kwargs, seed=''):
-    """ returns true if fetch query hash exists in database """
+    """ returns true if fetch query hash exists in database else False """
     key = hash_key(kwargs, seed)
     if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
     conn, db = database_cfg()
@@ -197,6 +202,7 @@ def index(val, sorted_arr):
 def flatten(cols, frames):
     """ dimensional reduction by taking average of time frames """
     # assert that frames are of equal size
+    assert len(cols) == 5
     assert reduce(lambda a, b: (a==b)*a, frames[1:] - frames[:-1])
 
     # aggregate time frame splits and reduce them to average
@@ -204,15 +210,7 @@ def flatten(cols, frames):
     split_num = range(len(frames_ix) -1)
     val_split = np.array([cols[0][frames_ix[f] : frames_ix[f+1]] for f in split_num])
     value_avg = (reduce(np.add, val_split) / len(val_split))
-
-    if len(cols) == 4:
-        assert False, 'this should never happen'
-        #_, y, x, _ = cols[:, frames_ix[0] : frames_ix[1]]
-    elif len(cols) == 5:
-        _, y, x, _, z = cols[:, frames_ix[0] : frames_ix[1]]
-    else:
-        assert False, 'this is not good'
-
+    _, y, x, _, z = cols[:, frames_ix[0] : frames_ix[1]]
     return value_avg, y, x, z
 
 
@@ -291,8 +289,7 @@ class Boundary():
 
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
-    """ convert input bounds to region strings using Boundary class """
-
+    """ convert input bounds to region strings with seperating axis theorem """
     if west > east:  # recursive function call if query intersects antimeridian
         return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
                           ll_2_regionstr(south, north, -180, east, regions, default))
@@ -309,7 +306,6 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
 
 class DataUtil():
     """ user API for data utils """
-
     def epoch_2_dt(arr):    return epoch_2_dt(arr)
     def dt_2_epoch(arr):    return dt_2_epoch(arr)
     def database_cfg():     return database_cfg()

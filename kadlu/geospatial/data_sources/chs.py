@@ -135,14 +135,31 @@ def fetch_chs(south, north, west, east, band_id=1):
 
 
 def load_chs(south, north, west, east):
+    """ load bathymetric data from the database
+
+        args:
+            south, north:
+                y-grid coordinate boundaries (float)
+            west, east:
+                x-grid coordinate boundaries (float)
+
+        return:
+            bathy:
+                bathymetric values within query range
+            lat:
+                y-grid coordinate values
+            lon:
+                x-grid coordinate values
+    """
+    # check for missing data
     qryargs = dict(
             south=south, west=west,
             north=north, east=east, 
             start=datetime.now(), end=datetime.now())
-
     kadlu.geospatial.data_sources.source_map.fetch_handler(
             'bathy', 'chs', parallel=1, **qryargs)
 
+    # load the data
     db.execute(' AND '.join([f"SELECT * FROM {chs_table} WHERE lat >= ?",
                                                               "lat <= ?",
                                                               "lon >= ?",
@@ -159,10 +176,12 @@ class Chs():
     """ collection of module functions for fetching and loading """
 
     def fetch_bathymetry(self, **kwargs):
+        # trim query indexing entropy and check for fetched data
         for k in ('start', 'lock', 'end', 'top', 'bottom'):
             if k in kwargs.keys(): del kwargs[k]
         if serialized(kwargs, 'fetch_chs_bathy'): return False
 
+        # if new data was fetched, index the query hash
         if (fetch_chs(south=kwargs['south'], north=kwargs['north'], 
                 west=kwargs['west'], east=kwargs['east'], band_id=1)):
             insert_hash(kwargs, 'fetch_chs_bathy')

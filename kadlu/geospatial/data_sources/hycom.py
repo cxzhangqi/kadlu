@@ -215,8 +215,8 @@ def load_hycom(self, var, kwargs, recursive=True):
                 y grid coordinates
             lon: array
                 x grid coordinates
-            time: array
-                timestamps in datetime format
+            epoch: array
+                timestamps in epoch hours since jan 1 2000 
             depth: array
                 measured in meters
     """

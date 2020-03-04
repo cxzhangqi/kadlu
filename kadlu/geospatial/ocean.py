@@ -63,7 +63,7 @@ class Ocean():
         function. the boundary arguments supplied here will be passed to the 
         callable, i.e. north, south, west, east, top, bottom, start, end
 
-        bles or array arguments must be ordered by [val, lat, lon] for 2D 
+        callables or array arguments must be ordered by [val, lat, lon] for 2D 
         data, or [val, lat, lon, depth] for 3D data
 
         args:
@@ -144,8 +144,8 @@ class Ocean():
                 data[f'{v}_val'] = load_arg[0]
                 data[f'{v}_lat'] = load_arg[1]
                 data[f'{v}_lon'] = load_arg[2]
-                if len(load_arg) >= 4: data[f'{v}_time'] = load_arg[3]
-                if len(load_arg) == 5: data[f'{v}_depth'] = load_arg[4]
+                #if len(load_arg) >= 4: data[f'{v}_time'] = load_arg[3]
+                if len(load_arg) == 4: data[f'{v}_depth'] = load_arg[3]
                 callbacks.append(load_callback)
 
             else: raise TypeError(f'invalid type for load_{v}. '
@@ -168,11 +168,25 @@ class Ocean():
             interpolators, reshapers, columns, vartypes
         )
 
+        # compute interpolations in parallel and store in dictionary
         for i in interpolations: i.start()
         while len(self.interps.keys()) < len(vartypes):
             obj = q.get()
             self.interps[obj[0]] = obj[1]
         for i in interpolations: i.join()
+
+        """
+        # used for debugging without parallelization for nicer stack traces
+        for i,r,c,v in zip(interpolators, reshapers, columns, vartypes):
+            print(f'interpolating {v}')
+            obj = i(**r(c))
+            q.put((v, obj))
+
+        while len(self.interps.keys()) < len(vartypes):
+            obj = q.get()
+            self.interps[obj[0]] = obj[1]
+        """
+
         q.close()
         return
 

@@ -1,7 +1,7 @@
 # Welcome to Kadlu, a Python package for modelling ocean ambient noise
 
 Kadlu was developed for the purpose of modelling noise due to waves and rain in shallow coastal 
-waters, but contains tools useful for many other noise modeling tasks.
+waters, but contains tools useful for many other underwater sound modelling tasks.
 
 Kadlu is written in Python and utilizes a number of powerful software packages 
 including [NumPy](https://numpy.org/), [HDF5](https://www.hdfgroup.org/), 

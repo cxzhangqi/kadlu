@@ -1,3 +1,15 @@
+""" The ocean module provides a unified interface to fetching, loading 
+    and interpolating ocean variables.
+
+    Contents:
+        GridData2D class:
+        Interpolator2D class:
+        Interpolator3D class:
+        Uniform2D class:
+        Uniform3D class:
+        DepthInterpolator3D class
+"""
+
 from multiprocessing import Process, Queue
 
 import numpy as np

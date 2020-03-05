@@ -1,5 +1,6 @@
-""" Contains functionalities for interpolating geospatial data in spherical 
-    and planar geometry in one, two, or three dimensions (latitude, longitude, elevation).
+""" The interpolation module contains functionalities for interpolating 
+    geospatial data in spherical and planar geometry in one, two, or 
+    three dimensions (latitude, longitude, elevation).
 
     In the two-dimensional case, the interpolation can be made on both regular and 
     irregular grids. 

@@ -15,5 +15,11 @@ profiling/*.prof
 Nx2DSSFPE/mat_Mariana_Nx2D_longrng_*
 Nx2DSSFPE
 build/*
-playroom/bathy.mat
+playroom/*
 calc.prof
+modules/plot_util.rst
+
+# tutorial files
+docs/source/tutorials/plot_export_tutorial/figures/
+docs/source/tutorials/plot_export_tutorial/waveheight.csv
+docs/source/tutorials/plot_export_tutorial/waveheight.mat

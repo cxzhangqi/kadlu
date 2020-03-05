@@ -1,7 +1,7 @@
-PE Propagator
+Interpolation
 =============
 
-.. automodule:: kadlu.transmission_loss.pe_propagator
+.. automodule:: kadlu.geospatial.interpolation
    :members:
    :undoc-members:
    :show-inheritance:

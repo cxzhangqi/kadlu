@@ -48,7 +48,13 @@ Make sure you get the Python 3.7 version and make sure to pick the installer app
         conda activate kadlu_env
     ```
 
- 3. Install Kadlu:
+ 3. Install the PyPI package manager and Jupyter Notebook:
+    ```terminal
+        conda install pip
+        conda install jupyter
+    ```
+
+ 4. Install Kadlu:
     ```terminal
         python setup.py sdist
         pip install dist/kadlu-1.0.0.tar.gz

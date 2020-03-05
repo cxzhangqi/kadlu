@@ -17,6 +17,11 @@ Create and activate Anaconda environment: ::
     conda env create -f environment.yml
     conda activate kadlu_env
  
+Install the PyPI package manager and Jupyter Notebook: ::
+    
+    conda install pip
+    conda install jupyter
+
 Install Kadlu: ::
     
     python setup.py sdist

@@ -194,7 +194,7 @@ class Ocean():
         return self.interps['bathy'].interp(lat, lon, grid)
 
     def bathy_xy(self, x, y, grid=False):
-        return self.interps['bathy'].interp_xy(x, y, z, grid)
+        return self.interps['bathy'].interp_xy(x, y, grid)
 
     def bathy_deriv(self, lat, lon, axis='lon', grid=False):
         assert axis in ('lat', 'lon'), 'axis must be \'lat\' or \'lon\''

@@ -114,6 +114,12 @@ def database_cfg():
     db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                  f"idx_fetched on fetch_map(hash)")
 
+    # this is just for a fun demo and should be removed later
+    db.execute('CREATE TABLE IF NOT EXISTS blockchain'
+               '( count     INT     NOT NULL, '
+               '  hash      INT     NOT NULL )')
+    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_blockchain ON blockchain(count)')
+
     return conn, db
 
 
@@ -143,8 +149,9 @@ def hash_key(kwargs, seed,
     for dimension in dim:
         if dimension not in keep: del qry[dimension]
     string = seed + json.dumps(qry, sort_keys=True, default=str)
-    key = int(md5(string.encode('utf-8')).hexdigest(), base=16)
-    return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
+    key = int(md5(string.encode('utf-8')).hexdigest(), base=16) >> 80
+    #return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
+    return key
 
 
 def insert_hash(kwargs, seed='', obj=None):
@@ -156,6 +163,7 @@ def insert_hash(kwargs, seed='', obj=None):
     conn, db = database_cfg()
     if 'lock' in qry.keys(): del qry['lock']
     key = hash_key(qry, seed)
+    #update_blockchain(key, seed)  # easter egg
     db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)',
                (key, pickle.dumps(obj)))
     conn.commit()
@@ -302,6 +310,25 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
         return default
 
     return np.unique(matching)
+
+
+def update_blockchain(curkey, seed=''):
+    """ this is just for fun and isnt actually useful """
+    conn, db = database_cfg()
+
+    db.execute('SELECT * FROM blockchain ORDER BY count DESC LIMIT 1')
+    res = db.fetchone()
+    oldcount, oldhash = res if res is not None else 0, 0
+
+    newkey = (str(oldhash) + str(curkey) + seed).encode('UTF-8')
+    newhash = int(md5(newkey).hexdigest(), base=16) >> 80
+
+    sql = 'INSERT INTO blockchain VALUES (?,?)'
+    db.execute(sql, (oldcount+1, newhash))
+    conn.commit()
+
+    print(f'the blockchain has a chain size of {oldcount+1} blocks. newest block: {newhash}')
+    return
 
 
 class DataUtil():

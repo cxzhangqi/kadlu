@@ -3,7 +3,6 @@ kadlu API
 
 .. toctree::
    
-   Transmission Loss <transmission_loss/index>
-   Bathymetry Reader <bathy_reader>
-   Bathymetry Interpolator <bathy_interpolator>
+   Geospatial <geospatial/index>
    Utilities <utils>
+   Plotting Utilities <plot_util>

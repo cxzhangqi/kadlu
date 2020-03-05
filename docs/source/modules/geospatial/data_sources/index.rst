@@ -4,6 +4,9 @@ Geospatial
 .. toctree::
    :maxdepth: 2
    
-   geospatial
-   interpolation
-   ocean
+   chs
+   data_util
+   era5
+   hycom
+   source_map
+   wwiii

@@ -2,8 +2,9 @@ Geospatial
 ----------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    
+   Data Sources <data_sources/index>
    geospatial
    interpolation
    ocean

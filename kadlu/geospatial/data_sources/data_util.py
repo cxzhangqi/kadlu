@@ -299,7 +299,7 @@ class Boundary():
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
     """ convert input bounds to region strings with seperating axis theorem """
     if west > east:  # recursive function call if query intersects antimeridian
-        return np.union1d(ll_2_regionstr(south, north, west,  180, regions, default), 
+        return np.union1d(ll_2_regionstr(south, north, west, +180, regions, default), 
                           ll_2_regionstr(south, north, -180, east, regions, default))
 
     query = Boundary(south, north, west, east)

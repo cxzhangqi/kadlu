@@ -7,11 +7,12 @@ Kadlu is written in Python and utilizes a number of powerful software packages
 including [NumPy](https://numpy.org/), [HDF5](https://www.hdfgroup.org/), 
 [NetCDF-4](https://www.unidata.ucar.edu/software/netcdf/), 
 [SQLite](https://www.sqlite.org/index.html), and [GDAL](https://www.gdal.org/).
-It is licensed under the `GNU GPLv3 license <https://www.gnu.org/licenses/>`_ and hence freely available for anyone to use and modify.
+It is licensed under the [GNU GPLv3 license](https://www.gnu.org/licenses/) 
+and hence freely available for anyone to use and modify.
 The project is hosted on GitLab at 
-`https://gitlab.meridian.cs.dal.ca/public_projects/kadlu <https://gitlab.meridian.cs.dal.ca/public_projects/kadlu>`_ . 
-Kadlu was developed by the `MERIDIAN <http://meridian.cs.dal.ca/>`_ Data Analytics Team at the 
-`Institute for Big Data Analytics <https://bigdata.cs.dal.ca/>`_ at Dalhousie University with the 
+[https://gitlab.meridian.cs.dal.ca/public_projects/kadlu](https://gitlab.meridian.cs.dal.ca/public_projects/kadlu). 
+Kadlu was developed by the [MERIDIAN](http://meridian.cs.dal.ca/) Data Analytics Team at the 
+[Institute for Big Data Analytics](https://bigdata.cs.dal.ca/) at Dalhousie University with the 
 support and assistance of David Barclay and Calder Robinson, both from the Department of Oceanography 
 at Dalhousie University.
 

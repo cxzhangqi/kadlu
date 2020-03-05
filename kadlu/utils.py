@@ -3,6 +3,8 @@ import os
 from collections import namedtuple
 import math
 from scipy.interpolate import interp1d
+from netCDF4 import Dataset
+import scipy.io as sio
 
 # Equatorial radius (6,378.1370 km)
 # Polar radius (6,356.7523 km)
@@ -394,6 +396,151 @@ def interp_grid_1d(y, x=None, num_pts=math.inf, rel_err=None, method='linear'):
 
     a = np.sort(a)
     return a, e
+
+
+def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', lon_axis=1,\
+    south=-90, north=90, west=-180, east=180):
+    """ Load geospatial data from a single file. 
+
+        Currently supported formats are NetCDF (*.nc) and MatLab (*.mat).
+
+        The data can be cropped by speciyfing south/north/west/east 
+        boundaries.
+
+        Args: 
+            path: str
+                File path
+            val_name: str
+                Name of variable/field containing the data values
+            lat_name: str
+                Name of variable/field containing the latitude values
+            lon_name: str
+                Name of variable/field containing the longitude values
+            lon_axis: int
+                Specify if the longitude dimension is the second (1, default) 
+                or first (0) axis.
+            south: float
+                Southern boundary of the region of interest.
+            north: float
+                Northern boundary of the region of interest.
+            west: float
+                Western boundary of the region of interest.
+            east: float
+                Eastern boundary of the region of interest.
+
+        Returns:
+            val: 1d or 2d numpy array
+                Data values
+            lat: numpy array
+                Latitude values
+            lon: numpy array
+                Longitude values
+    """
+    # detect format
+    ext = path[path.rfind('.'):]
+
+    # load data
+    if ext == '.nc': # NetCDF
+        d = Dataset(path)
+        val = np.array(d[val_name])
+        lat = np.array(d[lat_name])
+        lon = np.array(d[lon_name])
+
+    elif ext == '.mat': # MatLab
+        d = sio.loadmat(path)
+        val = np.array(d[val_name])
+        lat = np.squeeze(np.array(d[lat_name]))
+        lon = np.squeeze(np.array(d[lon_name]))
+
+    else:
+        print('Unknown file format *{0}'.format(ext))
+        exit(1)
+
+    # crop the region of interest
+    grid = (np.ndim(val) == 2)
+    indices, lat, lon = crop(lat, lon, south, north, west, east, grid=grid)
+    val = val[indices]
+
+    # ensure that lat and lon are strictly increasing
+    if np.all(np.diff(lat) < 0):
+        lat = np.flip(lat, axis=0)
+        val = np.flip(val, axis=0)
+    if np.all(np.diff(lon) < 0):
+        lon = np.flip(lon, axis=0)
+        val = np.flip(val, axis=1)
+
+    # flip axes, if necessary
+    if lon_axis == 0:
+        val = np.swapaxes(val, 0, 1)
+
+    # if axis size are inconsistent, try swapping
+    if val.shape[0] != lat.shape[0]:
+        val = np.swapaxes(val, 0, 1)
+
+    return val, lat, lon
+
+
+def crop(lat, lon, south, north, west, east, grid=False):
+    """ Select rectangular region bounded by the geographical coordinates 
+        latlon_SW to the south-west and latlon_NE to the north-east.
+
+        If grid is False, lat and lon must have the same length.
+
+        Args: 
+            lat: 1d or 2d numpy array
+                Latitude values
+            lon: 1d or 2d numpy array
+                Longitude values
+            south: float
+                Southern boundary of the region of interest.
+            north: float
+                Northern boundary of the region of interest.
+            west: float
+                Western boundary of the region of interest.
+            east: float
+                Eastern boundary of the region of interest.
+            grid: bool
+                Specify how to combine elements of lat and lon.
+
+        Returns:
+            ind: numpy array
+                Selected indices. 1d if grid is False, 2d if grid is True.
+            lat: numpy array
+                Latitude values
+            lon: numpy array
+                Longitude values
+    """
+    ind_lat = np.argwhere((lat >= south) & (lat <= north))
+    ind_lat = np.squeeze(ind_lat)
+
+    ind_lon = np.argwhere((lon >= west) & (lon <= east))
+    ind_lon = np.squeeze(ind_lon)
+
+    if np.ndim(ind_lat) == 2:
+        latc = ind_lat[:,0] + 1j * ind_lat[:,1]
+        lonc = ind_lon[:,0] + 1j * ind_lon[:,1]
+        x = np.intersect1d(latc, lonc)
+        xr = np.real(x)
+        xi = np.imag(x)
+        xr = xr.astype(int)
+        xi = xi.astype(int)
+        ind_lat = np.arange(np.min(xr), np.max(xr)+1)
+        ind_lon = np.arange(np.min(xi), np.max(xi)+1)
+        lat = lat[:,0]
+        lon = lon[0,:]
+        ind = np.ix_(ind_lat, ind_lon)       
+
+    if grid:
+        ind = np.ix_(ind_lat, ind_lon)       
+    else:
+        ind = np.intersect1d(ind_lat, ind_lon)
+        ind_lat = ind
+        ind_lon = ind
+
+    lat = lat[ind_lat]
+    lon = lon[ind_lon]
+
+    return ind, lat, lon
 
 
 def get_member(cls, member_name):

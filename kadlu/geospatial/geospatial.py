@@ -1,14 +1,4 @@
-""" Geospatial utilities module within the kadlu package
-
-    Authors: Oliver Kirsebom
-    contact: oliver.kirsebom@dal.ca
-    Organization: MERIDIAN-Intitute for Big Data Analytics
-    Team: Acoustic data Analytics, Dalhousie University
-    Project: packages/kadlu
-             Project goal: Tools for underwater soundscape modeling
-     
-    License:
-
+""" Geospatial utilities
 """
 import numpy as np
 from osgeo import gdal

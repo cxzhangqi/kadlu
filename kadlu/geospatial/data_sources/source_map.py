@@ -1,3 +1,8 @@
+"""
+    Utilities for data fetching specific to the 
+    data sources used by Kadlu.
+"""
+
 from datetime import datetime, timedelta
 from multiprocessing import Queue, Lock, Process
 

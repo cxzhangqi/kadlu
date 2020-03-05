@@ -13,10 +13,9 @@
 import pytest
 import os
 import numpy as np
-from kadlu.geospatial.geospatial import load_data_from_file
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D
 from kadlu.geospatial.data_sources.chs import Chs
-from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon
+from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon, load_data_from_file
 
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")

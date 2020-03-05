@@ -1,32 +1,6 @@
-# ================================================================================ #
-#   Authors: Casey Hillard and Oliver Kirsebom                                     #
-#   Contact: oliver.kirsebom@dal.ca                                                #
-#   Organization: MERIDIAN (https://meridian.cs.dal.ca/)                           #
-#   Team: Data Analytics                                                           #
-#   Project: kadlu                                                                 #
-#   Project goal: The kadlu library provides functionalities for modeling          #
-#   underwater noise due to environmental source such as waves.                    #
-#                                                                                  #
-#   License: GNU GPLv3                                                             #
-#                                                                                  #
-#       This program is free software: you can redistribute it and/or modify       #
-#       it under the terms of the GNU General Public License as published by       #
-#       the Free Software Foundation, either version 3 of the License, or          #
-#       (at your option) any later version.                                        #
-#                                                                                  #
-#       This program is distributed in the hope that it will be useful,            #
-#       but WITHOUT ANY WARRANTY; without even the implied warranty of             #
-#       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              #
-#       GNU General Public License for more details.                               # 
-#                                                                                  #
-#       You should have received a copy of the GNU General Public License          #
-#       along with this program.  If not, see <https://www.gnu.org/licenses/>.     #
-# ================================================================================ #
-
-""" Interpolation module within the kadlu library
-
-    This module handles two- and three-dimensional interpolation of geospatial data in 
-    spherical and planar geometry.
+""" The interpolation module contains functionalities for interpolating 
+    geospatial data in spherical and planar geometry in one, two, or 
+    three dimensions (latitude, longitude, elevation).
 
     In the two-dimensional case, the interpolation can be made on both regular and 
     irregular grids. 
@@ -47,12 +21,6 @@
 import numpy as np
 from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, interp2d, griddata
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
-
-from sys import platform as sys_pf
-if sys_pf == 'darwin':
-    import matplotlib
-    matplotlib.use("TkAgg")
-from matplotlib import pyplot as plt
 
 
 class GridData2D():

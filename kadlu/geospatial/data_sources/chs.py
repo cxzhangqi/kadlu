@@ -1,3 +1,10 @@
+"""
+    API for NONNA-100 Bathymetric Data from the Canadian Hydrographic Service (CHS)
+     
+    Metadata regarding the dataset can be found here:
+        https://open.canada.ca/data/en/dataset/d3881c4c-650d-4070-bf9b-1e00aabf0a1d
+"""
+
 import os
 import json
 import requests

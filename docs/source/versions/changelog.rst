@@ -2,7 +2,7 @@ Change log
 ==========
 
 
-**Version 0.0.1** (May, 2019)
+**Version 1.0.0** (March, 2020)
 
-* Beta version
+* First release
 

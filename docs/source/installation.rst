@@ -3,11 +3,11 @@ Installation
 
 Kadlu is most easily installed using the Anaconda package manager.
 Anaconda is freely available from `docs.anaconda.com/anaconda/install <https://docs.anaconda.com/anaconda/install/>`_. 
-Make sure you get the Python 3.x version. Also, note that the Download button takes you to the macOS installer regardless of your OS, so make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
+Make sure you get the Python 3.7 version and make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
 
 Clone the Kadlu repository: ::
 
-    git clone https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu.git
+    git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
     cd kadlu
 
 Create and activate Anaconda environment: ::
@@ -18,8 +18,8 @@ Create and activate Anaconda environment: ::
 Install Kadlu: ::
     
     python setup.py sdist
-    pip install dist/kadlu-0.0.1.tar.gz
+    pip install dist/kadlu-1.0.0.tar.gz
  
 Check that everything is working by running pytest: ::
 
-    pytest
+    pytest kadlu/ --doctest-modules

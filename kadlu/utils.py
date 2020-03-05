@@ -6,6 +6,7 @@ from scipy.interpolate import interp1d
 from netCDF4 import Dataset
 import scipy.io as sio
 
+
 # Equatorial radius (6,378.1370 km)
 # Polar radius (6,356.7523 km)
 # The International Union of Geodesy and Geophysics 
@@ -284,56 +285,6 @@ def get_slices(distance, num_slices=1, bins=100, angle=0):
     return x, y
 
 
-def get_files(path, substr, fullpath=True, subdirs=False):
-    """ Find all files in the specified directory containing the specified substring in their file name
-
-        Args:
-            path: str
-                Directory path
-            substr: str
-                Substring contained in file name
-            fullpath: bool
-                Return full path to each file or just the file name 
-            subdirs: bool
-                Also search all subdirectories
-
-        Returns:
-            files: list (str)
-                Alphabetically sorted list of file names
-    """
-    # find all files
-    allfiles = list()
-    if not subdirs:
-        f = os.listdir(path)
-        for fil in f:
-            if fullpath:
-                x = path
-                if path[-1] is not '/':
-                    x += '/'
-                allfiles.append(os.path.join(x, fil))
-            else:
-                allfiles.append(fil)
-    else:
-        for r, _, f in os.walk(path):
-            for fil in f:
-                if fullpath:
-                    allfiles.append(os.path.join(r, fil))
-                else:
-                    allfiles.append(fil)
-
-    # select those that contain specified substring
-    files = list()
-    for f in allfiles:
-        n = len(substr)
-        if f[-n:] == substr:
-            files.append(f)
-
-    # sort alphabetically
-    files.sort()
-
-    return files
-
-
 def interp_grid_1d(y, x=None, num_pts=math.inf, rel_err=None, method='linear'):
     """ Determine the optimal interpolation grid for the 
         function y(x). 
@@ -543,30 +494,14 @@ def crop(lat, lon, south, north, west, east, grid=False):
     return ind, lat, lon
 
 
-def get_member(cls, member_name):
-    for name, member in cls.__members__.items():
-        if member_name == name:
-            return member
-
-    s = ", ".join(name for name, _ in cls.__members__.items())
-    raise ValueError("Unknown value \'{0}\'. Select between: {1}".format(member_name, s))
-
-
 def create_boolean_array(n, step=1):
     arr = np.zeros(n, dtype=bool)
-    if step == math.inf:
-        arr[0] = True
-    else:
-        arr[::step] = True
-
+    if step == math.inf: arr[0] = True
+    else: arr[::step] = True
     return arr
 
 
 def toarray(x):
-    if isinstance(x, float) or isinstance(x, int):
-        x = [x]
-    
-    if isinstance(x, list):
-        x = np.array(x)
-    
+    if isinstance(x, float) or isinstance(x, int): x = [x]    
+    if isinstance(x, list): x = np.array(x)    
     return x

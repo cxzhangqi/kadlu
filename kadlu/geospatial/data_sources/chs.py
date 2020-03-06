@@ -123,7 +123,7 @@ def fetch_chs(south, north, west, east, band_id=1):
         ix = z1[~z1.mask] != band.GetNoDataValue()
         x2 = x1[~z1.mask][ix]
         y2 = y1[~z1.mask][ix]
-        z2 = np.array(z1[~z1.mask][ix].data, dtype=int)
+        z2 = np.abs(z1[~z1.mask][ix].data)
         source = ['chs' for z in z2]
         grid = list(map(tuple, np.vstack((z2, y2, x2, source)).T))
 

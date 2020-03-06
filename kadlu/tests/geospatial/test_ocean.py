@@ -145,29 +145,6 @@ def test_hycom_temp_time_interval():
     assert 3000 >= np.max(depths) and np.min(depths) >= -100 #check that depths are within limits
     assert len(depths) > 1 #check that more than one depth was fetched
 
-def test_hycom_temp_nearest_time():
-    """ Test that ocean can be initialized with temperature data 
-        from HYCOM with automatic fetching enabled and using the 
-        time arg"""
-
-    o = Ocean(#default=False, fetch=True,
-        load_temp='hycom', 
-        south=43.1, west=-59.8, 
-        north=43.8, east=-59.2,
-        top=-100, bottom=3000,
-        time=datetime(2015,1,1))
-
-    lats = [43.4, 43.5]
-    lons = [-59.6, -59.5]
-    depths = [200, 300]
-    #(temp,lats,lons,depths) = o.temp()
-    temp = o.temp(lats, lons, depths)
-    assert len(temp) > 0 #check that some data was retrieved
-    assert  43.1 <= np.min(lats) and np.max(lats) <=  43.8 #check that lats are within limits
-    assert -59.8 <= np.min(lons) and np.max(lons) <= -59.2 #check that lons are within limits
-    #assert -3000 <= np.min(depths) and np.max(depths) <= 100 #check that depths are within limits
-    assert 3000 >= np.max(depths) and np.min(depths) >= -100 #check that depths are within limits
-
 def test_array_bathy():
     """ Test that ocean can be initialized with bathymetry data 
         from arrays"""

@@ -9,7 +9,7 @@
         Uniform3D class:
         DepthInterpolator3D class
 """
-
+from datetime import timedelta
 from multiprocessing import Process, Queue
 
 import numpy as np
@@ -118,9 +118,14 @@ class Ocean():
             load_waveheight=0, load_waveperiod=0, load_windspeed=0,
             fetch=4, **kwargs):
 
-        for kw in [k for k in 
-                ('south', 'west', 'north', 'east', 'top', 'bottom', 
-                 'start', 'end') if k not in kwargs.keys()]:
+        if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
+            kwargs['start'] = kwargs['time']
+            del kwargs['time']
+        if not 'end' in kwargs.keys(): 
+            kwargs['end'] = kwargs['start'] + timedelta(hours=3)
+
+        for kw in [k for k in ('south', 'west', 'north', 'east', 'top', 'bottom', 
+                'start', 'end') if k not in kwargs.keys()]:
             kwargs[kw] = default_val[kw]
 
         data = {}

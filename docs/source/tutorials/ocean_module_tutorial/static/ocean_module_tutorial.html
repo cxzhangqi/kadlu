@@ -13144,6 +13144,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>Note that instead of specifying a time window bounded by <code>start</code> and <code>stop</code>, we can instead specify a singular time using the keyword argument <code>time</code>. Kadlu will then fetch the data nearest in time to the specified value. (Usually, Kadlu will be able find data within 3 hours of the requested time, since this is time binning commonly used by hydrographical model portals such as HYCOM, ERA5, and WWIII.)</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Initialization-and-querying">Initialization and querying<a class="anchor-link" href="#Initialization-and-querying">&#182;</a></h3>
 </div>
 </div>
@@ -13476,7 +13484,7 @@ div#notebook {
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>bathymetry:	 [127.  370.7]
+<pre>bathymetry:	 [172.25 431.35]
 temperature:	 [10. 10.]
 salinity:	 [35. 35.]
 </pre>

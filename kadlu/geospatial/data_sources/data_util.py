@@ -20,7 +20,7 @@ import numpy as np
 
 
 # database tables for data fetching and loading
-chs_table    = 'bathy'
+chs_table    = 'chs_bathy'
 hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 wwiii_tables = ['hs', 'dp', 'tp', 'windU', 'windV']
 era5_tables  = [

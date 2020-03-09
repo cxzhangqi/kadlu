@@ -22,12 +22,7 @@ Install the PyPI package manager and Jupyter Notebook: ::
     conda install pip
     conda install jupyter
 
-Install Kadlu: ::
-    
-    python setup.py sdist
-    pip install dist/kadlu-1.0.0.tar.gz
-
-Configuration: ::
+Configure Kadlu: ::
 
 1. Data storage location
 
@@ -49,6 +44,10 @@ With your token, add the following to config.ini: ::
     url = https://cds.climate.copernicus.eu/api/v2
     key = {YOUR_TOKEN_HERE}
 
+Install Kadlu: ::
+    
+    python setup.py sdist
+    pip install dist/kadlu-1.0.0.tar.gz
 
 Check that everything is working by running pytest: ::
 

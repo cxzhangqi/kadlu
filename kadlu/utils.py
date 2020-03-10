@@ -18,12 +18,12 @@ R1_IUGG = 6371009
 deg2rad = np.pi / 180.
 
 
-#LatLon = namedtuple('LatLon', ['latitude', 'longitude'])
-def LatLon(lat, lon):
+def center_point(lat, lon):
     """ centerpoint of lat/lon bounds """
     if isinstance(lat, (list, tuple, np.ndarray)):
-        return min(lat) + max(lat) / 2, min(lon) + max(lon) / 2
-    return lat + lat / 2, lon + lon / 2
+        return (min(lat) + max(lat)) / 2, (min(lon) + max(lon)) / 2
+    
+    return lat, lon
 
 
 def DLDL_over_DXDY(lat, lat_deriv_order, lon_deriv_order):
@@ -178,7 +178,6 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
             y = np.squeeze(y)
 
         assert x.shape[0] == y.shape[0], 'x and y must have same length'
-
 
     R = R1_IUGG
     R2 = R * np.cos(lat_ref * deg2rad)

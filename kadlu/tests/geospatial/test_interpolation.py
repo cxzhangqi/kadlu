@@ -15,7 +15,7 @@ import os
 import numpy as np
 from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D, DepthInterpolator3D
 from kadlu.geospatial.data_sources.chs import Chs
-from kadlu.utils import deg2rad, LLtoXY, XYtoLL, LatLon, load_data_from_file
+from kadlu.utils import deg2rad, LLtoXY, XYtoLL, load_data_from_file, center_point
 
 
 path_to_assets = os.path.join(os.path.dirname(os.path.dirname(__file__)),"assets")
@@ -103,11 +103,7 @@ def test_interpolation_grids_are_what_they_should_be():
     ip = Interpolator2D(bathy, lat, lon)
     lat_c = 0.5 * (lat[0] + lat[-1])
     lon_c = 0.5 * (lon[0] + lon[-1])
-
-    #assert ip.origin.latitude == lat_c
-    #assert ip.origin.longitude == lon_c
-    assert lat_c, lon_c == LatLon(lat, lon)
-
+    assert lat_c, lon_c == center_point(lat, lon)
 
 
 def test_interpolation_tables_agree_on_latlon_grid():
@@ -143,7 +139,7 @@ def test_interpolation_tables_agree_anywhere():
     ip = Interpolator2D(bathy, lat, lon)
 
     # --- at origo ---
-    lat_c, lon_c = LatLon(lat, lon)
+    lat_c, lon_c = center_point(lat, lon)
     #lat_c = ip.origin.latitude
     #lon_c = ip.origin.longitude
     z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
@@ -174,7 +170,7 @@ def test_interpolation_tables_agree_anywhere():
 
     # --- at shifted origo ---
     bathy, lat, lon = load_data_from_file(path)
-    ip = Interpolator2D(bathy, lat, lon, origin=LatLon(55.30,15.10))
+    ip = Interpolator2D(bathy, lat, lon, origin=(55.30,15.10))
     lat_c = ip.origin[0]
     lon_c = ip.origin[1]
     z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
@@ -226,7 +222,7 @@ def test_interpolation_tables_agree_anywhere_for_dbarclays_data():
 
     # --- at shifted origo ---
     bathy, lat, lon = load_data_from_file(path, lat_name='latgrat', lon_name='longrat', val_name='mat', lon_axis=0)
-    ip = Interpolator2D(bathy, lat, lon, origin=LatLon(9.,140.))
+    ip = Interpolator2D(bathy, lat, lon, origin=(9.,140.))
     lat_c = ip.origin[0]
     lon_c = ip.origin[1]
     z_ll = ip.interp(lat=lat_c, lon=lon_c) # interpolate using lat-lon
@@ -313,7 +309,7 @@ def test_can_interpolate_irregular_grid():
     lons = [0.01, 2.0, 1.0, 0.71]
     # interpolate all at once
     depths = ip.interp(lat=lats, lon=lons)
-    assert depths[1] == pytest.approx(-200, abs=1E-9)
+    assert depths[1] == pytest.approx(-200, abs=0.1)
     assert depths[2] < -90 and depths[2] > -200
     # interpolate one at a time
     zi = list()
@@ -325,24 +321,41 @@ def test_can_interpolate_irregular_grid():
         assert z == pytest.approx(d, rel=1e-3)
 
 
-def test_can_interpolate_irregular_grid_by_mapping_to_regular_grid():
+def test_can_interpolate_irregular_3d_grid():
     # create fake data
-    lat = np.array([0.0, 1.0, 1.5, 2.1, 3.0])
-    lon = np.array([0.0, 2.0, 0.2, 0.7, 1.2])
-    bathy = np.array([-90.0, -200.0, -140.0, -44.0, -501.0])
-    # regular grid that data will be mapped to
-#    lat_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
-#    lon_reg = np.array([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+    lat = np.linspace(0.,3.,4)
+    lon = np.linspace(0.,3.,4)
+    depth = np.linspace(0.,100.,3)
+    lat, lon, depth = np.meshgrid(lat,lon,depth)
+    lat = lat.flatten()
+    lon = lon.flatten()
+    depth = depth.flatten()
+    temp = np.ones((4,4,3))
+    for i in range(3): temp[:,:,i] = i * temp[:,:,i] # temperature increases with depth
+    for i in range(4): temp[:,i,:] = i * temp[:,i,:] # temperature increases with longitude
+    temp = temp.flatten() 
     # initialize interpolator
-    ip = Interpolator2D(bathy, lat, lon, method_irreg='regular', reg_bin=0.5)
+    ip = Interpolator3D(temp, lat, lon, depth, reg_bin=(0.01,0.01,10))
     # --- 4 latitudes ---
-    lats = [0.01, 1.0, 0.5, 2.1]
+    lats = [1.2, 2.2, 0.2, 1.55]
     # --- 4 longitudes --- 
-    lons = [0.01, 2.0, 1.0, 0.71]
+    lons = [0.0, 1.0, 2.0, 4.0]
+    # --- 4 depths --- 
+    depths = [0, 25, 50, 150]
     # interpolate all at once
-    depths = ip.interp(lat=lats, lon=lons)
-    assert depths[1] == pytest.approx(-200, abs=1E-9)
-    assert depths[2] < -90 and depths[2] > -200
+    temps = ip.interp(lat=lats, lon=lons, z=depths)
+    assert temps[0] == pytest.approx(0.0, abs=0.01)
+    assert temps[1] == pytest.approx(0.5, abs=0.01)
+    assert temps[2] == pytest.approx(2.0, abs=0.01)
+    assert np.all(np.logical_and(temps >= -5, temps <= 105))
+    # interpolate one at a time
+    ti = list()
+    for lat, lon, d in zip(lats, lons, depths):
+        ti.append(ip.interp(lat=lat, lon=lon, z=d))
+    # check that the all-at-once and one-at-a-time 
+    # approaches give the same result
+    for tii,t in zip(ti, temps):
+        assert tii == pytest.approx(t, rel=1e-3)
 
 
 def test_can_interpolate_geotiff_data():

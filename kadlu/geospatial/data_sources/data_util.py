@@ -345,7 +345,7 @@ class DataUtil():
     def index(self, sorted_arr):            return index(sorted_arr)
     def reshape_2D(self, cols):             return reshape_2D(cols)
     def reshape_3D(self, cols):             return reshape_3D(cols)
-    def storage_cfg(self, setdir):          return storage_cfg(setdir)
+    def storage_cfg(self, setdir=None):     return storage_cfg(setdir)
     def database_cfg(self):                 return database_cfg()
     def era5_cfg(self, key=None, url=None): return era5_cfg(key, url)
 

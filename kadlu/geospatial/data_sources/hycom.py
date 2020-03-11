@@ -368,7 +368,7 @@ class Hycom():
     """
 
     def __init__(self):
-        self.ygrid, self.xgrid= load_grid()
+        self.ygrid, self.xgrid = load_grid()
         self.epoch = load_times()
         self.depth = load_depth()
 

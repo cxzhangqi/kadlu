@@ -72,7 +72,7 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
     By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code::
     ```python
     from kadlu import data_util
-    data_util.storage_cfg(setdir='/specify/desired/path/here/')
+    data_util().storage_cfg(setdir='/specify/desired/path/here/')
     ```
 
  2. ECMWF - CDS API Token
@@ -83,7 +83,7 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
     Configure Kadlu to use the token by executing:
     ```python
     from kadlu import data_util
-    data_util.era5_cfg(key="TOKEN_HERE", url="URL_HERE")
+    data_util().era5_cfg(key="TOKEN_HERE", url="URL_HERE")
     ```
 
 

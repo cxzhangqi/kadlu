@@ -94,40 +94,40 @@ def database_cfg():
 
     # bathymetry table (CHS)
     db.execute(f'CREATE TABLE IF NOT EXISTS {chs_table} ' 
-               '(   val     REAL    NOT NULL,' 
-               '    lat     REAL    NOT NULL,' 
-               '    lon     REAL    NOT NULL,' 
-               '    source  TEXT    NOT NULL )') 
-    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+                '(   val     REAL    NOT NULL, ' 
+                '    lat     REAL    NOT NULL, ' 
+                '    lon     REAL    NOT NULL, ' 
+                '    source  TEXT    NOT NULL) ') 
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
                f'idx_{chs_table} on {chs_table}(lon, lat, val, source)')
 
     # hycom environmental data tables
     for var in hycom_tables:
-        db.execute(f'CREATE TABLE IF NOT EXISTS {var'}
+        db.execute(f'CREATE TABLE IF NOT EXISTS {var}'
                     '( val     REAL NOT NULL,' 
                     '  lat     REAL NOT NULL,' 
                     '  lon     REAL NOT NULL,' 
                     '  time    INT  NOT NULL,' 
                     '  depth   INT  NOT NULL,' 
                     '  source  TEXT NOT NULL )')
-        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
                    f'idx_{var} on {var}(time, lon, lat, depth, val, source)')
 
     # wave data tables
     for var in era5_tables + wwiii_tables:
-        db.execute(f'CREATE TABLE IF NOT EXISTS {var'}
-                    '( val     REAL    NOT NULL,' 
-                    '  lat     REAL    NOT NULL,' 
-                    '  lon     REAL    NOT NULL,' 
-                    '  time    INT     NOT NULL,' 
-                    '  source  TEXT    NOT NULL )') 
-        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+        db.execute(f'CREATE TABLE IF NOT EXISTS {var}'
+                    '( val     REAL    NOT NULL, ' 
+                    '  lat     REAL    NOT NULL, ' 
+                    '  lon     REAL    NOT NULL, ' 
+                    '  time    INT     NOT NULL, ' 
+                    '  source  TEXT    NOT NULL) ') 
+        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
                    f'idx_{var} on {var}(time, lon, lat, val, source)')
 
-    db.execute('CREATE TABLE IF NOT EXISTS fetch_ma'p
-                '(  hash    INT  NOT NULL,  '
-                '   bytes   BLOB           )' )
-    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+    db.execute('CREATE TABLE IF NOT EXISTS fetch_map'
+                '(  hash    INT  NOT NULL, '
+                '   bytes   BLOB         ) ' )
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
                  f'idx_fetched on fetch_map(hash)')
 
     return conn, db

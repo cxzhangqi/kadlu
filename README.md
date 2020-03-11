@@ -90,8 +90,8 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
 ## Check your installation
 
 Check that everything is working by running pytest:
-```terminal
-    pytest kadlu/ --doctest-modules
+```bash
+pytest kadlu/ --doctest-modules
 ```
 
 

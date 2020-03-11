@@ -46,7 +46,7 @@ def storage_cfg(setdir=None):
 
     def default_storage(msg):
         """ helper function for storage_cfg() """
-        storage_location = os.path.join(os.path.expanduser('~'), "kadlu_data")
+        storage_location = os.path.join(os.path.expanduser('~'), f"kadlu_data{os.path.sep}")
         if not os.path.isdir(storage_location): os.mkdir(storage_location)
         warnings.warn(f"{msg} storage location will be set to {storage_location}")
         return storage_location

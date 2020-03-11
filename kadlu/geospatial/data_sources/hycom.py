@@ -19,7 +19,7 @@ from os.path import isfile
 
 import numpy as np
 
-import kadlu.geospatial.data_sources.source_map
+import kadlu.geospatial.data_sources.fetch_handler
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
         storage_cfg,                                                \
@@ -230,7 +230,7 @@ def load_hycom(self, var, kwargs, recursive=True):
         return np.hstack((load_hycom(self, var, kwargs1), load_hycom(self, var, kwargs2)))
 
     # check for missing data
-    kadlu.geospatial.data_sources.source_map.fetch_handler(
+    kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
             hycom_varmap[var], 'hycom', parallel=2, **kwargs)
 
     """

@@ -14,7 +14,7 @@ from datetime import datetime
 import numpy as np
 from osgeo import gdal
 
-import kadlu.geospatial.data_sources.source_map
+import kadlu.geospatial.data_sources.fetch_handler
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
         storage_cfg,                                                \
@@ -163,7 +163,7 @@ def load_chs(south, north, west, east):
             south=south, west=west,
             north=north, east=east, 
             start=datetime.now(), end=datetime.now())
-    kadlu.geospatial.data_sources.source_map.fetch_handler(
+    kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
             'bathy', 'chs', parallel=1, **qryargs)
 
     # load the data

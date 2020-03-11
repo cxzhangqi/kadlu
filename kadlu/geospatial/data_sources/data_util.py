@@ -33,10 +33,11 @@ era5_tables  = [
 
 
 cfg = configparser.ConfigParser()       # read .ini into dictionary object
-cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
+cfgfile = os.path.join(dirname(dirname(dirname(dirname(__file__)))), "config.ini")
+cfg.read(cfgfile)
 
 
-def storage_cfg():
+def storage_cfg(setdir=None):
     """ return filepath containing storage configuration string
 
         first checks the config.ini file in kadlu root folder, then
@@ -45,11 +46,19 @@ def storage_cfg():
 
     def default_storage(msg):
         """ helper function for storage_cfg() """
-        storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
-        if not os.path.isdir(storage_location):
-            os.mkdir(storage_location)
-        #print(f"NOTICE: {msg} storage location will be set to {storage_location}")
+        storage_location = os.path.join(os.path.expanduser('~'), "kadlu_data")
+        if not os.path.isdir(storage_location): os.mkdir(storage_location)
+        warnings.warn(f"{msg} storage location will be set to {storage_location}")
         return storage_location
+
+    if 'storage' not in cfg.sections():
+        cfg.add_section('storage')
+
+    if setdir is not None:
+        assert os.path.isdir(setdir)
+        cfg.set('storage', 'storage_location', setdir)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
 
     try:
         storage_location = cfg["storage"]["storage_location"]
@@ -118,12 +127,6 @@ def database_cfg():
     db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
                  f"idx_fetched on fetch_map(hash)")
 
-    # this is just for a fun demo and should be removed later
-    db.execute('CREATE TABLE IF NOT EXISTS blockchain'
-               '( count     INT     NOT NULL, '
-               '  hash      INT     NOT NULL )')
-    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_blockchain ON blockchain(count)')
-
     return conn, db
 
 
@@ -167,7 +170,6 @@ def insert_hash(kwargs, seed='', obj=None):
     conn, db = database_cfg()
     if 'lock' in qry.keys(): del qry['lock']
     key = hash_key(qry, seed)
-    #update_blockchain(key, seed)  # easter egg
     db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)',
                (key, pickle.dumps(obj)))
     conn.commit()
@@ -316,32 +318,34 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
     return np.unique(matching)
 
 
-def update_blockchain(curkey, seed=''):
-    """ this is just for fun and isnt actually useful """
-    conn, db = database_cfg()
+def era5_cfg(key=None, url=None):
+    if 'cdsapi' not in cfg.sections():
+        cfg.add_section('cdsapi')
 
-    db.execute('SELECT * FROM blockchain ORDER BY count DESC LIMIT 1')
-    res = db.fetchone()
-    oldcount, oldhash = res if res is not None else 0, 0
+    if key is not None:
+        cfg.set('cdsapi', 'key', key)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
 
-    newkey = (str(oldhash) + str(curkey) + seed).encode('UTF-8')
-    newhash = int(md5(newkey).hexdigest(), base=16) >> 80
+    if url is not None:
+        cfg.set('cdsapi', 'url', url)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
 
-    sql = 'INSERT INTO blockchain VALUES (?,?)'
-    db.execute(sql, (oldcount+1, newhash))
-    conn.commit()
-
-    print(f'the blockchain has a chain size of {oldcount+1} blocks. newest block: {newhash}')
-    return
+    return 
 
 
 class DataUtil():
     """ user API for data utils """
-    def epoch_2_dt(arr):    return epoch_2_dt(arr)
-    def dt_2_epoch(arr):    return dt_2_epoch(arr)
-    def database_cfg():     return database_cfg()
-    def index(sorted_arr):  return index(sorted_arr)
-    def reshape_2D(cols):   return reshape_2D(cols)
-    def reshape_3D(cols):   return reshape_3D(cols)
+    def epoch_2_dt(self, arr):              return epoch_2_dt(arr)
+    def dt_2_epoch(self, arr):              return dt_2_epoch(arr)
+    def index(self, sorted_arr):            return index(sorted_arr)
+    def reshape_2D(self, cols):             return reshape_2D(cols)
+    def reshape_3D(self, cols):             return reshape_3D(cols)
+    def storage_cfg(self, setdir):          return storage_cfg(setdir)
+    def database_cfg(self):                 return database_cfg()
+    def era5_cfg(self, key=None, url=None): return era5_cfg(key, url)
+
+
 
 

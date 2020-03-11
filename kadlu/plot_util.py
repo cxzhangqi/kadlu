@@ -3,20 +3,22 @@ from datetime import datetime, timedelta
 from multiprocessing import Process, Queue
 
 import numpy as np
+import imageio
 import matplotlib
+import matplotlib.pyplot as plt
 #matplotlib.use('TkAgg')
 #matplotlib.use('Qt5Agg')
-import matplotlib.pyplot as plt
-from scipy.interpolate import griddata
 import cartopy
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+from scipy.interpolate import griddata
+
 from kadlu.geospatial.data_sources.chs import Chs
 from kadlu.geospatial.data_sources.hycom import Hycom
 from kadlu.geospatial.data_sources.era5 import Era5
 from kadlu.geospatial.data_sources.wwiii import Wwiii
-from kadlu.geospatial.data_sources.source_map import fetch_handler, load_map
-import imageio
+from kadlu.geospatial.data_sources.source_map import load_map
+from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 
 
 proj = ccrs.Mercator()

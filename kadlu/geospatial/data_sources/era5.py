@@ -15,7 +15,7 @@ import cdsapi
 import pygrib
 import numpy as np
 
-import kadlu.geospatial.data_sources.source_map
+import kadlu.geospatial.data_sources.fetch_handler
 from kadlu.geospatial.data_sources.data_util    import              \
         database_cfg,                                               \
         storage_cfg,                                                \
@@ -29,13 +29,6 @@ from kadlu.geospatial.data_sources.data_util    import              \
 
 
 conn, db = database_cfg()
-try: c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
-except KeyError:
-    try: c = cdsapi.Client()
-    except Exception:
-        raise KeyError('CDS API has not been configured. obtain an API token '
-                       'from the following URL and add it to kadlu/config.ini. '
-                       'https://cds.climate.copernicus.eu/api-how-to')
 
 era5_varmap = dict(zip(
         ('significant_height_of_combined_wind_waves_and_swell',
@@ -61,6 +54,18 @@ def fetch_era5(var, kwargs):
         return:
             True if new data was fetched, else False 
     """
+    err = False
+    try: c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
+    except KeyError:
+        try: c = cdsapi.Client()
+        except Exception:
+            err = True  
+
+    if err: # make the stack trace less ugly by raising outside of try/except
+        raise KeyError('CDS API has not been configured for the ERA5 module. '
+                       'obtain an API token from the following URL and run '
+                       'data_util.era5_cfg(url="URL_HERE", key="TOKEN_HERE"). '
+                       'https://cds.climate.copernicus.eu/api-how-to')
 
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(), 
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
@@ -171,7 +176,7 @@ def load_era5(var, kwargs):
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 
     # check for missing data
-    kadlu.geospatial.data_sources.source_map.fetch_handler(
+    kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
             era5_varmap[var], 'era5', parallel=1, **kwargs)
 
     # load the data
@@ -196,7 +201,6 @@ def load_era5(var, kwargs):
 
 class Era5():
     """ collection of module functions for fetching and loading  """
-
     def fetch_windwaveswellheight(self, **kwargs):
         return fetch_era5('significant_height_of_combined_wind_waves_and_swell', kwargs)
     def fetch_wavedirection(self, **kwargs):

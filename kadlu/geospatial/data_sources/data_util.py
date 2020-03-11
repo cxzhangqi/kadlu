@@ -46,30 +46,33 @@ def storage_cfg(setdir=None):
 
     def default_storage(msg):
         """ helper function for storage_cfg() """
-        storage_location = os.path.join(os.path.expanduser('~'), f"kadlu_data{os.path.sep}")
+        storage_location = os.path.join(os.path.expanduser('~'), f'kadlu_data{os.path.sep}')
         if not os.path.isdir(storage_location): os.mkdir(storage_location)
-        warnings.warn(f"{msg} storage location will be set to {storage_location}")
+        warnings.warn(f'{msg} storage location will be set to {storage_location}')
         return storage_location
 
     if 'storage' not in cfg.sections():
         cfg.add_section('storage')
 
     if setdir is not None:
-        assert os.path.isdir(setdir)
+        assert os.path.isdir(setdir), 'directory does not exist'
         cfg.set('storage', 'storage_location', setdir)
         with open(cfgfile, 'w') as f:
             cfg.write(f)
 
     try:
-        storage_location = cfg["storage"]["storage_location"]
+        storage_location = cfg['storage']['storage_location']
     except KeyError:                        # missing config.ini file
-        return default_storage("missing kadlu/config.ini.")
+        return default_storage('missing kadlu/config.ini.')
 
     if storage_location == '':              # null value in config.ini
-        return default_storage("null value in kadlu/config.ini.")
+        return default_storage('null value in kadlu/config.ini.')
 
     if not path.isdir(storage_location):    # verify the location exists
-        return default_storage("storage location doesn't exist.")
+        return default_storage('storage location does not exist.')
+
+    if storage_location[-1] != os.path.sep: 
+        return storage_location + os.path.sep
 
     return storage_location
 
@@ -86,46 +89,46 @@ def database_cfg():
             db:
                 connection cursor object
     """
-    conn = sqlite3.connect(storage_cfg() + "geospatial.db")
+    conn = sqlite3.connect(storage_cfg() + 'geospatial.db')
     db = conn.cursor()
 
     # bathymetry table (CHS)
-    db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}  "
-               "(   val     REAL    NOT NULL, "
-               "    lat     REAL    NOT NULL, "
-               "    lon     REAL    NOT NULL, "
-               "    source  TEXT    NOT NULL )") 
-    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-               f"idx_{chs_table} on {chs_table}(lon, lat, val, source)")
+    db.execute(f'CREATE TABLE IF NOT EXISTS {chs_table} ' 
+               '(   val     REAL    NOT NULL,' 
+               '    lat     REAL    NOT NULL,' 
+               '    lon     REAL    NOT NULL,' 
+               '    source  TEXT    NOT NULL )') 
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+               f'idx_{chs_table} on {chs_table}(lon, lat, val, source)')
 
     # hycom environmental data tables
     for var in hycom_tables:
-        db.execute(f"CREATE TABLE IF NOT EXISTS {var}"
-                    "( val     REAL NOT NULL, "
-                    "  lat     REAL NOT NULL, "
-                    "  lon     REAL NOT NULL, "
-                    "  time    INT  NOT NULL, "
-                    "  depth   INT  NOT NULL, "
-                    "  source  TEXT NOT NULL )")
-        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{var} on {var}(time, lon, lat, depth, val, source)")
+        db.execute(f'CREATE TABLE IF NOT EXISTS {var'}
+                    '( val     REAL NOT NULL,' 
+                    '  lat     REAL NOT NULL,' 
+                    '  lon     REAL NOT NULL,' 
+                    '  time    INT  NOT NULL,' 
+                    '  depth   INT  NOT NULL,' 
+                    '  source  TEXT NOT NULL )')
+        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+                   f'idx_{var} on {var}(time, lon, lat, depth, val, source)')
 
     # wave data tables
     for var in era5_tables + wwiii_tables:
-        db.execute(f"CREATE TABLE IF NOT EXISTS {var}"
-                    "( val     REAL    NOT NULL, "
-                    "  lat     REAL    NOT NULL, "
-                    "  lon     REAL    NOT NULL, "
-                    "  time    INT     NOT NULL, "
-                    "  source  TEXT    NOT NULL )") 
-        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{var} on {var}(time, lon, lat, val, source)")
+        db.execute(f'CREATE TABLE IF NOT EXISTS {var'}
+                    '( val     REAL    NOT NULL,' 
+                    '  lat     REAL    NOT NULL,' 
+                    '  lon     REAL    NOT NULL,' 
+                    '  time    INT     NOT NULL,' 
+                    '  source  TEXT    NOT NULL )') 
+        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+                   f'idx_{var} on {var}(time, lon, lat, val, source)')
 
-    db.execute("CREATE TABLE IF NOT EXISTS fetch_map"
+    db.execute('CREATE TABLE IF NOT EXISTS fetch_ma'p
                 '(  hash    INT  NOT NULL,  '
                 '   bytes   BLOB           )' )
-    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                 f"idx_fetched on fetch_map(hash)")
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+                 f'idx_fetched on fetch_map(hash)')
 
     return conn, db
 
@@ -141,8 +144,8 @@ def bin_db():
     db.execute('CREATE TABLE IF NOT EXISTS bin'
                 '(  hash    INT  NOT NULL,  '
                 '   bytes   BLOB NOT NULL  )' )
-    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                 f"idx_bin on bin(hash)")
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
+                 f'idx_bin on bin(hash)')
 
     raise ResourceWarning('fcn not used')
     #return conn, db

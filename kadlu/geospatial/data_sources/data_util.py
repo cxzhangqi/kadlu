@@ -246,7 +246,7 @@ def reshape_3D(cols):
 
     # reshape row data to 3D array
     xgrid, ygrid, zgrid = np.unique(x), np.unique(y), np.unique(z)
-    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
+    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000, dtype=float)
     # this could potentially be optimized to avoid an index lookup cost
     for row in rows:
         x_ix = index(row[2], xgrid)

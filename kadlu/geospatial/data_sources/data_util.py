@@ -246,7 +246,7 @@ def reshape_3D(cols):
 
     # reshape row data to 3D array
     xgrid, ygrid, zgrid = np.unique(x), np.unique(y), np.unique(z)
-    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000, dtype=float)
+    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=None, dtype=float)
     # this could potentially be optimized to avoid an index lookup cost
     for row in rows:
         x_ix = index(row[2], xgrid)
@@ -254,18 +254,18 @@ def reshape_3D(cols):
         z_ix = index(row[3], zgrid)
         gridspace[y_ix, x_ix, z_ix] = row[0]
 
-    # remove -30000 values for interpolation:
+    # remove nulls for interpolation:
     # fill missing depth values with last value in each column
-    # this section could be cleaned up
     for xi in range(0, gridspace.shape[0]):
         for yi in range(0, gridspace.shape[1]):
             col = gridspace[xi, yi]
-            if sum(col == -30000) > 0 and sum(col == -30000) < len(col):
-                col[col == -30000] = col[col != -30000][-1]
+            if sum(np.isnan(col)) > 0 and sum(np.isnan(col)) < len(col):
+                col[np.isnan(col)] = col[~np.isnan(col)][-1]
                 gridspace[xi, yi] = col
 
-    # TODO:
-    # create default values for columns that are entirely null
+    # null depth columns are filled with the average value at each depth plane
+    for zi in range(0, gridspace.shape[2]):
+        gridspace[:,:,zi][np.isnan(gridspace[:,:,zi])] = np.average(gridspace[:,:,zi][~np.isnan(gridspace[:,:,zi])])
 
     return dict(values=gridspace, lats=ygrid, lons=xgrid, depths=zgrid)
 

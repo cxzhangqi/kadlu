@@ -24,13 +24,13 @@ from kadlu.geospatial.data_sources.data_util    import      \
         reshape_3D,                                         \
         dt_2_epoch
 from kadlu.geospatial.data_sources.source_map   import      \
-        fetch_handler,                                      \
         default_val,                                        \
         load_map
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
 from kadlu.geospatial.data_sources.wwiii        import Wwiii
+from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 
 
 def worker(interpfcn, reshapefcn, cols, var, q):

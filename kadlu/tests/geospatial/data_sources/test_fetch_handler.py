@@ -1,5 +1,5 @@
 from datetime import datetime
-from kadlu.geospatial.data_sources.source_map import fetch_handler
+from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 kwargs = dict(
         start=datetime(2015, 3, 1), end=datetime(2015, 3, 3),
         south=45,                   west=-68.4, 

@@ -33,10 +33,11 @@ era5_tables  = [
 
 
 cfg = configparser.ConfigParser()       # read .ini into dictionary object
-cfg.read(path.join(path.dirname(dirname(dirname(dirname(__file__)))), "config.ini"))
+cfgfile = os.path.join(dirname(dirname(dirname(dirname(__file__)))), "config.ini")
+cfg.read(cfgfile)
 
 
-def storage_cfg():
+def storage_cfg(setdir=None):
     """ return filepath containing storage configuration string
 
         first checks the config.ini file in kadlu root folder, then
@@ -45,22 +46,33 @@ def storage_cfg():
 
     def default_storage(msg):
         """ helper function for storage_cfg() """
-        storage_location = (path.abspath(path.dirname(dirname(dirname(dirname(__file__))))) + "/storage/")
-        if not os.path.isdir(storage_location):
-            os.mkdir(storage_location)
-        #print(f"NOTICE: {msg} storage location will be set to {storage_location}")
+        storage_location = os.path.join(os.path.expanduser('~'), f'kadlu_data{os.path.sep}')
+        if not os.path.isdir(storage_location): os.mkdir(storage_location)
+        warnings.warn(f'{msg} storage location will be set to {storage_location}')
         return storage_location
 
+    if 'storage' not in cfg.sections():
+        cfg.add_section('storage')
+
+    if setdir is not None:
+        assert os.path.isdir(setdir), 'directory does not exist'
+        cfg.set('storage', 'storage_location', setdir)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
+
     try:
-        storage_location = cfg["storage"]["storage_location"]
+        storage_location = cfg['storage']['storage_location']
     except KeyError:                        # missing config.ini file
-        return default_storage("missing kadlu/config.ini.")
+        return default_storage('missing kadlu/config.ini.')
 
     if storage_location == '':              # null value in config.ini
-        return default_storage("null value in kadlu/config.ini.")
+        return default_storage('null value in kadlu/config.ini.')
 
     if not path.isdir(storage_location):    # verify the location exists
-        return default_storage("storage location doesn't exist.")
+        return default_storage('storage location does not exist.')
+
+    if storage_location[-1] != os.path.sep: 
+        return storage_location + os.path.sep
 
     return storage_location
 
@@ -77,52 +89,46 @@ def database_cfg():
             db:
                 connection cursor object
     """
-    conn = sqlite3.connect(storage_cfg() + "geospatial.db")
+    conn = sqlite3.connect(storage_cfg() + 'geospatial.db')
     db = conn.cursor()
 
     # bathymetry table (CHS)
-    db.execute(f"CREATE TABLE IF NOT EXISTS {chs_table}  "
-               "(   val     REAL    NOT NULL, "
-               "    lat     REAL    NOT NULL, "
-               "    lon     REAL    NOT NULL, "
-               "    source  TEXT    NOT NULL )") 
-    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-               f"idx_{chs_table} on {chs_table}(lon, lat, val, source)")
+    db.execute(f'CREATE TABLE IF NOT EXISTS {chs_table} ' 
+                '(   val     REAL    NOT NULL, ' 
+                '    lat     REAL    NOT NULL, ' 
+                '    lon     REAL    NOT NULL, ' 
+                '    source  TEXT    NOT NULL) ') 
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
+               f'idx_{chs_table} on {chs_table}(lon, lat, val, source)')
 
     # hycom environmental data tables
     for var in hycom_tables:
-        db.execute(f"CREATE TABLE IF NOT EXISTS {var}"
-                    "( val     REAL NOT NULL, "
-                    "  lat     REAL NOT NULL, "
-                    "  lon     REAL NOT NULL, "
-                    "  time    INT  NOT NULL, "
-                    "  depth   INT  NOT NULL, "
-                    "  source  TEXT NOT NULL )")
-        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{var} on {var}(time, lon, lat, depth, val, source)")
+        db.execute(f'CREATE TABLE IF NOT EXISTS {var}'
+                    '( val     REAL NOT NULL,' 
+                    '  lat     REAL NOT NULL,' 
+                    '  lon     REAL NOT NULL,' 
+                    '  time    INT  NOT NULL,' 
+                    '  depth   INT  NOT NULL,' 
+                    '  source  TEXT NOT NULL )')
+        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
+                   f'idx_{var} on {var}(time, lon, lat, depth, val, source)')
 
     # wave data tables
     for var in era5_tables + wwiii_tables:
-        db.execute(f"CREATE TABLE IF NOT EXISTS {var}"
-                    "( val     REAL    NOT NULL, "
-                    "  lat     REAL    NOT NULL, "
-                    "  lon     REAL    NOT NULL, "
-                    "  time    INT     NOT NULL, "
-                    "  source  TEXT    NOT NULL )") 
-        db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                   f"idx_{var} on {var}(time, lon, lat, val, source)")
+        db.execute(f'CREATE TABLE IF NOT EXISTS {var}'
+                    '( val     REAL    NOT NULL, ' 
+                    '  lat     REAL    NOT NULL, ' 
+                    '  lon     REAL    NOT NULL, ' 
+                    '  time    INT     NOT NULL, ' 
+                    '  source  TEXT    NOT NULL) ') 
+        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
+                   f'idx_{var} on {var}(time, lon, lat, val, source)')
 
-    db.execute("CREATE TABLE IF NOT EXISTS fetch_map"
-                '(  hash    INT  NOT NULL,  '
-                '   bytes   BLOB           )' )
-    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                 f"idx_fetched on fetch_map(hash)")
-
-    # this is just for a fun demo and should be removed later
-    db.execute('CREATE TABLE IF NOT EXISTS blockchain'
-               '( count     INT     NOT NULL, '
-               '  hash      INT     NOT NULL )')
-    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_blockchain ON blockchain(count)')
+    db.execute('CREATE TABLE IF NOT EXISTS fetch_map'
+                '(  hash    INT  NOT NULL, '
+                '   bytes   BLOB         ) ' )
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
+                 f'idx_fetched on fetch_map(hash)')
 
     return conn, db
 
@@ -138,36 +144,38 @@ def bin_db():
     db.execute('CREATE TABLE IF NOT EXISTS bin'
                 '(  hash    INT  NOT NULL,  '
                 '   bytes   BLOB NOT NULL  )' )
-    db.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS "
-                 f"idx_bin on bin(hash)")
+    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS' 
+               'idx_bin on bin(hash)')
 
     raise ResourceWarning('fcn not used')
-    #return conn, db
 
 
 def hash_key(kwargs, seed, 
-        keep=('south','west', 'north', 'east', 'top', 'bottom', 'start', 'end')):
+        keys=('south','west', 'north', 'east', 'top', 'bottom', 'start', 'end')):
     """ compute unique hash and convert to 8-byte int as serialization key """
+
+    # copy boundary arguments to json string
     qry = kwargs.copy()
     dim = kwargs.keys()
     for dimension in dim:
-        if dimension not in keep: del qry[dimension]
+        if dimension not in keys: del qry[dimension]
     string = seed + json.dumps(qry, sort_keys=True, default=str)
+
+    # interpret json hash as base-16 integer and bitshift to fit SQL MAXINT
     key = int(md5(string.encode('utf-8')).hexdigest(), base=16) >> 80
-    #return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
+
     return key
 
 
 def insert_hash(kwargs, seed='', obj=None):
     """ create hash index in database to record query history.
-        this is used for mapping the coverage of fetched data.
+        this is used for mapping the coverage of fetched data,
         optionally include an object to be serialized and cached
     """
     qry = kwargs.copy()
     conn, db = database_cfg()
     if 'lock' in qry.keys(): del qry['lock']
     key = hash_key(qry, seed)
-    #update_blockchain(key, seed)  # easter egg
     db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)',
                (key, pickle.dumps(obj)))
     conn.commit()
@@ -234,6 +242,8 @@ def reshape_3D(cols):
     """ prepare loaded data for interpolation """
     if isinstance(cols[0], (float, int)):
         return dict(values=cols[0])
+
+    # if data is 4D, take average of values at time frame intervals
     frames = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
     if len(np.unique(frames)) > 1: vals, y, x, z = flatten(cols, frames) 
     else: vals, y, x, _, z  = cols
@@ -241,7 +251,7 @@ def reshape_3D(cols):
 
     # reshape row data to 3D array
     xgrid, ygrid, zgrid = np.unique(x), np.unique(y), np.unique(z)
-    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
+    gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=None, dtype=float)
     # this could potentially be optimized to avoid an index lookup cost
     for row in rows:
         x_ix = index(row[2], xgrid)
@@ -249,18 +259,18 @@ def reshape_3D(cols):
         z_ix = index(row[3], zgrid)
         gridspace[y_ix, x_ix, z_ix] = row[0]
 
-    # remove -30000 values for interpolation:
+    # remove nulls for interpolation:
     # fill missing depth values with last value in each column
-    # this section could be cleaned up
     for xi in range(0, gridspace.shape[0]):
         for yi in range(0, gridspace.shape[1]):
             col = gridspace[xi, yi]
-            if sum(col == -30000) > 0 and sum(col == -30000) < len(col):
-                col[col == -30000] = col[col != -30000][-1]
+            if sum(np.isnan(col)) > 0 and sum(np.isnan(col)) < len(col):
+                col[np.isnan(col)] = col[~np.isnan(col)][-1]
                 gridspace[xi, yi] = col
 
-    # TODO:
-    # create default values for columns that are entirely null
+    # null depth columns are filled with the average value at each depth plane
+    for zi in range(0, gridspace.shape[2]):
+        gridspace[:,:,zi][np.isnan(gridspace[:,:,zi])] = np.average(gridspace[:,:,zi][~np.isnan(gridspace[:,:,zi])])
 
     return dict(values=gridspace, lats=ygrid, lons=xgrid, depths=zgrid)
 
@@ -272,32 +282,21 @@ def str_def(self, info, args):
     return (f'{info}\n\nfunction input arguments:\n\t{args}\n\nclass functions:\n\t'
             + '\n\t'.join(fcns) + '\n')
 
+def era5_cfg(key=None, url=None):
+    if 'cdsapi' not in cfg.sections():
+        cfg.add_section('cdsapi')
 
-@contextmanager
-def dev_null():
-    """ context manager to redirect output to /dev/null """
-    with open(os.devnull, 'w') as null:
-        try:
-            with redirect_stderr(null) as err, redirect_stdout(null) as out: 
-                yield (err, out)
-        finally:
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
+    if key is not None:
+        cfg.set('cdsapi', 'key', key)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
 
+    if url is not None:
+        cfg.set('cdsapi', 'url', url)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
 
-class Boundary():
-    """ compute intersecting boundaries with separating axis theorem """
-    def __init__(self, south, north, west, east, fetchvar=''):
-        self.south, self.north, self.west, self.east, self.fetchvar = \
-                south, north, west, east, fetchvar
-
-    def __str__(self): return self.fetchvar
-
-    def intersects(self, other):  # separating axis theorem
-        return not (self.east  < other.west or
-                    self.west  > other.east or
-                    self.north < other.south or
-                    self.south > other.north)
+    return 
 
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
@@ -316,32 +315,45 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
     return np.unique(matching)
 
 
-def update_blockchain(curkey, seed=''):
-    """ this is just for fun and isnt actually useful """
-    conn, db = database_cfg()
 
-    db.execute('SELECT * FROM blockchain ORDER BY count DESC LIMIT 1')
-    res = db.fetchone()
-    oldcount, oldhash = res if res is not None else 0, 0
+class Boundary():
+    """ compute intersecting boundaries with separating axis theorem """
+    def __init__(self, south, north, west, east, fetchvar=''):
+        self.south, self.north, self.west, self.east, self.fetchvar = \
+                south, north, west, east, fetchvar
 
-    newkey = (str(oldhash) + str(curkey) + seed).encode('UTF-8')
-    newhash = int(md5(newkey).hexdigest(), base=16) >> 80
+    def __str__(self): return self.fetchvar
 
-    sql = 'INSERT INTO blockchain VALUES (?,?)'
-    db.execute(sql, (oldcount+1, newhash))
-    conn.commit()
+    def intersects(self, other):
+        return not (self.east  < other.west or
+                    self.west  > other.east or
+                    self.north < other.south or
+                    self.south > other.north)
 
-    print(f'the blockchain has a chain size of {oldcount+1} blocks. newest block: {newhash}')
-    return
+
+@contextmanager
+def dev_null():
+    """ context manager to redirect output to /dev/null """
+    with open(os.devnull, 'w') as null:
+        try:
+            with redirect_stderr(null) as err, redirect_stdout(null) as out: 
+                yield (err, out)
+        finally:
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
 
 
 class DataUtil():
     """ user API for data utils """
-    def epoch_2_dt(arr):    return epoch_2_dt(arr)
-    def dt_2_epoch(arr):    return dt_2_epoch(arr)
-    def database_cfg():     return database_cfg()
-    def index(sorted_arr):  return index(sorted_arr)
-    def reshape_2D(cols):   return reshape_2D(cols)
-    def reshape_3D(cols):   return reshape_3D(cols)
+    def epoch_2_dt(self, arr):              return epoch_2_dt(arr)
+    def dt_2_epoch(self, arr):              return dt_2_epoch(arr)
+    def index(self, sorted_arr):            return index(sorted_arr)
+    def reshape_2D(self, cols):             return reshape_2D(cols)
+    def reshape_3D(self, cols):             return reshape_3D(cols)
+    def storage_cfg(self, setdir=None):     return storage_cfg(setdir)
+    def database_cfg(self):                 return database_cfg()
+    def era5_cfg(self, key=None, url=None): return era5_cfg(key, url)
+
+
 
 

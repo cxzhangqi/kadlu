@@ -3,20 +3,23 @@ from datetime import datetime, timedelta
 from multiprocessing import Process, Queue
 
 import numpy as np
+import imageio
 import matplotlib
-#matplotlib.use('TkAgg')
-#matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
-from scipy.interpolate import griddata
+matplotlib.use('TkAgg')
+#matplotlib.use('Qt5Agg')
 import cartopy
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+from scipy.interpolate import griddata
+
 from kadlu.geospatial.data_sources.chs import Chs
-from kadlu.geospatial.data_sources.hycom import Hycom
 from kadlu.geospatial.data_sources.era5 import Era5
+from kadlu.geospatial.data_sources.hycom import Hycom
 from kadlu.geospatial.data_sources.wwiii import Wwiii
-from kadlu.geospatial.data_sources.source_map import fetch_handler, load_map
-import imageio
+from kadlu.geospatial.data_sources.source_map import load_map
+from kadlu.geospatial.data_sources.data_util import storage_cfg
+from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 
 
 proj = ccrs.Mercator()
@@ -51,16 +54,17 @@ config = dict(
     )
 
 
-
 def plot2D(var, source, plot_wind=False, save=False, **kwargs): 
     """
 
     kwargs = dict(
-            start=datetime(2015, 1, 9), end=datetime(2015, 1, 10),
+            start=datetime(2015, 8, 9), end=datetime(2015, 8, 10),
             south=45,                   west=-68.4, 
             north=51.5,                 east=-56.5, 
-            top=0,                      bottom=5000
+            top=0,                      bottom=10
         )
+
+    plot2D('temp', 'hycom', save=True, **kwargs)
 
     #Chs().fetch_bathymetry(**kwargs)
     #Hycom().fetch_temp(**kwargs)
@@ -161,10 +165,11 @@ def plot2D(var, source, plot_wind=False, save=False, **kwargs):
                 cmap=config[var]['cm']))
 
     if save is not False:
-        if not os.path.isdir('figures'): os.mkdir('figures')
-        print(f'saving figure to {os.getcwd()}/figures/{fname if save is True else save}')
-        plt.savefig(f'figures/{fname if save is True else save}', bbox_inches='tight', 
-                    dpi=200, optimize=True)
+        if not os.path.isdir(f'{storage_cfg()}figures'): 
+            os.mkdir(f'{storage_cfg()}figures')
+        print(f'saving figure to {storage_cfg()}figures/{fname if save is True else save}')
+        plt.savefig(f'{storage_cfg()}figures/{fname if save is True else save}', 
+                bbox_inches='tight', dpi=200, figsize=(12,8), optimize=True)
         plt.close()
     else: 
         plt.show()
@@ -172,14 +177,15 @@ def plot2D(var, source, plot_wind=False, save=False, **kwargs):
     return
 
 
-def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1), 
-        debug=False):
+def animate(kwargs, var, source, fetchfcn, loadfcn, step=timedelta(days=1), debug=False):
     """
+    animate(kwargs, 'temp', 'hycom', Hycom().fetch_temp, Hycom().load_temp, step=timedelta(hours=3), debug=True)
+
 
     var='temp'
 
     kwargs = dict(
-            start=datetime(2015, 3, 1), end=datetime(2015, 9, 1),
+            start=datetime(2015, 1, 2, 12), end=datetime(2015, 12, 31),
             south=45,                   west=-68.4, 
             north=51.5,                 east=-56.5, 
             top=0,                      bottom=0
@@ -195,19 +201,19 @@ def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1),
         animate(kwargs, v, f, l)
     
 
-    fetchfcn = Hycom().fetch_salinity
-    loadfcn = Hycom().load_salinity
+    fetchfcn = Hycom().fetch_temp
+    loadfcn = Hycom().load_temp
 
     """
     # download all the data
     fetch_handler(var, source, **kwargs)
 
     # prepare folder and check for existing frames
-    dirname = os.getcwd() + f'/figures'
+    dirname = storage_cfg() + 'figures/'
     if not os.path.isdir(dirname): os.mkdir(dirname)
     png = lambda f: f if '.png' in f else None
     old = map(png, list(os.walk(dirname))[0][2])
-    _rm = [os.remove(f'{dirname}/{x}') for x in old if debug and x is not None]
+    _rm = [os.remove(f'{dirname}{x}') for x in old if debug and x is not None]
 
     # generate image frames
     qry = kwargs.copy()
@@ -215,21 +221,25 @@ def animate(kwargs, var, fetchfcn, loadfcn, step=timedelta(days=1),
     while cur <= kwargs['end']:
         qry['start'] = cur
         qry['end'] = cur + step
-        fname = f'{var}_{cur.date().isoformat()}.png'
+        fname = f'{var}_{cur.isoformat()}.png'
         if not os.path.isfile(f'{dirname}/{fname}'): 
             plot2D(var, source, plot_wind=plot_wind, save=fname, **qry)
         cur += step
 
     print(f'animating {var}.gif...')
+    fmt = f'{var}_%Y-%m-%dT%H:%M:%S.png'
     frames = sorted([f'{dirname}{i}' for i in 
             map(png, list(os.walk(f'{dirname}'))[0][2]) if i is not None
-            and datetime.strptime(i, f'{var}_%Y-%m-%d.png') >= kwargs['start']
-            and datetime.strptime(i, f'{var}_%Y-%m-%d.png') <= kwargs['end']])
+            and datetime.strptime(i, fmt) >= kwargs['start']
+            and datetime.strptime(i, fmt) <= kwargs['end']])
 
     #with imageio.get_writer(f'http/{var}.gif', mode='I') as w:
+    savedir = f'{storage_cfg()}animated'
+    if not os.path.isdir(savedir): os.mkdir(savedir)
 
-    with imageio.get_writer(f'{dirname}/animated/{var}.mp4', mode='I', 
-            macro_block_size=4, format='FFMPEG') as w:
+    with imageio.get_writer(
+            f'{savedir}/{var}_{kwargs["start"].date().isoformat()}_{kwargs["end"].date().isoformat()}.mp4', 
+            mode='I', macro_block_size=4, format='FFMPEG') as w:
         list(map(w.append_data, map(imageio.imread, frames)))
 
     """

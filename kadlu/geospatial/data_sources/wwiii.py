@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pygrib
 
-import kadlu.geospatial.data_sources.source_map
+import kadlu.geospatial.data_sources.fetch_handler
 from kadlu.geospatial.data_sources.data_util import                 \
         ll_2_regionstr,                                             \
         database_cfg,                                               \
@@ -175,7 +175,7 @@ def load_wwiii(var, kwargs):
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(),
         ['south', 'north', 'west', 'east', 'start', 'end'])), 'malformed query'
 
-    kadlu.geospatial.data_sources.source_map.fetch_handler(
+    kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
             wwiii_varmap[var], 'wwiii', parallel=1, **kwargs)
 
     db.execute(' AND '.join([

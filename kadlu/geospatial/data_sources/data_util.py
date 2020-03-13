@@ -144,29 +144,32 @@ def bin_db():
     db.execute('CREATE TABLE IF NOT EXISTS bin'
                 '(  hash    INT  NOT NULL,  '
                 '   bytes   BLOB NOT NULL  )' )
-    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS' 
-                 f'idx_bin on bin(hash)')
+    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS' 
+               'idx_bin on bin(hash)')
 
     raise ResourceWarning('fcn not used')
-    #return conn, db
 
 
 def hash_key(kwargs, seed, 
-        keep=('south','west', 'north', 'east', 'top', 'bottom', 'start', 'end')):
+        keys=('south','west', 'north', 'east', 'top', 'bottom', 'start', 'end')):
     """ compute unique hash and convert to 8-byte int as serialization key """
+
+    # copy boundary arguments to json string
     qry = kwargs.copy()
     dim = kwargs.keys()
     for dimension in dim:
-        if dimension not in keep: del qry[dimension]
+        if dimension not in keys: del qry[dimension]
     string = seed + json.dumps(qry, sort_keys=True, default=str)
+
+    # interpret json hash as base-16 integer and bitshift to fit SQL MAXINT
     key = int(md5(string.encode('utf-8')).hexdigest(), base=16) >> 80
-    #return key >> 80  # bitshift value by 80 bits: SQLite max value is 64 bits
+
     return key
 
 
 def insert_hash(kwargs, seed='', obj=None):
     """ create hash index in database to record query history.
-        this is used for mapping the coverage of fetched data.
+        this is used for mapping the coverage of fetched data,
         optionally include an object to be serialized and cached
     """
     qry = kwargs.copy()
@@ -239,6 +242,8 @@ def reshape_3D(cols):
     """ prepare loaded data for interpolation """
     if isinstance(cols[0], (float, int)):
         return dict(values=cols[0])
+
+    # if data is 4D, take average of values at time frame intervals
     frames = np.append(np.nonzero(cols[3][1:] > cols[3][:-1])[0] + 1, len(cols[3]))
     if len(np.unique(frames)) > 1: vals, y, x, z = flatten(cols, frames) 
     else: vals, y, x, _, z  = cols
@@ -277,32 +282,21 @@ def str_def(self, info, args):
     return (f'{info}\n\nfunction input arguments:\n\t{args}\n\nclass functions:\n\t'
             + '\n\t'.join(fcns) + '\n')
 
+def era5_cfg(key=None, url=None):
+    if 'cdsapi' not in cfg.sections():
+        cfg.add_section('cdsapi')
 
-@contextmanager
-def dev_null():
-    """ context manager to redirect output to /dev/null """
-    with open(os.devnull, 'w') as null:
-        try:
-            with redirect_stderr(null) as err, redirect_stdout(null) as out: 
-                yield (err, out)
-        finally:
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
+    if key is not None:
+        cfg.set('cdsapi', 'key', key)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
 
+    if url is not None:
+        cfg.set('cdsapi', 'url', url)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
 
-class Boundary():
-    """ compute intersecting boundaries with separating axis theorem """
-    def __init__(self, south, north, west, east, fetchvar=''):
-        self.south, self.north, self.west, self.east, self.fetchvar = \
-                south, north, west, east, fetchvar
-
-    def __str__(self): return self.fetchvar
-
-    def intersects(self, other):  # separating axis theorem
-        return not (self.east  < other.west or
-                    self.west  > other.east or
-                    self.north < other.south or
-                    self.south > other.north)
+    return 
 
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
@@ -321,21 +315,32 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
     return np.unique(matching)
 
 
-def era5_cfg(key=None, url=None):
-    if 'cdsapi' not in cfg.sections():
-        cfg.add_section('cdsapi')
 
-    if key is not None:
-        cfg.set('cdsapi', 'key', key)
-        with open(cfgfile, 'w') as f:
-            cfg.write(f)
+class Boundary():
+    """ compute intersecting boundaries with separating axis theorem """
+    def __init__(self, south, north, west, east, fetchvar=''):
+        self.south, self.north, self.west, self.east, self.fetchvar = \
+                south, north, west, east, fetchvar
 
-    if url is not None:
-        cfg.set('cdsapi', 'url', url)
-        with open(cfgfile, 'w') as f:
-            cfg.write(f)
+    def __str__(self): return self.fetchvar
 
-    return 
+    def intersects(self, other):
+        return not (self.east  < other.west or
+                    self.west  > other.east or
+                    self.north < other.south or
+                    self.south > other.north)
+
+
+@contextmanager
+def dev_null():
+    """ context manager to redirect output to /dev/null """
+    with open(os.devnull, 'w') as null:
+        try:
+            with redirect_stderr(null) as err, redirect_stdout(null) as out: 
+                yield (err, out)
+        finally:
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
 
 
 class DataUtil():

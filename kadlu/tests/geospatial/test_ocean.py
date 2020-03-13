@@ -16,9 +16,10 @@ from datetime import datetime
 
 import pytest
 import numpy as np
-
+import pandas as pd
 from kadlu.geospatial.ocean import Ocean
 from kadlu.geospatial.data_sources.source_map import default_val
+from kadlu import hycom
 
 
 bounds = dict(
@@ -105,14 +106,17 @@ def test_interp_hycom_temp():
         from HYCOM with automatic fetching enabled and using 
         start/end args.
     """
+    kwargs = dict(
+            south=43.1, west=-59.8, 
+            north=43.8, east=-59.2,
+            top=-100, bottom=3000,
+            start=datetime(2015,1,1),
+            end=datetime(2015,1,2)
+        )
     o = Ocean(#fetch=True, #cache=False,
         load_temp='hycom', 
         load_bathymetry='chs',
-        south=43.1, west=-59.8, 
-        north=43.8, east=-59.2,
-        top=-100, bottom=3000,
-        start=datetime(2015,1,1),
-        end=datetime(2015,1,2)
+        **kwargs
         )
     lats = [43.4, 43.5]
     lons = [-59.6, -59.5]
@@ -129,6 +133,21 @@ def test_interp_hycom_temp():
     seafloor_depth = o.bathy(lats, lons)
     temp = o.temp(lats, lons, seafloor_depth)
     assert np.all(np.logical_and(temp > -5, temp < 105)) # check sensible temperature at bottom
+
+    # load hycom temperature data
+    temp, lat, lon, epoch, depth = hycom().load_temp(**kwargs)
+    # select a location close to the center of the region
+    df = pd.DataFrame({'temp': temp, 'lat': lat, 'lon': lon, 'epoch': epoch, 'depth': depth})
+    lat_close = df.lat.values[np.argmin(np.abs(df.lat.values - 43.45))]
+    lon_close = df.lon.values[np.argmin(np.abs(df.lon.values - 59.5))]
+    df = df[(df.lat == lat_close) & (df.lon == lon_close)]
+    # query temps from ocean interpolator    
+    depths = np.unique(df.depth.values)
+    temp_ocean = o.temp(lat_close, lon_close, depths, grid=True)
+    df = df.set_index(['depth','epoch'])
+    df = df.groupby(level=[0]).mean()
+    # check that interpolated temps and original temps agree
+    assert np.all(temp_ocean == df.temp.values)
 
 def test_array_bathy():
     """ Test that ocean can be initialized with bathymetry data 

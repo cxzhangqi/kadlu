@@ -5,8 +5,8 @@ from multiprocessing import Process, Queue
 import numpy as np
 import imageio
 import matplotlib
-import matplotlib.pyplot as plt
 matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 #matplotlib.use('Qt5Agg')
 import cartopy
 import cartopy.crs as ccrs

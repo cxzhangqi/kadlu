@@ -287,7 +287,7 @@ def load_hycom(self, var, kwargs, recursive=True):
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
 
-    assert len(rowdata) > 0, 'no data for query'
+    assert len(rowdata) > 0, f'no data for query: {kwargs}'
 
     return rowdata[0:5].astype(float)
 

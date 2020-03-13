@@ -6,7 +6,7 @@ import numpy as np
 import imageio
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 #matplotlib.use('Qt5Agg')
 import cartopy
 import cartopy.crs as ccrs
@@ -177,10 +177,9 @@ def plot2D(var, source, plot_wind=False, save=False, **kwargs):
     return
 
 
-def animate(kwargs, var, source, fetchfcn, loadfcn, step=timedelta(days=1), debug=False):
+def animate(var, source, kwargs, step=timedelta(hours=12), fps=30, plot_wind=False, debug=False):
     """
-    animate(kwargs, 'temp', 'hycom', Hycom().fetch_temp, Hycom().load_temp, step=timedelta(hours=3), debug=True)
-
+    animate('temp', 'hycom', kwargs, step=timedelta(hours=6), fps=60, debug=False)
 
     var='temp'
 
@@ -200,10 +199,6 @@ def animate(kwargs, var, source, fetchfcn, loadfcn, step=timedelta(days=1), debu
     for f,l,v in zip(fetch, load, vartypes):
         animate(kwargs, v, f, l)
     
-
-    fetchfcn = Hycom().fetch_temp
-    loadfcn = Hycom().load_temp
-
     """
     # download all the data
     fetch_handler(var, source, **kwargs)
@@ -239,8 +234,11 @@ def animate(kwargs, var, source, fetchfcn, loadfcn, step=timedelta(days=1), debu
 
     with imageio.get_writer(
             f'{savedir}/{var}_{kwargs["start"].date().isoformat()}_{kwargs["end"].date().isoformat()}.mp4', 
-            mode='I', macro_block_size=4, format='FFMPEG') as w:
+            mode='I', macro_block_size=4, format='FFMPEG', fps=fps) as w:
         list(map(w.append_data, map(imageio.imread, frames)))
+
+    return 
+
 
     """
 https://imageio.readthedocs.io/en/stable/examples.html#writing-videos-with-ffmpeg-and-vaapi
@@ -268,9 +266,6 @@ https://imageio.readthedocs.io/en/stable/examples.html#writing-videos-with-ffmpe
         im.close()
 
     """
-
-    return
-
 
 """
 from ridge_map import RidgeMap

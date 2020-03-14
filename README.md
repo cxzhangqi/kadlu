@@ -37,29 +37,29 @@ Anaconda is freely available from [docs.anaconda.com/anaconda/install](https://d
 Make sure you get the Python 3.7 version and make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
 
  1. Clone the Kadlu repository:
-    ```terminal
-        git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
-        cd kadlu
+    ```bash
+    git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
+    cd kadlu
     ```
 
  2. Create and activate Anaconda environment:
-    ```terminal
-        conda env create -f environment.yml
-        conda activate kadlu_env
+    ```bash
+    conda env create -f environment.yml
+    conda activate kadlu_env
     ```
 
  3. Install the PyPI package manager and Jupyter Notebook:
-    ```terminal
-        conda install pip
-        conda install jupyter
+    ```bash
+    conda install pip
+    conda install jupyter
     ```
 
  4. Configure Kadlu (see below)
 
  5. Install Kadlu:
-    ```terminal
-        python setup.py sdist
-        pip install dist/kadlu-1.0.0.tar.gz
+    ```bash
+    python setup.py sdist
+    pip install dist/kadlu-1.0.0.tar.gz
     ```
 
 
@@ -69,30 +69,29 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
 
  1. Data storage location
 
-    By default, a storage folder will be created in Kadlu's root folder. Alternatively, a custom location can be configured by placing the following inside config.ini:
-    ```ini
-      [storage]
-      storage_location = /path/to/data/storage/
+    By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code::
+    ```python
+    from kadlu import data_util
+    data_util().storage_cfg(setdir='/specify/desired/path/here/')
     ```
 
  2. ECMWF - CDS API Token
 
     Kadlu uses ECMWF's Era5 dataset as one of the optional data sources for wave height/direction/period and wind speed data.
     In order to access Era5 reanalysis data from the ECMWF, it is necessary to first obtain an API token.
-    This can be obtained by registering an account and visiting [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token will be displayed in the box under heading 'Install the CDS API key'.
-    With your token, add the following to config.ini:
-    ```ini
-      [cdsapi]
-      url = https://cds.climate.copernicus.eu/api/v2
-      key = {YOUR_TOKEN_HERE}
+    This can be obtained by registering an account at [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token and URL will be displayed on the aforementioned webpage under heading 'Install the CDS API key'.
+    Configure Kadlu to use the token by executing:
+    ```python
+    from kadlu import data_util
+    data_util().era5_cfg(key="TOKEN_HERE", url="URL_HERE")
     ```
 
 
 ## Check your installation
 
 Check that everything is working by running pytest:
-```terminal
-    pytest kadlu/ --doctest-modules
+```bash
+pytest kadlu/ --doctest-modules
 ```
 
 

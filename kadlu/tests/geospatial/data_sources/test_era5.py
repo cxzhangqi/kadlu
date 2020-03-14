@@ -1,10 +1,9 @@
 import pytest
 import numpy as np
 from datetime import datetime, timedelta
-from kadlu.geospatial.data_sources import era5
 from kadlu.geospatial.data_sources.era5 import Era5
 from os.path import isfile
-from kadlu.geospatial.data_sources.source_map import fetch_handler
+from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 
 # gulf st lawrence
 kwargs = dict(

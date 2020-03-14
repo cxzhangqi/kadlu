@@ -114,7 +114,7 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     x = (lon - lon_ref) * deg2rad * R2
     y = (lat - lat_ref) * deg2rad * R
 
-    if rot is not 0:
+    if rot != 0:
         s = np.sin(rot * deg2rad)
         c = np.cos(rot * deg2rad)
         rotmat = np.array([[c, -s], [s, c]]) 
@@ -182,7 +182,7 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     R = R1_IUGG
     R2 = R * np.cos(lat_ref * deg2rad)
 
-    if rot is not 0:
+    if rot != 0:
         s = np.sin(rot * deg2rad)
         c = np.cos(rot * deg2rad)
         rotmat = np.array([[c, s], [-s, c]]) 

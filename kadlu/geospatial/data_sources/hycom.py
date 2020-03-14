@@ -19,7 +19,7 @@ from os.path import isfile
 
 import numpy as np
 
-import kadlu.geospatial.data_sources.source_map
+import kadlu.geospatial.data_sources.fetch_handler
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
         storage_cfg,                                                \
@@ -230,7 +230,7 @@ def load_hycom(self, var, kwargs, recursive=True):
         return np.hstack((load_hycom(self, var, kwargs1), load_hycom(self, var, kwargs2)))
 
     # check for missing data
-    kadlu.geospatial.data_sources.source_map.fetch_handler(
+    kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
             hycom_varmap[var], 'hycom', parallel=2, **kwargs)
 
     """
@@ -287,7 +287,7 @@ def load_hycom(self, var, kwargs, recursive=True):
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
 
-    assert len(rowdata) > 0, 'no data for query'
+    assert len(rowdata) > 0, f'no data for query: {kwargs}'
 
     return rowdata[0:5].astype(float)
 
@@ -368,7 +368,7 @@ class Hycom():
     """
 
     def __init__(self):
-        self.ygrid, self.xgrid= load_grid()
+        self.ygrid, self.xgrid = load_grid()
         self.epoch = load_times()
         self.depth = load_depth()
 

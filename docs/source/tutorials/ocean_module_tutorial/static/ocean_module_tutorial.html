@@ -13113,11 +13113,32 @@ div#notebook {
 </div>
 </div>
 
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>/home/oliskir/src/miniconda3/envs/kadlu_env/lib/python3.7/site-packages/kadlu/geospatial/data_sources/data_util.py:51: UserWarning: missing kadlu/config.ini. storage location will be set to /home/oliskir/kadlu_data/
+  warnings.warn(f&#39;{msg} storage location will be set to {storage_location}&#39;)
+/home/oliskir/src/miniconda3/envs/kadlu_env/lib/python3.7/site-packages/kadlu/geospatial/data_sources/data_util.py:51: UserWarning: missing kadlu/config.ini. storage location will be set to /home/oliskir/kadlu_data/
+  warnings.warn(f&#39;{msg} storage location will be set to {storage_location}&#39;)
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The geographical and temporal boundaries are specified as python dictionary, to be passed to the plotting function later. In this example, we are concerned with first 100 m below the sea surface (bottom=100, top=0) of the waters in the Gulf of St. Lawrence ($44^o$N to $51^o$N and $-68.5^o$W to $-56.5^o$W) on the first 12 hours of January 9, 2015.</p>
+<p>The geographical and temporal boundaries are specified as python dictionary, to be passed to the plotting function later. In this example, we are concerned with a rectangular area in the Gulf of St. Lawrence, which extends from $47.8^o$N to $48.8^o$N and $-63.4^o$W to $-61.8^o$W, as shown on the map below. Note, also, that we are only loading data for the first 100 m of the water column (bottom=100, top=0) on the first 12 hours of January 9, 2015.</p>
 
 </div>
 </div>
@@ -13127,12 +13148,12 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># ocean boundaries: gulf of st lawrence (top 100m from the surface)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># ocean boundaries:</span>
 <span class="n">bounds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="n">start</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2015</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2015</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
-        <span class="n">south</span><span class="o">=</span><span class="mi">44</span><span class="p">,</span>                   <span class="n">west</span><span class="o">=-</span><span class="mf">68.5</span><span class="p">,</span> 
-        <span class="n">north</span><span class="o">=</span><span class="mi">51</span><span class="p">,</span>                   <span class="n">east</span><span class="o">=-</span><span class="mf">56.5</span><span class="p">,</span> 
-        <span class="n">top</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>                      <span class="n">bottom</span><span class="o">=</span><span class="mi">100</span>
+        <span class="n">south</span><span class="o">=</span><span class="mf">47.8</span><span class="p">,</span> <span class="n">west</span><span class="o">=-</span><span class="mf">63.4</span><span class="p">,</span> 
+        <span class="n">north</span><span class="o">=</span><span class="mf">48.8</span><span class="p">,</span> <span class="n">east</span><span class="o">=-</span><span class="mf">61.8</span><span class="p">,</span> 
+        <span class="n">top</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">100</span>
     <span class="p">)</span>
 </pre></div>
 
@@ -13140,6 +13161,14 @@ div#notebook {
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><img src="assets/map.png" alt="Selected region"></p>
+
+</div>
+</div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
@@ -13182,7 +13211,7 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">bathy</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">47.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">])</span> <span class="c1"># query bathymetric interpolator for values at given coordinates</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">bathy</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">48.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">63</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">])</span> <span class="c1"># query bathymetric interpolator for values at given coordinates</span>
 </pre></div>
 
     </div>
@@ -13280,7 +13309,7 @@ div#notebook {
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span> <span class="o">=</span> <span class="n">Ocean</span><span class="p">(</span><span class="n">load_salinity</span><span class="o">=</span><span class="s1">&#39;hycom&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">bounds</span><span class="p">)</span>                     <span class="c1"># instantiate interpolator with HYCOM salinity data</span>
-<span class="n">o</span><span class="o">.</span><span class="n">salinity</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">47.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">],</span> <span class="n">depth</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>  <span class="c1"># query interpolator for values at given coordinates</span>
+<span class="n">o</span><span class="o">.</span><span class="n">salinity</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">48.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">],</span> <span class="n">depth</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>  <span class="c1"># query interpolator for values at given coordinates</span>
 </pre></div>
 
     </div>
@@ -13293,13 +13322,25 @@ div#notebook {
 
 <div class="output_area">
 
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>/home/oliskir/src/miniconda3/envs/kadlu_env/lib/python3.7/site-packages/kadlu/geospatial/data_sources/data_util.py:51: UserWarning: missing kadlu/config.ini. storage location will be set to /home/oliskir/kadlu_data/
+  warnings.warn(f&#39;{msg} storage location will be set to {storage_location}&#39;)
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
     <div class="prompt output_prompt">Out[6]:</div>
 
 
 
 
 <div class="output_text output_subarea output_execute_result">
-<pre>array([30., 31.])</pre>
+<pre>array([31.29669351, 31.44977994])</pre>
 </div>
 
 </div>
@@ -13313,7 +13354,7 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">waveheight</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">47.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">])</span> <span class="c1"># query waveheight interpolator: values remain null</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">waveheight</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">48.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">])</span> <span class="c1"># query waveheight interpolator: values remain null</span>
 </pre></div>
 
     </div>
@@ -13356,7 +13397,7 @@ div#notebook {
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># source strings passed as load arguments tells the ocean module where to source the data</span>
 <span class="n">sources</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-        <span class="n">load_bathymetry</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># dont load bathymetry </span>
+        <span class="n">load_bathymetry</span><span class="o">=</span><span class="s1">&#39;chs&#39;</span><span class="p">,</span>
         <span class="n">load_temp</span><span class="o">=</span><span class="s1">&#39;hycom&#39;</span><span class="p">,</span>
         <span class="n">load_salinity</span><span class="o">=</span><span class="s1">&#39;hycom&#39;</span><span class="p">,</span>
         <span class="n">load_wavedir</span><span class="o">=</span><span class="s1">&#39;era5&#39;</span><span class="p">,</span>
@@ -13387,7 +13428,7 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">waveheight</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">47.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">])</span>  <span class="c1"># query waveheight interpolator</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">waveheight</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">48.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">])</span>  <span class="c1"># query waveheight interpolator</span>
 </pre></div>
 
     </div>
@@ -13406,7 +13447,7 @@ div#notebook {
 
 
 <div class="output_text output_subarea output_execute_result">
-<pre>array([1.80722759, 2.43859011])</pre>
+<pre>array([2.1378339 , 2.19667568])</pre>
 </div>
 
 </div>
@@ -13437,9 +13478,9 @@ div#notebook {
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">bathy_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>                            <span class="c1"># array of length 100 with random values in the range 0-500.</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;south&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;north&#39;</span><span class="p">],</span> <span class="mi">100</span><span class="p">),</span>  <span class="c1"># latitudes</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;west&#39;</span><span class="p">],</span>  <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;east&#39;</span><span class="p">],</span> <span class="mi">100</span><span class="p">)</span>    <span class="c1"># longitudes</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mf">500.</span><span class="p">,</span>  <span class="c1"># array of length 100 with random values in the range 0-500.</span>
+        <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;south&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;north&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;south&#39;</span><span class="p">]),</span>  <span class="c1"># latitudes</span>
+        <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;west&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;east&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;west&#39;</span><span class="p">])</span>  <span class="c1"># longitudes</span>
     <span class="p">))</span>
 <span class="n">temp_float</span> <span class="o">=</span> <span class="mi">10</span>
 <span class="n">salinity_float</span> <span class="o">=</span> <span class="mi">35</span>
@@ -13476,7 +13517,7 @@ div#notebook {
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>bathymetry:	 [100.5 333.4]
+<pre>bathymetry:	 [299.05210839 262.75336273]
 temperature:	 [10. 10.]
 salinity:	 [35. 35.]
 </pre>

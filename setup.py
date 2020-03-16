@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 setup(name='kadlu',
       version='1.0.0',
       description="MERIDIAN Python package for ocean ambient noise modelling",
-      url='https://data.meridian.cs.dal.ca/gitlab/data_analytics_dal/packages/kadlu',
+      url='https://gitlab.meridian.cs.dal.ca/public_projects/kadlu',
       author='Matthew Smith, Oliver Kirsebom',
       author_email='matthew.smith@dal.ca, oliver.kirsebom@dal.ca',
       license='GNU General Public License v3.0',

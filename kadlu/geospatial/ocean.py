@@ -1,633 +1,261 @@
-""" Ocean module within the kadlu package
+""" The ocean module provides a unified interface to fetching, loading 
+    and interpolating ocean variables.
 
-    Authors: Oliver Kirsebom
-    contact: oliver.kirsebom@dal.ca
-    Organization: MERIDIAN-Intitute for Big Data Analytics
-    Team: Acoustic data Analytics, Dalhousie University
-    Project: packages/kadlu
-             Project goal: Tools for underwater soundscape modeling
-     
-    License:
-
+    Contents:
+        GridData2D class:
+        Interpolator2D class:
+        Interpolator3D class:
+        Uniform2D class:
+        Uniform3D class:
+        DepthInterpolator3D class
 """
+from datetime import timedelta
+from multiprocessing import Process, Queue
 
 import numpy as np
-from kadlu.utils import LatLon
-from kadlu.geospatial.data_sources.chs import Chs
-from kadlu.geospatial.data_sources.hycom import Hycom
-from kadlu.geospatial.data_sources.era5 import Era5
-from kadlu.geospatial.data_sources.wwiii import Wwiii
-import kadlu.geospatial.data_sources.gebco as gebco 
-from kadlu.geospatial.interpolation import Interpolator2D, Interpolator3D, Uniform2D, Uniform3D
-from kadlu.geospatial.data_sources.fetch_util import index
-from datetime import datetime
+
+from kadlu.geospatial.interpolation             import      \
+        Interpolator2D,                                     \
+        Interpolator3D,                                     \
+        Uniform2D,                                          \
+        Uniform3D
+from kadlu.geospatial.data_sources.data_util    import      \
+        reshape_2D,                                         \
+        reshape_3D,                                         \
+        dt_2_epoch
+from kadlu.geospatial.data_sources.source_map   import      \
+        default_val,                                        \
+        load_map
+from kadlu.geospatial.data_sources.chs          import Chs
+from kadlu.geospatial.data_sources.hycom        import Hycom
+from kadlu.geospatial.data_sources.era5         import Era5
+from kadlu.geospatial.data_sources.wwiii        import Wwiii
+from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
+
+
+def worker(interpfcn, reshapefcn, cols, var, q):
+    """ compute interpolation in parallel worker process
+
+        interpfcn:
+            callback function for interpolation
+        reshapefcn:
+            callback function for reshaping row data into matrix format
+            for interpolation
+        cols:
+            data as returned from load function
+        var:
+            variable type. used as key in Ocean().interps dictionary
+        q:
+            shared queue object to pass interpolation back to parent
+    """
+    obj = interpfcn(**reshapefcn(cols))
+    q.put((var, obj))
+    return
+
+
+def load_callback(*, v, data, **kwargs):
+    """ bootstrap data into callable to prepare for parallelization """
+    return [data[key] for key in 
+               (f'{v}_val', f'{v}_lat', f'{v}_lon', f'{v}_time', f'{v}_depth')
+               if key in data.keys()]
 
 
 class Ocean():
-    """ Class for handling ocean data requests.
+    """ class for handling ocean data requests 
 
-        TODO: Implement loading of temp, salinity and wave data.
+        data will be loaded using the given data sources and boundaries
+        from arguments. an interpolation for each variable will be computed in 
+        parallel
 
-        Args:
-            lats: 1d numpy array
-                Latitude coordinates used for interpolation. 
-            lons: 1d numpy array
-                Longitude coordinates used for interpolation.
-            depths: 1d numpy array
-                Depth coordinates used for interpolation.
+        data will be averaged over time frames for interpolation. for finer
+        temporal resolution, define smaller time boundaries
 
-        Attributes: 
+        any of the below load_args may also accept a callback function instead
+        of a string or array value if you wish to write your own data loading
+        function. the boundary arguments supplied here will be passed to the 
+        callable, i.e. north, south, west, east, top, bottom, start, end
 
+        callables or array arguments must be ordered by [val, lat, lon] for 2D 
+        data, or [val, lat, lon, depth] for 3D data
+
+        args:
+            load_bathymetry: 
+                source of bathymetry data. can be 'chs' to load previously 
+                fetched data, or array ordered by [val, lat, lon]
+            load_temp:
+                source of temperature data. can be 'hycom' to load previously
+                fetched data, or array ordered by [val, lat, lon, depth]
+            load_salinity:
+                source of salinity data. can be 'hycom' to load previously
+                fetched data, or array ordered by [val, lat, lon, depth]
+            load_wavedir:
+                source of wave direction data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
+            load_waveheight:
+                source of wave height data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
+            load_waveperiod:
+                source of wave period data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
+            load_wind:
+                source of wind speed data. can be 'era5' or 'wwiii' to load
+                previously fetched data, or array ordered by [val, lat, lon]
+            north, south:
+                latitude boundaries (float)
+            west, east:
+                longitude boundaries (float)
+            top, bottom:
+                depth range in metres (float)
+                only applies to salinity and temperature
+            start, end:
+                time range for data load query (datetime)
+                if multiple times exist within range, they will be averaged
+                before computing interpolation
     """
-    def __init__(self, bathy=None, temp=None, salinity=None, wave=None, wave_var=None, water_density=1.0):
-        self.water_density = water_density
-        self.data_source = {'bathy': bathy, 'temp': temp, 'salinity': salinity, 'wave': wave}
 
-        self.bathy_data = None
-        self.bathy_interp = None
-        self.temp_data = None
-        self.temp_interp = None
-        self.salinity_data = None
-        self.salinity_interp = None
-        self.wave_data = None
-        self.wave_interp = None
+    def __init__(self,
+            load_bathymetry=0, load_temp=0, load_salinity=0, load_wavedir=0,
+            load_waveheight=0, load_waveperiod=0, load_windspeed=0,
+            fetch=4, **kwargs):
 
-        self.set_origin(0,0)
+        if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
+            kwargs['start'] = kwargs['time']
+            del kwargs['time']
+        if not 'end' in kwargs.keys(): 
+            kwargs['end'] = kwargs['start'] + timedelta(hours=3)
 
-        self.SW = LatLon(-90, -180)
-        self.NE = LatLon(90, 180)
+        for kw in [k for k in ('south', 'west', 'north', 'east', 'top', 'bottom', 
+                'start', 'end') if k not in kwargs.keys()]:
+            kwargs[kw] = default_val[kw]
 
-        if not isinstance(bathy, str):
-            self.load_bathy()
+        data = {}
+        callbacks = []
+        vartypes = ['bathy', 'temp', 'salinity', 'wavedir', 
+                    'waveheight', 'waveperiod', 'windspeed']
+        load_args = [load_bathymetry, load_temp, load_salinity, load_wavedir, 
+                     load_waveheight, load_waveperiod, load_windspeed]
 
-        if not isinstance(temp, str):
-            self.load_temp()
+        # if load_args are not callable, convert it to a callable function
+        for v, load_arg, ix in zip(vartypes, load_args, range(len(vartypes))):
+            if callable(load_arg): callbacks.append(load_arg)
 
-        if not isinstance(salinity, str):
-            self.load_salinity()
+            elif isinstance(load_arg, str):
+                key = f'{v}_{load_arg.lower()}'
+                callbacks.append(load_map[key])
+                if fetch is not False:
+                    fetch_handler(v, load_arg.lower(), parallel=fetch, **kwargs)
 
-        if not isinstance(wave, str):
-            self.load_wave()
+            elif isinstance(load_arg, (int, float)):
+                data[f'{v}_val'] = load_arg
+                data[f'{v}_lat'] = kwargs['south']
+                data[f'{v}_lon'] = kwargs['west']
+                data[f'{v}_time'] = dt_2_epoch(kwargs['start'])
+                if v in ('temp', 'salinity'): data[f'{v}_depth'] = kwargs['top']
+                callbacks.append(load_callback)
 
+            elif isinstance(load_arg, (list, tuple, np.ndarray)):
+                if len(load_arg) not in (3, 4):
+                    raise ValueError(f'invalid array shape for load_{v}. '
+                    'arrays must be ordered by [val, lat, lon] for 2D data, or '
+                    '[val, lat, lon, depth] for 3D data')
+                data[f'{v}_val'] = load_arg[0]
+                data[f'{v}_lat'] = load_arg[1]
+                data[f'{v}_lon'] = load_arg[2]
+                #if len(load_arg) >= 4: data[f'{v}_time'] = load_arg[3]
+                if len(load_arg) == 4: data[f'{v}_depth'] = load_arg[3]
+                callbacks.append(load_callback)
 
-    #def load(self, south=-90, north=90, west=-180, east=180, 
-    #        start=datetime(2019, 1, 1), end=datetime(2019, 1, 1, 1), 
-    #        top=0, bottom=5000):
-    def load(self, **kwargs):
+            else: raise TypeError(f'invalid type for load_{v}. '
+                  'valid types include string, float, array, and callable')
 
-        # save south-west and north-east corners as class attributes
-        self.SW = LatLon(kwargs['south'], kwargs['west'])
-        self.NE = LatLon(kwargs['north'], kwargs['east'])
+        q = Queue()
 
-        # origo of x-y coordinate system
-        lat_ref = 0.5 * (kwargs['south'] + kwargs['north'])
-        lon_ref = 0.5 * (kwargs['west'] + kwargs['east'])
-        self.set_origin(lat_ref, lon_ref)
+        # prepare data pipeline
+        pipe = zip(callbacks, vartypes)
+        is_3D = [v in ('temp', 'salinity') for v in vartypes]
+        is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
+        columns = (fcn(v=v, data=data, **kwargs) for fcn, v in pipe)
+        intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
+        reshapers = (reshape_3D if v else reshape_2D for v in is_3D)
+        # map interpolations to dictionary in parallel
+        self.interps = {}
+        interpolators = map(lambda x, y: intrpmap[x][y], is_arr, is_3D)
+        interpolations = map(
+            lambda i,r,c,v,q=q: Process(target=worker, args=(i,r,c,v,q)),
+            interpolators, reshapers, columns, vartypes
+        )
 
-        # load data and initialize interpolation tables
-        #self.load_bathy(south, north, west, east)
-        #self.load_temp(south, north, west, east, start, end, top, bottom)
-        #self.load_salinity(south, north, west, east, start, end, top, bottom)
-        #self.load_wave(south, north, west, east, start, end)
-        self.load_bathy     (**kwargs)
-        self.load_temp      (**kwargs)
-        self.load_salinity  (**kwargs)
-        self.load_wave      (**kwargs)
-
-    def set_origin(self, lat_ref, lon_ref):
-
-        self.origin = LatLon(lat_ref, lon_ref)
-
-        for interp in [
-                self.bathy_interp, 
-                self.temp_interp, 
-                self.salinity_interp, 
-                self.wave_interp
-                ]:
-            if interp is not None: interp.origin = self.origin
+        # compute interpolations in parallel and store in dictionary
+        for i in interpolations: i.start()
+        while len(self.interps.keys()) < len(vartypes):
+            obj = q.get()
+            self.interps[obj[0]] = obj[1]
+        for i in interpolations: i.join()
 
         """
-        if self.bathy_interp is not None:
-            self.bathy_interp.origin = self.origin
-        if self.temp_interp is not None:
-            self.temp_interp.origin = self.origin
-        if self.salinity_interp is not None:
-            self.salinity_interp.origin = self.origin
-        if self.wave_interp is not None:
-            self.wave_interp.origin = self.origin
+        # used for debugging without parallelization for nicer stack traces
+        for i,r,c,v in zip(interpolators, reshapers, columns, vartypes):
+            print(f'interpolating {v}')
+            obj = i(**r(c))
+            q.put((v, obj))
+
+        while len(self.interps.keys()) < len(vartypes):
+            obj = q.get()
+            self.interps[obj[0]] = obj[1]
         """
 
+        q.close()
+        return
 
-    def load_bathy(self, south=None, north=None, west=None, east=None, storage=None, **kwargs):
-        bathy = self.data_source['bathy']
+    def bathy(self, lat, lon, grid=False):
+        return self.interps['bathy'].interp(lat, lon, grid)
 
-        if bathy is None:
-            self.bathy_data = None
-            self.bathy_interp = None
+    def bathy_xy(self, x, y, grid=False):
+        return self.interps['bathy'].interp_xy(x, y, grid)
 
-        elif isinstance(bathy, str):
-    
-            if bathy == "CHS":
-                # load data and make coordinate grid for interpolation
-                self.bathy_data = Chs().load_bathymetry(south=south, north=north, west=west, east=east)
-                num_lats = int(np.ceil((north - south) / 0.001)) + 1
-                num_lons = int(np.ceil((east - west) / 0.001)) + 1
-                lats = np.linspace(south, north, num=num_lats)
-                lons = np.linspace(west, east, num=num_lons)
+    def bathy_deriv(self, lat, lon, axis='lon', grid=False):
+        assert axis in ('lat', 'lon'), 'axis must be \'lat\' or \'lon\''
+        return self.interps['bathy'].interp(lat, lon, grid,
+              lat_deriv_order=(axis=='lat'), lon_deriv_order=(axis=='lon'))
 
-                # interpolate
-                self.bathy_interp = Interpolator2D(
-                        values=self.bathy_data[0],
-                        lats=self.bathy_data[1], lons=self.bathy_data[2],
-                        origin=self.origin, method_irreg='regular', 
-                        lats_reg=lats, lons_reg=lons)       
+    def bathy_deriv_xy(self, x, y, grid=False):
+        assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
+        return self.interps['bathy'].interp_xy(x, y, grid,
+                lat_deriv_order=(axis=='y'), lon_deriv_order=(axis=='x'))
 
-            elif bathy == "GEBCO":
-                self.bathy_data = gebco.load(south, north, west, east)
-                self.bathy_interp = Interpolator2D(
-                        values=self.bathy_data[0],
-                        lats=self.bathy_data[1], lons=self.bathy_data[2],
-                        origin=self.origin)       
+    def temp(self, lat, lon, depth, grid=False):
+        return self.interps['temp'].interp(lat, lon, depth, grid)
 
-            else: 
-                print('Error: Unknown bathymetry source {0}.'.format(bathy))
-                exit(1)
+    def temp_xy(self, x, y, z, grid=False):
+        return self.interps['temp'].interp_xy(x, y, z, grid)
 
-        elif isinstance(bathy, (np.ndarray, tuple)):
-        #elif isinstance(bathy, Iterable) and (bathy[-1][0] == 'chs' or bathy[-1][0] == 'gebco'):
-            self.bathy_data = bathy
-            self.bathy_interp = Interpolator2D(
-                    values=self.bathy_data[0],
-                    lats=self.bathy_data[1], lons=self.bathy_data[2], 
-                    origin=self.origin)
+    def salinity(self,lat, lon, depth, grid=False):
+        return self.interps['salinity'].interp(lat, lon, depth, grid)
 
-        else:
-            self.bathy_data = bathy
-            self.bathy_interp = Uniform2D(bathy)
+    def salinity_xy(self, x, y, z, grid=False):
+        return self.interps['salinity'].interp_xy(x, y, z, grid)
 
+    def wavedir(self, lat, lon, grid=False):
+        return self.interps['wavedir'].interp(lat, lon, grid)
 
-    #def load_temp(self, south=None, north=None, west=None, east=None,
-    #        start=None, end=None, top=0, bottom=5000):
-    def load_temp(self, **kwargs):
-        temp = self.data_source['temp']
+    def wavedir_xy(self, x, y, grid=False):
+        return self.interps['wavedir'].interp_xy(x, y, grid)
 
-        if temp is None:
-            self.temp_data = None
-            self.temp_interp = None
+    def waveheight(self, lat, lon, grid=False):
+        return self.interps['waveheight'].interp(lat, lon, grid)
 
-        elif isinstance(temp, str):
-            if temp == "HYCOM":
+    def waveheight_xy(self, x, y, grid=False):
+        return self.interps['waveheight'].interp_xy(x, y, grid)
 
-                #self.temp_data = Hycom().load_temp(
-                #        south, north, west, east,
-                #        start, end, top, bottom)
+    def waveperiod(self, lat, lon, grid=False):
+        return self.interps['waveperiod'].interp(lat, lon, grid)
 
-                self.temp_data = Hycom().load_temp(**kwargs)
+    def waveperiod_xy(self, x, y, grid=False):
+        return self.interps['waveperiod'].interp_xy(x, y, grid)
 
-                """ run this code interactively for testing load_temp and interpolation
+    def windspeed(self, lat, lon, grid=False):
+        return self.interps['windspeed'].interp(lat, lon, grid)
 
-                south, west = 46, -60
-                north, east = 48, -58
-                top, bottom = 0, 5000
-                start,  end = datetime(2015, 1, 10), datetime(2015, 1, 10, 12)
-
-                from kadlu.geospatial.data_sources import hycom
-                from importlib import reload
-                reload(hycom)
-                self = Ocean()
-
-                hycom.Hycom().fetch_temp(
-                        south=south, north=north, west=west, east=east,
-                        start=start, end=end, top=top, bottom=bottom
-                        )
-                self.temp_data = hycom.Hycom().load_temp(
-                        south=south, north=north, west=west, east=east,
-                        start=start, end=end, top=top, bottom=bottom
-                        )
-                """
-
-                # build split index, reduce 4th dimension to 3D avg
-                splidx = np.append(
-                        np.nonzero(
-                            self.temp_data[3][1:] > self.temp_data[3][:-1]
-                        )[0] + 1, 
-                        len(self.temp_data[3])
-                    )
-                if len(splidx) > 1:  # if fourth dimension exists, take avg and reduce to 3D
-                    """
-                    assert (self.temp_data[1][splidx[0]:splidx[1]] == self.temp_data[1][splidx[1]:splidx[2]]).all()
-                    assert (self.temp_data[2][splidx[0]:splidx[1]] == self.temp_data[2][splidx[1]:splidx[2]]).all()
-                    """
-                    splitd = np.array([self.temp_data[0][splidx[d]:splidx[d+1]] for d in range(0, len(splidx)-1)])
-                    vals = (reduce(np.add, splitd) / len(splitd)).astype(float)
-                    x = self.temp_data[2] [splidx[0] : splidx[1]].astype(float)
-                    y = self.temp_data[1] [splidx[0] : splidx[1]].astype(float)
-                    z = self.temp_data[4] [splidx[0] : splidx[1]].astype(float)
-                    warnings.warn("query data has been averaged across the time dimension for 3D interpolation"
-                            + "\nto avoid this behaviour, use keyword argument 'time' instead of start/end")
-                else:   # if data is already 3 dimensional, just leave as is
-                    vals = self.temp_data[0].astype(float)
-                    x = self.temp_data[2].astype(float)
-                    y = self.temp_data[1].astype(float)
-                    z = self.temp_data[4].astype(float)
-
-                xgrid = np.unique(x)
-                ygrid = np.unique(y)
-                zgrid = np.unique(z)
-
-                # reshape row data to 3D array
-                rowdata = np.array((vals, y, x, z)).T
-                gridspace = np.full((len(ygrid), len(xgrid), len(zgrid)), fill_value=-30000)
-                # this could probably be optimized to avoid an index lookup cost
-                # for every value by using a map, but i havent figured out how yet
-                for row in rowdata:
-                    x_ix = index(row[2], xgrid)
-                    y_ix = index(row[1], ygrid)
-                    z_ix = index(row[3], zgrid)
-                    gridspace[y_ix, x_ix, z_ix] = row[0]
-
-                self.temp_interp = Interpolator3D(
-                        values=gridspace,
-                        lats=ygrid, lons=xgrid,
-                        depths=zgrid, origin=self.origin,
-                        method='linear')
-
-            else: 
-                print('Error: Unknown temperature source {0}.'.format(temp))
-                exit(1)
-
-        elif isinstance(temp, (np.ndarray, tuple)):
-            self.temp_data = temp
-            self.temp_interp = Interpolator3D(
-                    values=self.temp_data[0],
-                    lats=self.temp_data[1],     lons=self.temp_data[2],
-                    depths=self.temp_data[3],   origin=self.origin,
-                    method='linear')
-
-        else:
-            self.temp_data = temp
-            self.temp_interp = Uniform3D(temp)
-
-
-    def load_salinity(self, south=None, north=None, west=None, east=None, 
-            start=None, end=None, top=0, bottom=5000):
-        salinity = self.data_source['salinity']
-
-        if salinity is None:
-            self.salinity_data = None
-            self.salinity_interp = None
-
-        elif isinstance(salinity, str):
-            if salinity == "HYCOM":
-                self.salinity_data = Hycom().load_salinity(
-                        south, north, west, east,
-                        start, end, top, bottom)
-                """
-                num_lats = int(np.ceil((north - south) / 0.001)) + 1
-                num_lons = int(np.ceil((east - west) / 0.001)) + 1
-                lats = np.linspace(south, north, num=num_lats)
-                lons = np.linspace(west, east, num=num_lons)
-                """
-
-                # unflatten array into cube
-
-                self.salinity_interp = Interpolator3D(
-                        values=self.salinity_data[0], 
-                        lats=self.salinity_data[1], lons=self.salinity_data[2], 
-                        depths=self.salinity_data[4], origin=self.origin,
-                        method='linear')       
-
-            else: 
-                print('Error: Unknown salinity source {0}.'.format(salinity))
-                exit(1)
-
-        elif isinstance(salinity, (np.ndarray, tuple)):
-        #elif isinstance(salinity, Iterable) and salinity[-1][0] == 'hycom':
-            self.salinity_data = salinity
-            self.salinity_interp = Interpolator3D(
-                    values=self.salinity_data[0], 
-                    lats=self.salinity_data[1], lons=self.salinity_data[2], 
-                    depths=self.salinity_data[4], origin=self.origin,
-                    method='linear')
-
-        else:
-            self.salinity_data = salinity
-            self.salinity_interp = Uniform3D(salinity)
-
-
-    def load_wave(self, south=None, north=None, west=None, east=None, start=None, end=None):
-
-        wave = self.data_source['wave']
-
-        if wave is None:
-            self.wave_data = None
-            self.wave_interp = None
-
-        elif isinstance(wave, str):
-            if wave == "ERA5":
-                # load data and make coordinate grid for interpolation
-                self.wave_data = Era5().load_windwaveswellheight(south, north, west, east, start, end)
-                num_lats = int(np.ceil((north - south) / 0.001)) + 1
-                num_lons = int(np.ceil((east - west) / 0.001)) + 1
-                lats = np.linspace(south, north, num=num_lats)
-                lons = np.linspace(west, east, num=num_lons)
-
-                # interpolate
-                self.wave_interp = Interpolator2D(
-                        values=self.wave_data[0],
-                        lats=self.wave_data[1], lons=self.wave_data[2],
-                        origin=self.origin, method_irreg='regular',
-                        lats_reg=lats, lons_reg=lons)       
-
-            elif wave == "RDWPS":
-                # load data and make coordinate grid for interpolation
-                self.wave_data = Rdwps().load_windwaveswellheight(south, north, west, east, start, end)
-                num_lats = int(np.ceil((north - south) / 0.001)) + 1
-                num_lons = int(np.ceil((east - west) / 0.001)) + 1
-                lats = np.linspace(south, north, num=num_lats)
-                lons = np.linspace(west, east, num=num_lons)
-
-                # interpolate
-                self.wave_interp = Interpolator2D(
-                        values=self.wave_data[0],
-                        lats=self.wave_data[1], lons=self.wave_data[2],
-                        origin=self.origin, method_irreg='regular',
-                        lats_reg=lats, lons_reg=lons)       
-
-            elif wave == "WWIII":
-                # load data and make coordinate grid for interpolation
-                self.wave_data = Wwiii().load_windwaveheight(south, north, west, east, start, end)
-                num_lats = int(np.ceil((north - south) / 0.001)) + 1
-                num_lons = int(np.ceil((east - west) / 0.001)) + 1
-                lats = np.linspace(south, north, num=num_lats)
-                lons = np.linspace(west, east, num=num_lons)
-
-                # interpolate
-                self.wave_interp = Interpolator2D(
-                        values=self.wave_data[0],
-                        lats=self.wave_data[1], lons=self.wave_data[2],
-                        origin=self.origin, method_irreg='regular',
-                        lats_reg=lats, lons_reg=lons)       
-
-            else: 
-                print('Error: Unknown wave source {0}.'.format(wave))
-                exit(1)
-
-        elif isinstance(wave, (np.ndarray, tuple)):
-        #elif isinstance(wave, Iterable) and len(wave) == 3:
-            self.wave_data = wave
-            self.wave_interp = Interpolator2D(
-                    values=self.wave_data[0], 
-                    lats=self.wave_data[1], lons=self.wave_data[2], 
-                    origin=self.origin)       
-
-        else:
-            self.wave_data = wave
-            self.wave_interp = Uniform2D(wave)
-
-
-    def bathy(self, x=None, y=None, grid=False, geometry='planar'):
-        """ Evaluate interpolated bathymetry in spherical (lat-lon) or  
-            planar (x-y) geometry.
-
-            x and y can be floats or arrays.
-
-            If grid is set to False, the bathymetry will be evaluated at 
-            the positions (x_i, y_i), where x=(x_1,...,x_N) and 
-            y=(y_1,...,y_N). Note that in this case, x and y must have 
-            the same length.
-
-            If grid is set to True, the bathymetry will be evaluated at 
-            all combinations (x_i, y_j), where x=(x_1,...,x_N) and 
-            y=(y_1,...,y_M). Note that in this case, the lengths of x 
-            and y do not have to be the same.
-
-            If x and y are not specified, the method returns the underlying 
-            bathymetric data on which the interpolation is performed, either 
-            as a (bathy,lat,lon) tuple, or as a float if the bathymetry is 
-            the same everywhere.
-
-            Args: 
-                x: float or array
-                    x-coordinate(s) or longitude(s)
-                y: float or array
-                    y-coordinate(s) or latitude(s)
-                grid: bool
-                    Specify how to combine elements of x and y. If x and y have different
-                    lengths, specifying grid has no effect as it is automatically set to True.
-                geometry: str
-                    Can be either 'planar' (default) or 'spherical'
-
-            Returns:
-                z: Interpolated bathymetry values
-        """
-        assert self.bathy_data is not None, "Bathymetric data have not been loaded" 
-
-        if x is None and y is None:
-            z = self.bathy_data
-        
-        else:
-            if geometry == 'planar':
-                z = self.bathy_interp.eval_xy(x=x, y=y, grid=grid)
-
-            elif geometry == 'spherical':
-                z = self.bathy_interp.eval_ll(lat=y, lon=x, grid=grid)
-
-        return z
-
-
-    def bathy_gradient(self, x=None, y=None, axis='x', grid=False, geometry='planar'): 
-        """ Evaluate interpolated bathymetry gradient in spherical (lat-lon) or  
-            planar (x-y) geometry, along the specified axis.
-
-            x and y can be floats or arrays.
-
-            If grid is set to False, the bathymetry will be evaluated at 
-            the positions (x_i, y_i), where x=(x_1,...,x_N) and 
-            y=(y_1,...,y_N). Note that in this case, x and y must have 
-            the same length.
-
-            If grid is set to True, the bathymetry will be evaluated at 
-            all combinations (x_i, y_j), where x=(x_1,...,x_N) and 
-            y=(y_1,...,y_M). Note that in this case, the lengths of x 
-            and y do not have to be the same.
-
-            Args: 
-                x: float or array
-                   x-coordinate(s) or longitude(s)
-                y: float or array
-                   y-coordinate(s) or latitude(s)
-                axis: str
-                    Axis along which gradient is computed. Can be either 'x' (default) or 'y'
-                grid: bool
-                   Specify how to combine elements of x and y.
-                geometry: str
-                    Can be either 'planar' (default) or 'spherical'
-
-            Returns:
-                grad: Interpolated bathymetry gradient values
-        """
-        assert self.bathy_data is not None, "Bathymetric data have not been loaded" 
-
-        deriv_order = [(axis=='x'), (axis!='x')]
-
-        if geometry == 'planar':                
-            grad = self.bathy_interp.eval_xy(x=x, y=y, grid=grid, x_deriv_order=deriv_order[0], y_deriv_order=deriv_order[1])
-
-        elif geometry == 'spherical':
-            grad = self.bathy_interp.eval_ll(lat=y, lon=x, grid=grid, lat_deriv_order=deriv_order[1], lon_deriv_order=deriv_order[0])
-
-        return grad
-
-
-    def temp(self, x=None, y=None, z=None, grid=False, geometry='planar'):
-        """ Evaluate interpolated temperature in spherical (lat-lon) or  
-            planar (x-y) geometry.
-
-            x,y,z can be floats or arrays.
-
-            If grid is set to False, the interpolation will be evaluated at 
-            the positions (x_i, y_i, z_i), where x=(x_1,...,x_N),  
-            y=(y_1,...,y_N), and z=(z_1,...,z_N). Note that in this case, 
-            x,y,z must have the same length.
-
-            If grid is set to True, the interpolation will be evaluated at 
-            all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
-            y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
-            lengths of x,y,z do not have to be the same.
-
-            If x,y,z are not specified, the method returns the underlying 
-            temperature data on which the interpolation is performed, either 
-            as a (temp,lat,lon,z) tuple, or as a float if the temperature is 
-            the same everywhere.
-
-            Args: 
-                x: float or array
-                    x-coordinate(s) or longitude(s)
-                y: float or array
-                    y-coordinate(s) or latitude(s)
-                z: float or array
-                    depth(s)
-                grid: bool
-                   Specify how to combine elements of x,y,z.
-                geometry: str
-                    Can be either 'planar' (default) or 'spherical'
-
-            Returns:
-                t: Interpolated temperature values
-        """
-        assert self.temp_data is not None, "Temperature data have not been loaded" 
-
-        if x is None and y is None and z is None:
-            t = self.temp_data
-
-        else:
-            if geometry == 'planar':
-                t = self.temp_interp.eval_xy(x=x, y=y, z=z, grid=grid)
-
-            elif geometry == 'spherical':
-                t = self.temp_interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
-
-        return t
-
-
-    def salinity(self, x=None, y=None, z=None, grid=False, geometry='planar'):
-        """ Evaluate interpolated salinity in spherical (lat-lon) or  
-            planar (x-y) geometry.
-
-            x,y,z can be floats or arrays.
-
-            If grid is set to False, the interpolation will be evaluated at 
-            the positions (x_i, y_i, z_i), where x=(x_1,...,x_N),  
-            y=(y_1,...,y_N), and z=(z_1,...,z_N). Note that in this case, 
-            x,y,z must have the same length.
-
-            If grid is set to True, the interpolation will be evaluated at 
-            all combinations (x_i, y_j, z_k), where x=(x_1,...,x_N), 
-            y=(y_1,...,y_M), and z=(z_1,...,z_K). Note that in this case, the 
-            lengths of x,y,z do not have to be the same.
-
-            If x,y,z are not specified, the method returns the underlying 
-            salinity data on which the interpolation is performed, either 
-            as a (salinity,lat,lon,z) tuple, or as a float if the salinity is 
-            the same everywhere.
-
-            Args: 
-                x: float or array
-                    x-coordinate(s) or longitude(s)
-                y: float or array
-                    y-coordinate(s) or latitude(s)
-                z: float or array
-                    depth(s)
-                grid: bool
-                   Specify how to combine elements of x,y,z.
-                geometry: str
-                    Can be either 'planar' (default) or 'spherical'
-
-            Returns:
-                s: Interpolated salinity values
-        """
-        assert self.salinity_data is not None, "Salinity data have not been loaded" 
-
-        if x is None and y is None and z is None:
-            s = self.salinity_data
-
-        if geometry == 'planar':
-            s = self.salinity_interp.eval_xy(x=x, y=y, z=z, grid=grid)
-
-        elif geometry == 'spherical':
-            s = self.salinity_interp.eval_ll(lat=y, lon=x, z=z, grid=grid)
-
-        return s
-
-
-    def wave(self, x, y, grid=False, geometry='planar'):
-        """ Evaluate interpolated wave data in spherical (lat-lon) or  
-            planar (x-y) geometry.
-
-            x and y can be floats or arrays.
-
-            If grid is set to False, the interpolation will be evaluated at 
-            the positions (x_i, y_i), where x=(x_1,...,x_N) and 
-            y=(y_1,...,y_N). Note that in this case, x and y must have 
-            the same length.
-
-            If grid is set to True, the interpolation will be evaluated at 
-            all combinations (x_i, y_j), where x=(x_1,...,x_N) and 
-            y=(y_1,...,y_M). Note that in this case, the lengths of x 
-            and y do not have to be the same.
-
-            If x and y are not specified, the method returns the underlying 
-            wave data on which the interpolation is performed, either 
-            as a (wave,lat,lon) tuple, or as a float if the wave data is the same 
-            everywhere.
-
-            Args: 
-                x: float or array
-                    x-coordinate(s) or longitude(s)
-                y: float or array
-                    y-coordinate(s) or latitude(s)
-                grid: bool
-                    Specify how to combine elements of x and y. If x and y have different
-                    lengths, specifying grid has no effect as it is automatically set to True.
-                geometry: str
-                    Can be either 'planar' (default) or 'spherical'
-
-            Returns:
-                w: Interpolated wave data
-        """
-        assert self.wave_data is not None, "Wave data have not been loaded" 
-
-        if x is None and y is None:
-            w = self.wave_data
-
-        else:
-            if geometry == 'planar':
-                w = self.wave_interp.eval_xy(x=x, y=y, grid=grid)
-
-            elif geometry == 'spherical':
-                w = self.wave_interp.eval_ll(lat=y, lon=x, grid=grid)
-
-        return w
-
+    def windspeed_xy(self, x, y, grid=False):
+        return self.interps['windspeed'].interp_xy(x, y, grid)
 

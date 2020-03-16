@@ -1,32 +1,6 @@
-# ================================================================================ #
-#   Authors: Casey Hillard and Oliver Kirsebom                                     #
-#   Contact: oliver.kirsebom@dal.ca                                                #
-#   Organization: MERIDIAN (https://meridian.cs.dal.ca/)                           #
-#   Team: Data Analytics                                                           #
-#   Project: kadlu                                                                 #
-#   Project goal: The kadlu library provides functionalities for modeling          #
-#   underwater noise due to environmental source such as waves.                    #
-#                                                                                  #
-#   License: GNU GPLv3                                                             #
-#                                                                                  #
-#       This program is free software: you can redistribute it and/or modify       #
-#       it under the terms of the GNU General Public License as published by       #
-#       the Free Software Foundation, either version 3 of the License, or          #
-#       (at your option) any later version.                                        #
-#                                                                                  #
-#       This program is distributed in the hope that it will be useful,            #
-#       but WITHOUT ANY WARRANTY; without even the implied warranty of             #
-#       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              #
-#       GNU General Public License for more details.                               # 
-#                                                                                  #
-#       You should have received a copy of the GNU General Public License          #
-#       along with this program.  If not, see <https://www.gnu.org/licenses/>.     #
-# ================================================================================ #
-
-""" Interpolation module within the kadlu library
-
-    This module handles two- and three-dimensional interpolation of geospatial data in 
-    spherical and planar geometry.
+""" The interpolation module contains functionalities for interpolating 
+    geospatial data in spherical and planar geometry in one, two, or 
+    three dimensions (latitude, longitude, elevation).
 
     In the two-dimensional case, the interpolation can be made on both regular and 
     irregular grids. 
@@ -37,6 +11,7 @@
 
     Contents:
         GridData2D class:
+        GridData3D class:
         Interpolator2D class:
         Interpolator3D class:
         Uniform2D class:
@@ -45,14 +20,8 @@
 """
 
 import numpy as np
-from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, griddata
-from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, LatLon
-
-from sys import platform as sys_pf
-if sys_pf == 'darwin':
-    import matplotlib
-    matplotlib.use("TkAgg")
-from matplotlib import pyplot as plt
+from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, interp2d, griddata
+from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, center_point
 
 
 class GridData2D():
@@ -75,12 +44,10 @@ class GridData2D():
                 data values
             method : {‘linear’, ‘nearest’, ‘cubic’}, optional
     """
-    def __init__(self, u, v, r, method='cubic'):
-        self.uv = np.column_stack((u,v))
+    def __init__(self, u, v, r, method='linear'):
+        self.uv = np.array([u,v]).T
         self.r = r
         self.method = method
-        self.u_step = (np.max(u) - np.min(u)) / 1E4
-        self.v_step = (np.max(v) - np.min(v)) / 1E4
 
     def __call__(self, theta, phi, grid=False, dtheta=0, dphi=0):
         """ Interpolate data
@@ -97,10 +64,8 @@ class GridData2D():
             phi=(phi_1,...,phi_M). Note that in this case, the lengths of theta 
             and phi do not have to be the same.
 
-            Only first-order derivatives have been implemented. A request to interpolate 
-            higher-order derivatives will give an Assertion error.
-
-            TODO: Improve the algorithm used to compute the derivatives. 
+            Note: Interpolation of derivates not yet implemented; dtheta > 0 or dphi > 0
+            will result in AssertionError.
 
             Args: 
                 theta: float or array
@@ -117,38 +82,12 @@ class GridData2D():
             Returns:
                 ri: Interpolated values
         """        
-        assert dtheta + dphi <= 1, "Interpolation of higher-order derivatives not implemented for irregular grids"
+        assert dtheta + dphi == 0, "Interpolation of derivatives not implemented for irregular grids"
 
-        if grid:
-            M = N = 1
-            if np.ndim(theta) == 1: 
-                M = len(theta)
-            if np.ndim(phi) == 1: 
-                N = len(phi)
+        if grid: theta, phi, M, N = self._meshgrid(theta, phi)
 
-        if dtheta == dphi == 0:
-            pts = self._prep_input(theta, phi, grid)
-            ri = griddata(self.uv, self.r, pts, method=self.method)
-
-        # 1st derivative in u
-        elif dtheta == 1 and dphi == 0:
-            theta1 = theta - 0.5 * self.u_step
-            theta2 = theta + 0.5 * self.u_step
-            pts1 = self._prep_input(theta1, phi, grid)
-            pts2 = self._prep_input(theta2, phi, grid)
-            ri1 = griddata(self.uv, self.r, pts1, method=self.method)
-            ri2 = griddata(self.uv, self.r, pts2, method=self.method)
-            ri = (ri2 - ri1) / (theta2 - theta1)
-
-        # 1st derivative in v
-        elif dtheta == 0 and dphi == 1:
-            phi1 = phi - 0.5 * self.v_step
-            phi2 = phi + 0.5 * self.v_step
-            pts1 = self._prep_input(theta, phi1, grid)
-            pts2 = self._prep_input(theta, phi2, grid)
-            ri1 = griddata(self.uv, self.r, pts1, method=self.method)
-            ri2 = griddata(self.uv, self.r, pts2, method=self.method)
-            ri = (ri2 - ri1) / (phi2 - phi1)
+        pts = np.array([theta,phi]).T
+        ri = griddata(self.uv, self.r, pts, method=self.method)
 
         if grid:
             ri = np.reshape(ri, newshape=(N,M))
@@ -156,31 +95,29 @@ class GridData2D():
 
         return ri
 
-    def _prep_input(self, theta, phi, grid):
-        """ Transform the input data to format appropriate for scipy.interpolate.griddata.
+    def _meshgrid(self, theta, phi):
+        """ Create grid
 
             Args: 
                 theta: 1d numpy array
                    1st coordinate of the points where the interpolation is to be evaluated
                 phi: 1d numpy array
                    2nd coordinate of the points where the interpolation is to be evaluated
-                grid: bool
-                   Specify how to combine elements of theta and phi.
 
             Returns:
-                pts: numpy array 
-                    Input data
+                theta, phi: 2d numpy array
+                    Grid coordinates
+                M, N: int
+                    Number of grid values
         """        
-        if grid:
-            M = len(theta)
-            N = len(phi)
-            theta, phi = np.meshgrid(theta, phi)
-            theta = np.reshape(theta, newshape=(M*N))
-            phi = np.reshape(phi, newshape=(M*N))        
-
-        pts = np.column_stack((theta, phi))
-
-        return pts
+        M = 1
+        N = 1
+        if np.ndim(theta) == 1: M = len(theta)
+        if np.ndim(phi) == 1: N = len(phi)
+        theta, phi = np.meshgrid(theta, phi)
+        theta = theta.flatten()
+        phi = phi.flatten()        
+        return theta, phi, M, N
 
 
 class Interpolator2D():
@@ -201,36 +138,24 @@ class Interpolator2D():
                 Latitude values
             lons: 1d numpy array
                 Longitude values
-            latlon_ref: LatLon
+            origin: tuple(float,float)
                 Reference location (origo of XY coordinate system).
-            method_irreg : {‘linear’, ‘nearest’, ‘cubic’, ‘regular’}, optional
+            method_irreg : {‘linear’, ‘nearest’, ‘cubic’, ‘regularize’}, optional
                 Interpolation method used for irregular grids.
                 Note that 'nearest' is usually significantly faster than 
                 the 'linear' and 'cubic'.
-                If the 'regular' is selected, the data is first mapped onto 
-                a regular grid by means of a cubic interpolation (for points outside 
+                If the 'regularize' is selected, the data is first mapped onto 
+                a regular grid by means of a linear interpolation (for points outside 
                 the area covered by the data, a nearest-point interpolation is used).
-                The coordiantes of the regular grid onto which the data is mapped 
-                is given by the arguments 'lats_reg' and 'lons_reg'.
-            lats_reg: 1d numpy array
-                Latitude values for regular interpolation grid.
-                Must be specified for irregular grids if the interpolation method 
-                'regular' is chosen. In all other cases, the argument is ignored.
-            lons_reg: 1d numpy array
-                Longitude values for regular interpolation grid.
-                Must be specified for irregular grids if the interpolation method 
-                'regular' is chosen. In all other cases, the argument is ignored.
+                The bin size of the regular grid is specified via the reg_bin argument.
+            reg_bin: float or tuple(float,float)
+                Bin size (in degrees) of regular grid onto which irregular data is mapped. 
+                Only relevant if method_irreg is set to 'regularize'
     """
-    def __init__(self, values, lats, lons,
-            origin=None, method_irreg='cubic',
-            lats_reg=None, lons_reg=None):
+    def __init__(self, values, lats, lons, origin=None, method_irreg='regularize', reg_bin=0.01):
         
         # compute coordinates of origin, if not provided
-        if origin is None:
-            lat_ref = (np.min(lats) + np.max(lats)) / 2
-            lon_ref = (np.min(lons) + np.max(lons)) / 2
-            origin = LatLon(lat_ref, lon_ref)
-
+        if origin is None: origin = center_point(lats, lons)
         self.origin = origin
 
         # check if bathymetry data are on a regular or irregular grid
@@ -241,36 +166,42 @@ class Interpolator2D():
 
         # necessary to resolve a mismatch between scipy and underlying Fortran code
         # https://github.com/scipy/scipy/issues/6556
-        if np.min(lons_rad) < 0:
-            self._lon_corr = np.pi
-        else:
-            self._lon_corr = 0
-
+        if np.min(lons_rad) < 0: self._lon_corr = np.pi
+        else: self._lon_corr = 0
         lons_rad += self._lon_corr
 
         # initialize lat-lon interpolator
         if reggrid:
-            self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
+            if len(lats) > 2 and len(lons) > 2:
+                self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
+            elif len(lats) > 1 and len(lons) > 1:
+                z = np.swapaxes(values, 0, 1)
+                self.interp_ll = interp2d(x=lats_rad, y=lons_rad, z=z, kind='linear')
+            elif len(lats) == 1:
+                self.interp_ll = interp1d(x=lons_rad, y=np.squeeze(values), kind='linear')
+            elif len(lons) == 1:
+                self.interp_ll = interp1d(x=lats_rad, y=np.squeeze(values), kind='linear')
 
         else:
-            if method_irreg == 'regular':
-                assert lats_reg is not None and lons_reg is not None,\
-                    'lats_reg and lons_reg must be specified for irregular grids when the interpolation method is `regular`'
-    
-                # interpolators on irregular grid
-                gd_cubic = GridData2D(u=lats_rad, v=lons_rad, r=values, method='cubic')
-                gd_nearest = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
+            if method_irreg == 'regularize':
 
+                # interpolators on irregular grid
+                gd = GridData2D(u=lats_rad, v=lons_rad, r=values, method='linear') 
+                gd_near = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
+
+                # regular grid that data will be mapped to
+                lats_reg, lons_reg = self._create_grid(lats, lons, reg_bin)
+    
                 # map to regular grid
                 lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
                 lons_reg_rad += self._lon_corr
-                zi = gd_cubic.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
-                zi_nearest = gd_nearest.__call__(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
-                indices_nan = np.where(np.isnan(zi))
-                zi[indices_nan] = zi_nearest[indices_nan] 
+                vi = gd(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
+                vi_near = gd_near(theta=lats_reg_rad, phi=lons_reg_rad, grid=True)
+                indices_nan = np.where(np.isnan(vi))
+                vi[indices_nan] = vi_near[indices_nan] 
 
                 # interpolator on regular grid
-                self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=zi)
+                self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=vi)
 
             else:
                 self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method_irreg)
@@ -280,7 +211,10 @@ class Interpolator2D():
         self.lon_nodes = lons
         self.values = values
 
-    def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
+    def get_nodes(self):
+        return (self.values, self.lat_nodes, self.lon_nodes)
+
+    def interp_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
         """ Interpolate using planar coordinate system (xy).
 
             x and y can be floats or arrays.
@@ -310,7 +244,7 @@ class Interpolator2D():
             Returns:
                 zi: Interpolated interpolation values
         """
-        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid)
+        lat, lon = XYtoLL(x=x, y=y, lat_ref=self.origin[0], lon_ref=self.origin[1], grid=grid)
 
         if grid:
             M = lat.shape[0]
@@ -318,7 +252,7 @@ class Interpolator2D():
             lat = np.reshape(lat, newshape=(M*N))
             lon = np.reshape(lon, newshape=(M*N))
 
-        zi = self.eval_ll(lat=lat, lon=lon, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+        zi = self.interp(lat=lat, lon=lon, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
 
         if x_deriv_order + y_deriv_order > 0:
             r = DLDL_over_DXDY(lat=lat, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
@@ -337,7 +271,7 @@ class Interpolator2D():
 
         return zi
 
-    def eval_ll(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
+    def interp(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
         """ Interpolate using spherical coordinate system (latitude-longitude).
 
             lat and lot can be floats or arrays.
@@ -376,7 +310,19 @@ class Interpolator2D():
         lat_rad, lon_rad = torad(lat, lon)
         lon_rad += self._lon_corr
 
-        zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
+        if isinstance(self.interp_ll, interp2d):
+            zi = self.interp_ll.__call__(x=lat_rad, y=lon_rad, dx=lat_deriv_order, dy=lon_deriv_order)
+            if grid: zi = np.swapaxes(zi, 0, 1)
+            if not grid and np.ndim(zi) == 2: zi = np.diagonal(zi)
+
+        elif isinstance(self.interp_ll, interp1d):
+            if len(self.lat_nodes) > 1:
+                zi = self.interp_ll(x=lat_rad)
+            elif len(self.lon_nodes) > 1:
+                zi = self.interp_ll(x=lon_rad)
+
+        else:
+            zi = self.interp_ll.__call__(theta=lat_rad, phi=lon_rad, grid=grid, dtheta=lat_deriv_order, dphi=lon_deriv_order)
 
         if squeeze:
             zi = np.squeeze(zi)
@@ -386,18 +332,138 @@ class Interpolator2D():
 
         return zi
 
+    def _create_grid(self, lats, lons, bin_size):
+        """ Created regular lat-lon grid with uniform spacing that covers 
+            a set of (lat,lon) coordinates.
+
+            Args:
+                lats: numpy.array
+                    Latitude values in degrees
+                lons: numpy.array
+                    Longitude values in degrees
+                bin_size: float or tuple(float,float)
+                    Lat and long bin size
+
+            Returns:
+                : numpy.array, numpy.array
+                    Latitude and longitude values of the regular grid
+        """
+        if isinstance(bin_size, (int,float)): bin_size = (bin_size, bin_size)
+        res = []
+        for v,dv in zip([lats,lons], bin_size):
+            v_min = np.min(v) - dv
+            v_max = np.max(v) + dv
+            num = max(3, int((v_max - v_min) / dv) + 1)
+            v_reg = np.linspace(v_min, v_max, num=num)
+            res.append(v_reg)
+
+        return tuple(res)
+
+
+class GridData3D():
+    """ Interpolation of data on a three-dimensional irregular grid.
+    
+        Essentially, a wrapper function around scipy's interpolate.griddata.
+
+        https://docs.scipy.org/doc/scipy-0.15.1/reference/generated/scipy.interpolate.griddata.html
+
+        An alternative to griddata could be Rbf, as discussed here:
+
+        https://stackoverflow.com/questions/37872171/how-can-i-perform-two-dimensional-interpolation-using-scipy
+
+        Attributes: 
+            u: 1d numpy array
+                data points 1st coordinate
+            v: 1d numpy array
+                data points 2nd coordinate
+            w: 1d numpy array
+                data points 3rd coordinate
+            r: 1d numpy array
+                data values
+            method : {‘linear’, ‘nearest’}, optional
+    """
+    def __init__(self, u, v, w, r, method='linear'):
+        self.uvw = np.array([u,v,w]).T
+        self.r = r
+        self.method = method
+
+    def __call__(self, theta, phi, z, grid=False):
+        """ Interpolate data
+
+            theta, phi, z can be floats or arrays.
+
+            If grid is set to False, the interpolation will be evaluated at 
+            the coordinates (theta_i, phi_i, z_i), where theta=(theta_1,...,theta_N), 
+            phi=(phi_1,...,phi_N) and z=(z_,...,z_K). Note that in this case, theta, phi, 
+            z must all have the same length.
+
+            If grid is set to True, the interpolation will be evaluated at 
+            all combinations (theta_i, theta_j, z_k), where theta=(theta_1,...,theta_N), 
+            phi=(phi_1,...,phi_M) and z=(z_1,...,z_K). Note that in this case, the lengths 
+            of theta, phi, z do not have to be the same.
+
+            Args: 
+                theta: float or array
+                   1st coordinate of the points where the interpolation is to be evaluated
+                phi: float or array
+                   2nd coordinate of the points where the interpolation is to be evaluated
+                z: float or array
+                   3rd coordinate of the points where the interpolation is to be evaluated
+                grid: bool
+                   Specify how to combine elements of theta and phi.
+
+            Returns:
+                ri: Interpolated values
+        """        
+        if grid: theta, phi, z, M, N, K = self._meshgrid(theta, phi, z)
+
+        pts = np.array([theta,phi,z]).T
+        ri = griddata(self.uvw, self.r, pts, method=self.method)
+
+        if grid: ri = np.reshape(ri, newshape=(M,N,K))
+
+        return ri
+
+    def _meshgrid(self, theta, phi, z, grid=False):
+        """ Create grid
+
+            Args: 
+                theta: 1d numpy array
+                   1st coordinate of the points where the interpolation is to be evaluated
+                phi: 1d numpy array
+                   2nd coordinate of the points where the interpolation is to be evaluated
+                z: float or array
+                   3rd coordinate of the points where the interpolation is to be evaluated
+
+            Returns:
+                theta, phi, z: 3d numpy array
+                    Grid coordinates
+                M, N, K: int
+                    Number of grid values
+        """        
+        M = 1
+        N = 1
+        K = 1
+        if np.ndim(theta) == 1: M = len(theta)
+        if np.ndim(phi) == 1: N = len(phi)
+        if np.ndim(z) == 1: K = len(z)
+        theta, phi, z = np.meshgrid(theta, phi, z)
+        theta = theta.flatten()
+        phi = phi.flatten()
+        z = z.flatten()        
+        return theta,phi,z,M,N,K
+
 
 class Interpolator3D():
     """ Class for interpolating 3D (lat,lon,depth) geospatial data.
 
+        For irregular grids, the data values must be passed as a 
+        1d array and all three arrays (values, lats, lons, depths) must have 
+        the same length.
+
         For regular grids, the data values must be passed as a 
         3d array with shape (M,N,K) where M,N,K are the lengths 
         of the latitude, longitude, and depth arrays, respectively.
-
-        The current implementation does not handle irregular grids, 
-        although an extension to irregular grids (following the same 
-        methodology as in the two-dimensional case) should be 
-        straightforward. 
 
         Attributes: 
             values: 3d numpy array
@@ -408,37 +474,66 @@ class Interpolator3D():
                 Longitude values
             depths: 1d numpy array
                 Depth values
-            latlon_ref: LatLon
+            origin: tuple(float,float)
                 Reference location (origo of XY coordinate system).
             method : {‘linear’, ‘nearest’}, optional
                 Interpolation method. Default is linear
+            method_irreg : {‘linear’, ‘nearest’, ‘regularize’}, optional
+                Interpolation method used for irregular grids.
+                Note 'nearest' is usually significantly faster than 'linear''.
+                If the 'regularize' is selected, the data is first mapped onto 
+                a regular grid by means of a linear interpolation (for points outside 
+                the area covered by the data, a nearest-point interpolation is used).
+                The bin size of the regular grid is specified via the reg_bin argument.
+            reg_bin: tuple(float,float,float)
+                Bin size (deg,deg,meters) of regular grid onto which irregular data is mapped. 
+                Only relevant if method_irreg is set to 'regularize'
     """
-    def __init__(self, values, lats, lons, depths, origin=None, method='linear'):
-        
-        # compute coordinates of origin, if not provided
-        if origin is None:
-            lat_ref = (np.min(lats) + np.max(lats)) / 2
-            lon_ref = (np.min(lons) + np.max(lons)) / 2
-            origin = LatLon(lat_ref, lon_ref)
+    def __init__(self, values, lats, lons, depths, origin=None, method='linear', 
+        method_irreg='regularize', reg_bin=(0.01,0.01,10)):
 
+        # compute coordinates of origin, if not provided
+        if origin is None: origin = center_point(lats, lons)
         self.origin = origin
 
         # check if bathymetry data are on a regular or irregular grid
-        assert np.ndim(values) == 3, 'values must be a 3d array'
+        reggrid = (np.ndim(values) == 3)
 
         # convert to radians
         lats_rad, lons_rad = torad(lats, lons)
 
         # necessary to resolve a mismatch between scipy and underlying Fortran code
         # https://github.com/scipy/scipy/issues/6556
-        if np.min(lons_rad) < 0:
-            self._lon_corr = np.pi
-        else:
-            self._lon_corr = 0
+        if np.min(lons_rad) < 0: self._lon_corr = np.pi
+        else: self._lon_corr = 0
+        lons_rad += self._lon_corr
 
         # initialize lat-lon interpolator
-        lons_rad += self._lon_corr
-        self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values, method=method, bounds_error=False, fill_value=None)
+        if reggrid:
+            self.interp_ll = RegularGridInterpolator((lats_rad, lons_rad, depths), values, method=method, bounds_error=False, fill_value=None)
+        else:
+            if method_irreg == 'regularize':
+
+                # interpolators on irregular grid
+                gd = GridData3D(u=lats_rad, v=lons_rad, w=depths, r=values, method='linear') 
+                gd_near = GridData3D(u=lats_rad, v=lons_rad, w=depths, r=values, method='nearest')
+
+                # regular grid that data will be mapped to
+                lats_reg, lons_reg, depths_reg = self._create_grid(lats, lons, depths, reg_bin)
+    
+                # map to regular grid
+                lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
+                lons_reg_rad += self._lon_corr
+                vi = gd(theta=lats_reg_rad, phi=lons_reg_rad, z=depths_reg, grid=True)
+                vi_near = gd_near(theta=lats_reg_rad, phi=lons_reg_rad, z=depths_reg, grid=True)
+                indices_nan = np.where(np.isnan(vi))
+                vi[indices_nan] = vi_near[indices_nan] 
+
+                # interpolator on regular grid
+                self.interp_ll = RegularGridInterpolator((lats_reg_rad, lons_reg_rad, depths_reg), vi, method=method, bounds_error=False, fill_value=None)
+
+            else:
+                self.interp_ll = GridData3D(u=lats_rad, v=lons_rad, w=depths, r=values, method=method_irreg)
 
         # store grids
         self.lat_nodes = lats
@@ -446,7 +541,10 @@ class Interpolator3D():
         self.depth_nodes = depths
         self.values = values
 
-    def eval_xy(self, x, y, z, grid=False):
+    def get_nodes(self):
+        return (self.values, self.lat_nodes, self.lon_nodes, self.depth_nodes)
+
+    def interp_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).
 
             x,y,z can be floats or arrays.
@@ -482,14 +580,14 @@ class Interpolator3D():
         if np.ndim(z) == 1: 
             K = len(z)
 
-        lat, lon, z = XYtoLL(x=x, y=y, lat_ref=self.origin.latitude, lon_ref=self.origin.longitude, grid=grid, z=z)
+        lat, lon, z = XYtoLL(x=x, y=y, lat_ref=self.origin[0], lon_ref=self.origin[1], grid=grid, z=z)
 
         if grid:
             lat = lat.flatten()
             lon = lon.flatten()
             z = z.flatten()
 
-        vi = self.eval_ll(lat=lat, lon=lon, z=z, squeeze=False)
+        vi = self.interp(lat=lat, lon=lon, z=z, squeeze=False)
 
         if grid:
             vi = np.reshape(vi, newshape=(M,N,K))
@@ -504,7 +602,7 @@ class Interpolator3D():
 
         return vi
 
-    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+    def interp(self, lat, lon, z, grid=False, squeeze=True):
         """ Interpolate using spherical coordinate system (lat-lon).
 
             lat,lot,z can be floats or arrays.
@@ -568,14 +666,43 @@ class Interpolator3D():
         return vi
 
 
+    def _create_grid(self, lats, lons, depths, bin_size):
+        """ Created regular lat-lon-depth grid with uniform spacing that covers 
+            a set of (lat,lon,depth) coordinates.
+
+            Args:
+                lats: numpy.array
+                    Latitude values in degrees
+                lons: numpy.array
+                    Longitude values in degrees
+                depths: numpy.array
+                    Depth valus in meters
+                bin_size: tuple(float,float,float)
+                    Bin size
+
+            Returns:
+                : numpy.array, numpy.array, numpy.array
+                    Lat, lon, and depth values of the regular grid
+        """
+        res = []
+        for v,dv in zip([lats,lons,depths], bin_size):
+            v_min = np.min(v) - dv
+            v_max = np.max(v) + dv
+            num = max(3, int((v_max - v_min) / dv) + 1)
+            v_reg = np.linspace(v_min, v_max, num=num)
+            res.append(v_reg)
+
+        return tuple(res)
+
+
 class Uniform2D():
 
-    def __init__(self, value):
-        self.value = value
-    
-    def eval_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
+    def __init__(self, values, **other):
+        self.value = values
 
-        z = self.eval_ll(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
+    def interp_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
+
+        z = self.interp(lat=y, lon=x, grid=grid, squeeze=False, lat_deriv_order=y_deriv_order, lon_deriv_order=x_deriv_order)
 
         if np.ndim(z) == 3:
             z = np.swapaxes(z, 0, 1)
@@ -584,7 +711,7 @@ class Uniform2D():
 
         return z
 
-    def eval_ll(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
+    def interp(self, lat, lon, grid=False, squeeze=True, lat_deriv_order=0, lon_deriv_order=0):
 
         if np.ndim(lat) == 0: lat = np.array([lat])
         if np.ndim(lon) == 0: lon = np.array([lon])
@@ -612,12 +739,12 @@ class Uniform2D():
 
 class Uniform3D():
 
-    def __init__(self, value):
-        self.value = value
-    
-    def eval_xy(self, x, y, z, grid=False):
+    def __init__(self, values):
+        self.value = values
 
-        v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+    def interp_xy(self, x, y, z, grid=False):
+
+        v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
 
         if np.ndim(v) == 3:
             v = np.swapaxes(v, 0, 1)
@@ -626,7 +753,7 @@ class Uniform3D():
 
         return v
 
-    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+    def interp(self, lat, lon, z, grid=False, squeeze=True):
 
         if np.ndim(lat) == 0: lat = np.array([lat])
         if np.ndim(lon) == 0: lon = np.array([lon])
@@ -666,13 +793,16 @@ class DepthInterpolator3D():
             values = values[0,0,:]
 
         # initialize 1d interpolator
-        self.interp = interp1d(x=depths, y=values, kind=method, fill_value="extrapolate")
+        self.interp1d = interp1d(x=depths, y=values, kind=method, fill_value="extrapolate")
 
         # store interpolation data
         self.depth_nodes = depths
         self.values = values
 
-    def eval_xy(self, x, y, z, grid=False):
+    def get_nodes(self):
+        return (self.values, self.depth_nodes)
+
+    def interp_xy(self, x, y, z, grid=False):
         """ Interpolate using planar coordinate system (xy).
 
             x,y,z can be floats or arrays.
@@ -700,7 +830,8 @@ class DepthInterpolator3D():
             Returns:
                 vi: Interpolated values
         """
-        v = self.eval_ll(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+        #v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+        v = self.interp1d(lat=y, lon=x, z=z, grid=grid, squeeze=False)
 
         if np.ndim(v) == 3:
             v = np.swapaxes(v, 0, 1)
@@ -708,7 +839,7 @@ class DepthInterpolator3D():
         v = np.squeeze(v)
         return v
 
-    def eval_ll(self, lat, lon, z, grid=False, squeeze=True):
+    def interp(self, lat, lon, z, grid=False, squeeze=True):
         """ Interpolate using spherical coordinate system (lat-lon).
 
             lat,lot,z can be floats or arrays.
@@ -748,7 +879,8 @@ class DepthInterpolator3D():
 
             s = len(lat)
 
-        v = self.interp(z)
+        #v = self.interp(z)
+        v = self.interp1d(z)
 
         if grid:
             v = np.ones(s) * v[np.newaxis, np.newaxis, :]
@@ -757,3 +889,4 @@ class DepthInterpolator3D():
             v = np.squeeze(v)
 
         return v
+

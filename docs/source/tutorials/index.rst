@@ -1,10 +1,17 @@
-Kadlu Tutorials
-===============
+.. _tutorials:
+
+Tutorials
+=========
+
+The tutorials on this page demonstrate the main functionalities of the Kadlu package.
+Some previous experience with programming in Python is assumed. Familiarity with the Numpy 
+package would also be an advantage. 
+
 
 .. toctree::
    
-   Extract bathymetry data from a matlab file<read_bathy_tutorial/index>
-   Polar and planar coordinates<coordinates_tutorial/index>
-   Interpolate bathymetry data<interp_bathy_tutorial/index>
-   How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)<CHS_tutorial/index>
-   Compute transmission loss with isovelocity<calc_tl_tutorial/index>
+   The Ocean Module<ocean_module_tutorial/index>
+   Fetch and Load<fetch_load_tutorial/index>
+   Interpolate<interp_tutorial/index>
+   Plot and Export<plot_export_tutorial/index>
+

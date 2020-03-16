@@ -20,13 +20,13 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = 'kadlu'
-copyright = '2019 MERIDIAN'
-author = 'Casey Hillard, Oliver Kirsebom'
+copyright = '2020 MERIDIAN'
+author = 'Matthew Smith, Oliver Kirsebom'
 
 # The short X.Y version
-version = '0.0'
+version = '1.0'
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = '1.0.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -152,7 +152,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'kadlu.tex', 'kadlu Documentation',
-     'Casey Hillard, Oliver Kirsebom', 'manual'),
+     'Matthew Smith, Oliver Kirsebom', 'manual'),
 ]
 
 

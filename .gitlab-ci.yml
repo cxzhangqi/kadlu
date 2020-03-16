@@ -1,4 +1,4 @@
-image: meridiancfi/kadlu:v0.0.1
+image: meridiancfi/kadlu:v1.0.0
 
 stages:
 - build

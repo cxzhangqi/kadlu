@@ -1,95 +1,109 @@
-# Welcome to Kadlu, a Python tookit for modelling underwater noise
+# Welcome to Kadlu, a Python package for modelling ocean ambient noise
 
-Kadlu is under development, but will eventually 
-contain a bunch of tools useful for modeling the underwater ocean 
-soundscapes, for example:
+Kadlu was developed for the purpose of modelling noise due to waves and rain in shallow coastal 
+waters, but contains tools useful for many other underwater sound modelling tasks.
 
- * Automated retrieval of relevant environmental data, including static 
-   data such as bathymetry and seabed properties, and dynamic data such 
-   as water temperature, salinity, and wave height.
+Kadlu is written in Python and utilizes a number of powerful software packages 
+including [NumPy](https://numpy.org/), [HDF5](https://www.hdfgroup.org/), 
+[NetCDF-4](https://www.unidata.ucar.edu/software/netcdf/), 
+[SQLite](https://www.sqlite.org/index.html), and [GDAL](https://www.gdal.org/).
+It is licensed under the [GNU GPLv3 license](https://www.gnu.org/licenses/) 
+and hence freely available for anyone to use and modify.
+The project is hosted on GitLab at 
+[https://gitlab.meridian.cs.dal.ca/public_projects/kadlu](https://gitlab.meridian.cs.dal.ca/public_projects/kadlu). 
+Kadlu was developed by the [MERIDIAN](http://meridian.cs.dal.ca/) Data Analytics Team at the 
+[Institute for Big Data Analytics](https://bigdata.cs.dal.ca/) at Dalhousie University with the 
+support and assistance of David Barclay and Calder Robinson, both from the Department of Oceanography 
+at Dalhousie University.
 
- * Derivation of underwater acoustic properties (such as sound speed) from 
-   the environmental data and conversion into format suitable for transmission 
-   loss calculations.
+You can install the latest version of Kadlu from the Python Package Index (PyPI) repository using Anaconda. 
+For more information, please consult [Kadlu's Documentation Page](https://docs.meridian.cs.dal.ca/kadlu/).
 
- * Simulation of underwater noise produced by environmental forcings 
-   such as waves and rain.
+The first version of Kadlu, released in March 2020, provides functionalities for fetching environmental data 
+(bathymetry, water temperature and salinity, wave height, wind speed, etc.) from online sources and loading into 
+numpy arrays, interpolation on any coordinate array or grid, and plotting. Functionalities for sound propagation 
+modelling will be included in the next release, anticipated for May 2020.
 
-And potentially more ...
+The intended users of Kadlu are researchers and students in underwater acoustics working with ambient noise modeling. 
+While Kadlu comes with complete documentation and comprehensive step-by-step tutorials, some familiarity with Python and 
+especially the NumPy package would be beneficial. A basic understanding of 
+the physical principles of underwater sound propagation would also be an advantage.
 
-## Environmental noise model
 
-Currently, we are working on translating [this transmission-loss code](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/tree/master/Nx2DSSFPE) 
-from MATLAB to Python. As part of this work, we will be restructuring 
-and documenting the code to make it more user-friendly and more easily 
-adaptable to new scenarios.
+## Installation
 
-## Dependencies
+Kadlu is most easily installed using the Anaconda package manager.
+Anaconda is freely available from [docs.anaconda.com/anaconda/install](https://docs.anaconda.com/anaconda/install/). 
+Make sure you get the Python 3.7 version and make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
 
-Kadlu uses a number of standard Python libraries such as 
-numpy, scipy, and matplotlib, plus a few C libraries:
- 
-  * [HDF5 (Hierarchical Data Format)](https://www.hdfgroup.org/) 
-  * [NetCDF-4 (Network Common Data Form)](https://www.unidata.ucar.edu/software/netcdf/)
-  * [GDAL (Geospatial Data Abstraction Library)](https://www.gdal.org/)
-
-Installation of these libraries is most easily accomplished using Anaconda.
-
-## Installation with Anaconda
- 
- 1. [Download and install Anaconda](https://docs.anaconda.com/anaconda/install/).<br/>
-    Make sure you get the Python 3.x version.<br/>
-    Note that the Download button takes you to the macOS installer regardless of your OS, so make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
- 
- 2. Clone the Kadlu repository
-    ```terminal
-      git clone https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu.git
-      cd kadlu
-    ```
-    Note: Windows users may find it easier to download the source code using Gitlab's ''Download zip'' option.
-
- 3. Create and activate Anaconda environment (this installs all dependencies)
-    ```terminal
-      conda env create -f environment.yml
-      conda activate kadlu_env
-    ```
- 
- 4. Install Kadlu
-    ```terminal
-      python setup.py sdist
-      pip install dist/kadlu-0.0.1.tar.gz
+ 1. Clone the Kadlu repository:
+    ```bash
+    git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
+    cd kadlu
     ```
 
- 5. Generate an API token
-
-    Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key, using the instructions here for [Windows](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows), [Mac](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+macOS) or [Linux](https://cds.climate.copernicus.eu/api-how-to).
- 
- 6. Check that everything is working by running pytest
-    ```terminal
-      pytest
+ 2. Create and activate Anaconda environment:
+    ```bash
+    conda env create -f environment.yml
+    conda activate kadlu_env
     ```
 
-## Installation without Anaconda
+ 3. Install the PyPI package manager and Jupyter Notebook:
+    ```bash
+    conda install pip
+    conda install jupyter
+    ```
 
-If you prefer to avoid using Anaconda, try to run this [bash script](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/blob/master/install_dep.sh). It will install all the required 
-libraries using pip and apt-get. It should work out of the box on newer Ubuntu systems. Don't forget to [generate an API token](https://cds.climate.copernicus.eu/api-how-to) to gain access to ECMWF data after installing.
+ 4. Configure Kadlu (see below)
 
-## API token for ECMWF data source
+ 5. Install Kadlu:
+    ```bash
+    python setup.py sdist
+    pip install dist/kadlu-1.0.0.tar.gz
+    ```
 
-Kadlu can fetch environmental data from a variety of remote resources, including NOAA, ECCC and ECMWF. In order to access data from the ECMWF, it is necessary to first obtain and configure an API key, using the instructions here for [Windows](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+Windows), [Mac](https://confluence.ecmwf.int/display/CKB/How+to+install+and+use+CDS+API+on+macOS) or [Linux](https://cds.climate.copernicus.eu/api-how-to). 
-Note that the url for the ECMWF api is [https://cds.climate.copernicus.eu/api/v2](https://cds.climate.copernicus.eu/api/v2).
 
-## Notebook tutorials
+## Configuration
 
- 1. [Extract bathymetry data from a matlab file](docs/source/tutorials/read_bathy_tutorial/read_bathy_tutorial.ipynb)
+Kadlu allows configuration for how data is accessed and stored on your machine. These preferences are defined in kadlu/config.ini
 
- 2. [Polar and planar coordinates](docs/source/tutorials/coordinates_tutorial/coordinates_tutorial.ipynb)
+ 1. Data storage location
 
- 3. [Interpolate bathymetry data](docs/source/tutorials/interp_bathy_tutorial/interp_bathy_tutorial.ipynb)
+    By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code::
+    ```python
+    from kadlu import data_util
+    data_util().storage_cfg(setdir='/specify/desired/path/here/')
+    ```
 
- 4. [How to work with bathymetry data from the Canadian Hydrographic Service (GeoTIFF)](docs/source/tutorials/CHS_tutorial/CHS_tutorial.ipynb)
- 
- 5. [Calculate transmission loss](https://gitlab.meridian.cs.dal.ca/data_analytics_dal/packages/kadlu/blob/master/docs/source/tutorials/calc_tl_tutorial/calc_tl_tutorial.ipynb)
+ 2. ECMWF - CDS API Token
+
+    Kadlu uses ECMWF's Era5 dataset as one of the optional data sources for wave height/direction/period and wind speed data.
+    In order to access Era5 reanalysis data from the ECMWF, it is necessary to first obtain an API token.
+    This can be obtained by registering an account at [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token and URL will be displayed on the aforementioned webpage under heading 'Install the CDS API key'.
+    Configure Kadlu to use the token by executing:
+    ```python
+    from kadlu import data_util
+    data_util().era5_cfg(key="TOKEN_HERE", url="URL_HERE")
+    ```
+
+
+## Check your installation
+
+Check that everything is working by running pytest:
+```bash
+pytest kadlu/ --doctest-modules
+```
+
+
+## Jupyter notebook tutorials
+
+ 1. [The Ocean Module](docs/source/tutorials/ocean_module_tutorial/ocean_module_tutorial.ipynb)
+
+ 2. [Fetch and Load Environmental Data](docs/source/tutorials/fetch_load_tutorial/fetch_load_tutorial.ipynb)
+
+ 3. [Interpolate Multi-Dimensional Data](docs/source/tutorials/interp_tutorial/interp_tutorial.ipynb)
+
+ 4. [Plot and Export Data](docs/source/tutorials/plot_export_tutorial/plot_export_tutorial.ipynb)
 
 
 ## Useful resources

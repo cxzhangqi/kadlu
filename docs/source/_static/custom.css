@@ -1,0 +1,27 @@
+div#notebook{
+	overflow: scroll !important;
+}
+
+div#notebook p{
+
+	text-align: justify;
+	font-family: 'Old Standard TT', serif; 	
+
+}
+
+/* Code snippets */
+div.highlight{
+	background-color: #3892a87a;
+}
+
+
+/* ketos logo */
+
+img#kadlu-logo{
+	border-radius: 0%;
+	background-color: white;
+	height: 50%;
+	width: 50%;
+	
+
+}

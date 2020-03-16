@@ -1,12 +1,13 @@
 name: kadlu_env
 channels:
-  - defaults
+  #  - defaults
   - conda-forge
 dependencies:
   - make
   - pip
   - pytest
   - numpy
+  - pandas
   - scipy
   - matplotlib
   - cython
@@ -16,7 +17,9 @@ dependencies:
   - h5py
   - GDAL
   - pygrib
-  - basemap
   - cdsapi
   - tqdm
   - gsw
+  - cartopy
+  - imageio
+

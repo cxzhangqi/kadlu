@@ -7,7 +7,7 @@ from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 
 # gulf st lawrence
 kwargs = dict(
-        south=40, west=-70, north=59, east=-55,
+        south=40, west=-65, north=41, east=-64,
         start=datetime(2018, 2, 1), end=datetime(2018, 2, 3)
     )
 

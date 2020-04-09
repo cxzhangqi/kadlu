@@ -62,7 +62,7 @@ def DLDL_over_DXDY(lat, lat_deriv_order, lon_deriv_order):
     return ratio
 
 
-def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
+def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None, squeeze=True):
     """ Transform lat-lon coordinates to xy position coordinates.
 
         By default, the origin of the xy coordinate system is 
@@ -84,6 +84,8 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
             rot: float
                 Rotation angle in degrees for the xy coordinate system 
                 (clockwise rotation).
+            squeeze: bool
+                If output array has length 1, return float instead of array
 
         Returns:
             x: float or numpy array
@@ -100,11 +102,10 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
             lat, lon, z = np.meshgrid(lat, lon, z)
 
     else:
-        lat = np.array([lat])
-        lon = np.array([lon])
-        if np.ndim(lat) == 2:
-            lat = np.squeeze(lat)
-            lon = np.squeeze(lon)
+        if np.ndim(lat) == 0: lat = np.array([lat])
+        if np.ndim(lon) == 0: lon = np.array([lon])
+        if isinstance(lat, list): lat = np.array(lat)
+        if isinstance(lon, list): lon = np.array(lon)
 
         assert lat.shape[0] == lon.shape[0], 'lat and lon must have same length'
 
@@ -124,7 +125,7 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
         x = xy[:,0]
         y = xy[:,1]
 
-    if len(x) == 1:
+    if len(x) == 1 and squeeze:
         x = float(x)
         y = float(y)
 
@@ -133,7 +134,7 @@ def LLtoXY(lat, lon, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     else:
         return x, y, z
 
-def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
+def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None, squeeze=True):
     """ Transform xy position coordinates to lat-lon coordinates.
 
         By default, the origin of the xy coordinate system is 
@@ -155,6 +156,8 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
             rot: float
                 Rotation angle in degrees for the xy coordinate system 
                 (clockwise rotation).
+            squeeze: bool
+                If output array has length 1, return float instead of array
 
         Returns:
             lat: float or numpy array
@@ -171,11 +174,10 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
             x, y, z = np.meshgrid(x, y, z)
 
     else:
-        x = np.array([x])
-        y = np.array([y])
-        if np.ndim(x) == 2:
-            x = np.squeeze(x)
-            y = np.squeeze(y)
+        if np.ndim(x) == 0: x = np.array([x])
+        if np.ndim(y) == 0: y = np.array([y])
+        if isinstance(x, list): x = np.array(x)
+        if isinstance(y, list): y = np.array(y)
 
         assert x.shape[0] == y.shape[0], 'x and y must have same length'
 
@@ -195,10 +197,10 @@ def XYtoLL(x, y, lat_ref=0, lon_ref=0, rot=0, grid=False, z=None):
     lon = lon_ref + x / deg2rad / R2
     lat = lat_ref + y / deg2rad / R
 
-    if np.ndim(lat) == 1 and len(lat) == 1:
+    if np.ndim(lat) == 1 and len(lat) == 1 and squeeze:
         lat = float(lat)
 
-    if np.ndim(lon) == 1 and len(lon) == 1:
+    if np.ndim(lon) == 1 and len(lon) == 1 and squeeze:
         lon = float(lon)
 
     if z is None:

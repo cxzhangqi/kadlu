@@ -22,7 +22,8 @@ from kadlu.geospatial.interpolation             import      \
 from kadlu.geospatial.data_sources.data_util    import      \
         reshape_2D,                                         \
         reshape_3D,                                         \
-        dt_2_epoch
+        dt_2_epoch,                                         \
+        fmt_coords
 from kadlu.geospatial.data_sources.source_map   import      \
         default_val,                                        \
         load_map
@@ -31,7 +32,7 @@ from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
 from kadlu.geospatial.data_sources.wwiii        import Wwiii
 from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
-
+from kadlu.utils import center_point
 
 def worker(interpfcn, reshapefcn, cols, var, q):
     """ compute interpolation in parallel worker process
@@ -111,6 +112,16 @@ class Ocean():
                 time range for data load query (datetime)
                 if multiple times exist within range, they will be averaged
                 before computing interpolation
+
+        attrs:
+            interps: dict
+                Dictionary of data interpolators
+            origin: tuple(float, float)
+                Latitude and longitude coordinates of the centre point of the 
+                geographic bounding box. This point serves as the origin of the 
+                planar x-y coordinate system.
+            boundaries: dict
+                Bounding box for the ocean volume in space and time
     """
 
     def __init__(self,
@@ -121,12 +132,17 @@ class Ocean():
         if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
             kwargs['start'] = kwargs['time']
             del kwargs['time']
-        if not 'end' in kwargs.keys(): 
+        if not 'end' in kwargs.keys() and 'start' in kwargs.keys(): 
             kwargs['end'] = kwargs['start'] + timedelta(hours=3)
 
         for kw in [k for k in ('south', 'west', 'north', 'east', 'top', 'bottom', 
                 'start', 'end') if k not in kwargs.keys()]:
             kwargs[kw] = default_val[kw]
+
+        self.origin = center_point(lat=[kwargs['south'],kwargs['north']], 
+                                   lon=[kwargs['west'],kwargs['east']]) 
+        self.boundaries = {key: kwargs[key] for key in ('south', 'west', 'north', 
+            'east', 'top', 'bottom', 'start', 'end')}
 
         data = {}
         callbacks = []
@@ -174,7 +190,8 @@ class Ocean():
         pipe = zip(callbacks, vartypes)
         is_3D = [v in ('temp', 'salinity') for v in vartypes]
         is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
-        columns = (fcn(v=v, data=data, **kwargs) for fcn, v in pipe)
+        #columns = (fcn(v=v, data=data, **kwargs) for fcn, v in pipe)
+        columns = [fcn(v=v, data=data, **kwargs) for fcn, v in pipe]
         intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
         reshapers = (reshape_3D if v else reshape_2D for v in is_3D)
         # map interpolations to dictionary in parallel
@@ -184,6 +201,11 @@ class Ocean():
             lambda i,r,c,v,q=q: Process(target=worker, args=(i,r,c,v,q)),
             interpolators, reshapers, columns, vartypes
         )
+
+        # assert that no empty arrays were returned by load function
+        for col, var in zip(columns, vartypes):
+            if isinstance(col[0], (int, float)): continue
+            assert len(col[0]) > 0, f'no data found for {var} in region {fmt_coords(kwargs)}'
 
         # compute interpolations in parallel and store in dictionary
         for i in interpolations: i.start()
@@ -204,6 +226,9 @@ class Ocean():
             self.interps[obj[0]] = obj[1]
         """
 
+        # enforce common origin for interpolators
+        for _,i in self.interps.items(): i.origin = self.origin
+
         q.close()
         return
 
@@ -213,15 +238,15 @@ class Ocean():
     def bathy_xy(self, x, y, grid=False):
         return self.interps['bathy'].interp_xy(x, y, grid)
 
-    def bathy_deriv(self, lat, lon, axis='lon', grid=False):
+    def bathy_deriv(self, lat, lon, axis, grid=False):
         assert axis in ('lat', 'lon'), 'axis must be \'lat\' or \'lon\''
         return self.interps['bathy'].interp(lat, lon, grid,
               lat_deriv_order=(axis=='lat'), lon_deriv_order=(axis=='lon'))
 
-    def bathy_deriv_xy(self, x, y, grid=False):
+    def bathy_deriv_xy(self, x, y, axis, grid=False):
         assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
         return self.interps['bathy'].interp_xy(x, y, grid,
-                lat_deriv_order=(axis=='y'), lon_deriv_order=(axis=='x'))
+                x_deriv_order=(axis=='x'), y_deriv_order=(axis=='y'))
 
     def temp(self, lat, lon, depth, grid=False):
         return self.interps['temp'].interp(lat, lon, depth, grid)

@@ -7,12 +7,13 @@
 
 import os
 import json
+import logging
 import requests
 import warnings
+from PIL import Image
 from datetime import datetime
 
 import numpy as np
-from osgeo import gdal
 
 import kadlu.geospatial.data_sources.fetch_handler
 from kadlu.geospatial.data_sources.data_util        import          \
@@ -20,6 +21,7 @@ from kadlu.geospatial.data_sources.data_util        import          \
         storage_cfg,                                                \
         insert_hash,                                                \
         serialized,                                                 \
+        fmt_coords,                                                 \
         chs_table,                                                  \
         str_def
 
@@ -81,11 +83,10 @@ def fetch_chs(south, north, west, east, band_id=1):
         fpath = f"{storage_cfg()}{fname}"
         filepaths.append(fpath)
         if os.path.isfile(fpath): 
-            #print(f'CHS {fname} bathymetry: file found, skipping download')
-            pass
+            logging.info(f'CHS {fname} bathymetry: file found, skipping download')
         else:
-            print(f"CHS {fname} bathymetry: downloading {imgnum}/{len(imgs)} "
-                   "from CHS NONNA-100...")
+            logging.info(f"CHS bathymetry: downloading {imgnum}/{len(imgs)} "
+                          "from CHS NONNA-100...")
             assert(len(img['rasterIds']) == 1)
             url3 = f"{source}ImageServer/file?id={img['id'][0:]}&rasterId={img['rasterIds'][0]}"
             tiff = requests.get(url3)
@@ -93,15 +94,20 @@ def fetch_chs(south, north, west, east, band_id=1):
             with open(fpath, "wb") as f: f.write(tiff.content)
             imgnum += 1
 
-    print(f'CHS bathymetry: processing {len(filepaths)} '
-          f'file{"s" if len(filepaths)!=1 else ""}')
+    logging.info(f'CHS bathymetry: processing {len(filepaths)} '
+                 f'file{"s" if len(filepaths)!=1 else ""}')
 
     # read downloaded files and process them for DB insertion
     for filepath in filepaths:
-        tiff_data = gdal.Open(filepath)
-        band = tiff_data.GetRasterBand(band_id)
-        values = tiff_data.ReadAsArray()
-        bathy = np.ma.masked_invalid(values)
+        # open image and interpret pixels as elevation
+        im = Image.open(filepath)
+        nan = float(im.tag[42113][0])
+        val = np.ndarray((im.size[0], im.size[1]))
+        for yi in range(im.size[1]):
+            val[:,yi] = np.array(list(map(im.getpixel, zip(
+                    [yi for xi in range(im.size[0])], 
+                    range(im.size[1])))))
+        mask = np.flip(val == nan, axis=0)
 
         # generate latlon arrays
         file_south, file_west = parse_sw_corner(filepath)
@@ -112,18 +118,15 @@ def fetch_chs(south, north, west, east, band_id=1):
             dlon = 0.002
         elif file_south >= 80:
             dlon = 0.004
-        file_ymax = tiff_data.RasterYSize*dlat+file_south
-        file_xmax = tiff_data.RasterXSize*dlon+file_west
-        file_lat = np.linspace(start=file_south, stop=file_ymax, num=tiff_data.RasterYSize)
-        file_lon = np.linspace(start=file_west,  stop=file_xmax, num=tiff_data.RasterXSize)
+        file_xmax = im.size[0] * dlon + file_west
+        file_ymax = im.size[1] * dlat + file_south
+        file_lon = np.linspace(start=file_west,  stop=file_xmax, num=im.size[0])
+        file_lat = np.linspace(start=file_south, stop=file_ymax, num=im.size[1])
 
         # select non-masked entries, remove missing, build grid
-        z1 = np.flip(bathy, axis=0)
+        z1 = np.flip(val, axis=0)
         x1, y1 = np.meshgrid(file_lon, file_lat)
-        ix = z1[~z1.mask] != band.GetNoDataValue()
-        x2 = x1[~z1.mask][ix]
-        y2 = y1[~z1.mask][ix]
-        z2 = np.abs(z1[~z1.mask][ix].data)
+        x2, y2, z2 = x1[~mask], y1[~mask], np.abs(z1[~mask])
         source = ['chs' for z in z2]
         grid = list(map(tuple, np.vstack((z2, y2, x2, source)).T))
 
@@ -133,9 +136,10 @@ def fetch_chs(south, north, west, east, band_id=1):
         n2 = db.execute(f"SELECT COUNT(*) FROM {chs_table}").fetchall()[0][0]
         db.execute("COMMIT")
         conn.commit()
-        print(f"CHS {filepath.split('/')[-1]} bathymetry: "
+        logging.info(f"CHS {filepath.split('/')[-1]} bathymetry in region "
+              f"{fmt_coords(dict(south=south,west=west,north=north,east=east))}. "
               f"processed and inserted {n2-n1} rows. "
-              f"{len(z1[~z1.mask]) - len(grid)} null values removed, "
+              f"{len(z1[~mask]) - len(grid)} null values removed, "
               f"{len(grid) - (n2-n1)} duplicate rows ignored")
 
     return True
@@ -164,7 +168,7 @@ def load_chs(south, north, west, east):
             north=north, east=east, 
             start=datetime.now(), end=datetime.now())
     kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
-            'bathy', 'chs', parallel=1, **qryargs)
+            'bathy', 'chs', parallel=False, **qryargs)
 
     # load the data
     db.execute(' AND '.join([f"SELECT * FROM {chs_table} WHERE lat >= ?",
@@ -173,9 +177,13 @@ def load_chs(south, north, west, east):
                                                               "lon <= ?"]),
                tuple(map(str, [south, north, west, east])))
     
-    slices = np.array(db.fetchall(), dtype=object).T
-    assert len(slices) == 4, "no data found for query range"
-    bathy, lat, lon, source = slices
+    rowdata = np.array(db.fetchall(), dtype=object).T
+    #assert len(rowdata) == 4, "no data found for query range"
+    if len(rowdata) == 0:
+        logging.warning('CHS bathymetry: no data found, returning empty arrays')
+        return np.array([[],[],[],[]])
+
+    bathy, lat, lon, source = rowdata
     return np.array((bathy, lat, lon)).astype(float)
 
 

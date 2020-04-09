@@ -9,15 +9,16 @@ from os.path import isfile
 
 # gulf st lawrence - small test area
 south =  45 
-north =  48
+north =  46
 west  = -64
-east  = -60
+east  = -63
 top   =  0
-bottom=  0
+bottom=  5000
 start = datetime(2000, 1, 10)
 end   = datetime(2000, 1, 10, 12)
 
 
+"""
 def test_fetch_salinity():
     if not Hycom().fetch_salinity(
             south=south, north=north, 
@@ -35,29 +36,10 @@ def test_fetch_temp():
             top=top, bottom=bottom):
         print("hycom query was already fetched. skipping... ")
     return
+"""
 
 def test_load_salinity():
     val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
-    # commented to improve test speed
-    """
-    assert(len(val) == len(lat) == len(lon) == len(time))
-    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
-    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
-    assert np.all(lat >= south)
-    assert np.all(lat <= north)
-    assert np.all(lon >= west)
-    assert np.all(lon <= east)
-    """
-
-def test_load_nearesttime():
-    # to load nearest time, the 'time' keyword arg is supplied 
-    # instead of 'start' and 'end'
-
-    # feature not supported yet, passing test for now
-    pass 
-    return
-
-    val, lat, lon, time, depth = Hycom().load_salinity(south=south, north=north, west=west, east=east, time=start,top=top, bottom=bottom)
     # commented to improve test speed
     """
     assert(len(val) == len(lat) == len(lon) == len(time))
@@ -104,8 +86,8 @@ def test_fetch_load_over_antimeridian():
 # hycom connection seems to be pretty slow for some reason... im getting ~2kbps download speeds
 # in the meantime i've commented out the other fetch tests to make integrated testing faster
 
-def test_fetch_temp():
-    Hycom().fetch_temp(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+#def test_fetch_temp():
+#    Hycom().fetch_temp(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_temp():
     val, lat, lon, time, depth = Hycom().load_temp(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
@@ -113,8 +95,8 @@ def test_load_temp():
     assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
 
-def test_fetch_water_u():
-    Hycom().fetch_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+#def test_fetch_water_u():
+#    Hycom().fetch_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_water_u():
     val, lat, lon, time, depth = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
@@ -125,8 +107,8 @@ def test_load_water_u():
     assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
     """
 
-def test_fetch_water_v():
-    Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+#def test_fetch_water_v():
+#    Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
 def test_load_water_v():
     val, lat, lon, time, depth = Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)

@@ -19,7 +19,14 @@ at Dalhousie University.
 You can install the latest version of Kadlu from the Python Package Index (PyPI) repository using Anaconda. 
 For more information, please consult [Kadlu's Documentation Page](https://docs.meridian.cs.dal.ca/kadlu/).
 
-The first version of Kadlu, released in March 2020, provides functionalities for fetching environmental data 
+Kadlu provides functionalities that automate the process of fetching and interpolating 
+environmental data necessary to model ocean ambient noise levels (bathymetry, water temperature 
+and salinity, wave height, wind speed, etc.). It also includes various routines that allow 
+accurate estimates of noise source levels and transmission losses in realistic ocean environments.
+You can find more information about the technical aspects of how sound propagation is modelled in 
+Kadlu in [this note](docs/_static/kadlu_sound_propagation_note.pdf).
+
+The first version of Kadlu, , provides functionalities for fetching environmental data 
 (bathymetry, water temperature and salinity, wave height, wind speed, etc.) from online sources and loading into 
 numpy arrays, interpolation on any coordinate array or grid, and plotting. Functionalities for sound propagation 
 modelling will be included in the next release, anticipated for May 2020.
@@ -69,7 +76,7 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
 
  1. Data storage location
 
-    By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code::
+    By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code:
     ```python
     from kadlu import data_util
     data_util().storage_cfg(setdir='/specify/desired/path/here/')
@@ -104,6 +111,8 @@ pytest kadlu/ --doctest-modules
  3. [Interpolate Multi-Dimensional Data](docs/source/tutorials/interp_tutorial/interp_tutorial.ipynb)
 
  4. [Plot and Export Data](docs/source/tutorials/plot_export_tutorial/plot_export_tutorial.ipynb)
+
+ 5. [Transmission Loss](docs/source/tutorials/transm_loss_tutorial/transm_loss_tutorial.ipynb)
 
 
 ## Useful resources

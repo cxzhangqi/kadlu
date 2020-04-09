@@ -7,6 +7,7 @@ import sys
 import json
 import pickle
 import sqlite3
+import logging
 import warnings
 import configparser
 from os import path
@@ -17,6 +18,10 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager, redirect_stdout, redirect_stderr
 
 import numpy as np
+
+
+LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
+logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
 
 
 # database tables for data fetching and loading
@@ -63,10 +68,10 @@ def storage_cfg(setdir=None):
     try:
         storage_location = cfg['storage']['storage_location']
     except KeyError:                        # missing config.ini file
-        return default_storage('missing kadlu/config.ini.')
+        return default_storage('storage location not configured.')
 
     if storage_location == '':              # null value in config.ini
-        return default_storage('null value in kadlu/config.ini.')
+        return default_storage('null value in config.')
 
     if not path.isdir(storage_location):    # verify the location exists
         return default_storage('storage location does not exist.')
@@ -313,6 +318,17 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
         return default
 
     return np.unique(matching)
+
+
+def fmt_coords(kwargs):
+      return (
+            f"{abs(kwargs['south']):.2f}°{'S' if kwargs['south'] <= 0 else 'N'},"
+            f"{abs(kwargs['west']):.2f}°{'W' if kwargs['west'] <= 0 else 'E'}"
+            f"{','+str(kwargs['top'])+'m' if 'top' in kwargs.keys() else ''}:"
+            f"{abs(kwargs['north']):.2f}°{'S' if kwargs['north'] <= 0 else 'N'},"
+            f"{abs(kwargs['east']):.2f}°{'W' if kwargs['east'] <= 0 else 'E'}"
+            f"{','+str(kwargs['bottom'])+'m' if 'bottom' in kwargs.keys() else ''}"
+        )
 
 
 

@@ -20,7 +20,7 @@
 """
 
 import numpy as np
-from scipy.interpolate import RectSphereBivariateSpline, RegularGridInterpolator, interp1d, interp2d, griddata
+from scipy.interpolate import RectBivariateSpline, RectSphereBivariateSpline, RegularGridInterpolator, interp1d, interp2d, griddata, NearestNDInterpolator
 from kadlu.utils import deg2rad, XYtoLL, LLtoXY, torad, DLDL_over_DXDY, center_point
 
 
@@ -89,6 +89,7 @@ class GridData2D():
         pts = np.array([theta,phi]).T
         ri = griddata(self.uv, self.r, pts, method=self.method)
 
+
         if grid:
             ri = np.reshape(ri, newshape=(N,M))
             ri = np.swapaxes(ri, 0, 1)
@@ -148,11 +149,12 @@ class Interpolator2D():
                 a regular grid by means of a linear interpolation (for points outside 
                 the area covered by the data, a nearest-point interpolation is used).
                 The bin size of the regular grid is specified via the reg_bin argument.
-            reg_bin: float or tuple(float,float)
-                Bin size (in degrees) of regular grid onto which irregular data is mapped. 
-                Only relevant if method_irreg is set to 'regularize'
+            bins_irreg_max: int
+                Maximum number of bins along either axis of the regular grid onto which 
+                the irregular data is mapped. Only relevant if method_irreg is set to 
+                'regularize'. Default is 2000.
     """
-    def __init__(self, values, lats, lons, origin=None, method_irreg='regularize', reg_bin=0.01):
+    def __init__(self, values, lats, lons, origin=None, method_irreg='regularize', bins_irreg_max=2000):
         
         # compute coordinates of origin, if not provided
         if origin is None: origin = center_point(lats, lons)
@@ -171,7 +173,7 @@ class Interpolator2D():
         lons_rad += self._lon_corr
 
         # initialize lat-lon interpolator
-        if reggrid:
+        if reggrid: # regular grid
             if len(lats) > 2 and len(lons) > 2:
                 self.interp_ll = RectSphereBivariateSpline(u=lats_rad, v=lons_rad, r=values)
             elif len(lats) > 1 and len(lons) > 1:
@@ -182,15 +184,27 @@ class Interpolator2D():
             elif len(lons) == 1:
                 self.interp_ll = interp1d(x=lats_rad, y=np.squeeze(values), kind='linear')
 
-        else:
-            if method_irreg == 'regularize':
+        else: # irregular grid
+            if len(np.unique(lats)) <= 1 or len(np.unique(lons)) <= 1:
+                self.interp_ll = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
-                # interpolators on irregular grid
-                gd = GridData2D(u=lats_rad, v=lons_rad, r=values, method='linear') 
+            elif method_irreg == 'regularize':
+
+                # initialize interpolators on irregular grid
+                if len(np.unique(lats)) >= 2 and len(np.unique(lons)) >= 2: method='linear'
+                else: method = 'nearest'
+                gd = GridData2D(u=lats_rad, v=lons_rad, r=values, method=method) 
                 gd_near = GridData2D(u=lats_rad, v=lons_rad, r=values, method='nearest')
 
+                # determine bin size for regular grid
+                lat_diffs = np.diff(np.sort(np.unique(lats)))
+                lat_diffs = lat_diffs[lat_diffs > 1e-4]
+                lon_diffs = np.diff(np.sort(np.unique(lons)))
+                lon_diffs = lon_diffs[lon_diffs > 1e-4]
+                bin_size = (np.min(lat_diffs), np.min(lon_diffs))    
+
                 # regular grid that data will be mapped to
-                lats_reg, lons_reg = self._create_grid(lats, lons, reg_bin)
+                lats_reg, lons_reg = self._create_grid(lats=lats, lons=lons, bin_size=bin_size, max_bins=bins_irreg_max)
     
                 # map to regular grid
                 lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
@@ -200,7 +214,7 @@ class Interpolator2D():
                 indices_nan = np.where(np.isnan(vi))
                 vi[indices_nan] = vi_near[indices_nan] 
 
-                # interpolator on regular grid
+                # initialize interpolator on regular grid
                 self.interp_ll = RectSphereBivariateSpline(u=lats_reg_rad, v=lons_reg_rad, r=vi)
 
             else:
@@ -332,7 +346,7 @@ class Interpolator2D():
 
         return zi
 
-    def _create_grid(self, lats, lons, bin_size):
+    def _create_grid(self, lats, lons, bin_size, max_bins):
         """ Created regular lat-lon grid with uniform spacing that covers 
             a set of (lat,lon) coordinates.
 
@@ -343,6 +357,8 @@ class Interpolator2D():
                     Longitude values in degrees
                 bin_size: float or tuple(float,float)
                     Lat and long bin size
+                max_bins: int
+                    Maximum number of bins along either axis
 
             Returns:
                 : numpy.array, numpy.array
@@ -354,6 +370,7 @@ class Interpolator2D():
             v_min = np.min(v) - dv
             v_max = np.max(v) + dv
             num = max(3, int((v_max - v_min) / dv) + 1)
+            num = min(max_bins, num)
             v_reg = np.linspace(v_min, v_max, num=num)
             res.append(v_reg)
 
@@ -485,12 +502,13 @@ class Interpolator3D():
                 a regular grid by means of a linear interpolation (for points outside 
                 the area covered by the data, a nearest-point interpolation is used).
                 The bin size of the regular grid is specified via the reg_bin argument.
-            reg_bin: tuple(float,float,float)
-                Bin size (deg,deg,meters) of regular grid onto which irregular data is mapped. 
-                Only relevant if method_irreg is set to 'regularize'
+            bins_irreg_max: int
+                Maximum number of bins along either axis of the regular grid onto which 
+                the irregular data is mapped. Only relevant if method_irreg is set to 
+                'regularize'. Default is 200.
     """
     def __init__(self, values, lats, lons, depths, origin=None, method='linear', 
-        method_irreg='regularize', reg_bin=(0.01,0.01,10)):
+        method_irreg='regularize', bins_irreg_max=200):
 
         # compute coordinates of origin, if not provided
         if origin is None: origin = center_point(lats, lons)
@@ -518,8 +536,17 @@ class Interpolator3D():
                 gd = GridData3D(u=lats_rad, v=lons_rad, w=depths, r=values, method='linear') 
                 gd_near = GridData3D(u=lats_rad, v=lons_rad, w=depths, r=values, method='nearest')
 
+                # determine bin size for regular grid
+                lat_diffs = np.diff(np.sort(np.unique(lats)))
+                lat_diffs = lat_diffs[lat_diffs > 1e-4]
+                lon_diffs = np.diff(np.sort(np.unique(lons)))
+                lon_diffs = lon_diffs[lon_diffs > 1e-4]
+                depth_diffs = np.diff(np.sort(np.unique(depths)))
+                depth_diffs = depth_diffs[depth_diffs > 0.1]
+                bin_size = (np.min(lat_diffs), np.min(lon_diffs), np.min(depth_diffs))    
+
                 # regular grid that data will be mapped to
-                lats_reg, lons_reg, depths_reg = self._create_grid(lats, lons, depths, reg_bin)
+                lats_reg, lons_reg, depths_reg = self._create_grid(lats=lats, lons=lons, depths=depths, bin_size=bin_size, max_bins=bins_irreg_max)
     
                 # map to regular grid
                 lats_reg_rad, lons_reg_rad = torad(lats_reg, lons_reg)
@@ -666,7 +693,7 @@ class Interpolator3D():
         return vi
 
 
-    def _create_grid(self, lats, lons, depths, bin_size):
+    def _create_grid(self, lats, lons, depths, bin_size, max_bins):
         """ Created regular lat-lon-depth grid with uniform spacing that covers 
             a set of (lat,lon,depth) coordinates.
 
@@ -679,6 +706,8 @@ class Interpolator3D():
                     Depth valus in meters
                 bin_size: tuple(float,float,float)
                     Bin size
+                max_bins: int
+                    Maximum number of bins along any axis
 
             Returns:
                 : numpy.array, numpy.array, numpy.array
@@ -689,6 +718,7 @@ class Interpolator3D():
             v_min = np.min(v) - dv
             v_max = np.max(v) + dv
             num = max(3, int((v_max - v_min) / dv) + 1)
+            num = min(max_bins, num)
             v_reg = np.linspace(v_min, v_max, num=num)
             res.append(v_reg)
 
@@ -699,6 +729,9 @@ class Uniform2D():
 
     def __init__(self, values, **other):
         self.value = values
+
+    def get_nodes(self):
+        return (self.value,None,None)
 
     def interp_xy(self, x, y, grid=False, x_deriv_order=0, y_deriv_order=0):
 
@@ -739,8 +772,11 @@ class Uniform2D():
 
 class Uniform3D():
 
-    def __init__(self, values):
+    def __init__(self, values, **other):
         self.value = values
+
+    def get_nodes(self):
+        return (self.value,None,None,None)
 
     def interp_xy(self, x, y, z, grid=False):
 
@@ -830,8 +866,7 @@ class DepthInterpolator3D():
             Returns:
                 vi: Interpolated values
         """
-        #v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
-        v = self.interp1d(lat=y, lon=x, z=z, grid=grid, squeeze=False)
+        v = self.interp(lat=y, lon=x, z=z, grid=grid, squeeze=False)
 
         if np.ndim(v) == 3:
             v = np.swapaxes(v, 0, 1)

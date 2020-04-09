@@ -10,6 +10,7 @@
 
 import os
 import shutil
+import logging
 import requests
 from os.path import isfile
 from datetime import datetime, timedelta
@@ -25,6 +26,7 @@ from kadlu.geospatial.data_sources.data_util import                 \
         insert_hash,                                                \
         serialized,                                                 \
         dt_2_epoch,                                                 \
+        fmt_coords,                                                 \
         Boundary,                                                   \
         str_def
 
@@ -89,8 +91,8 @@ def fetch_wwiii(var, kwargs):
     # if file hasnt been downloaded, fetch it
     if not isfile(fetchfile):# and kwargs['start'].day == 1: 
         if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
-        print(f'WWIII {kwargs["start"].date().isoformat()} {var}: '
-              f'downloading {fname} from NOAA WaveWatch III...')
+        logging.info(f'WWIII {kwargs["start"].date().isoformat()} {var}: '
+                     f'downloading {fname} from NOAA WaveWatch III...')
         if reg == 'glo_30m' and not 'wind' in var and t.year >= 2018:
             fetchurl = f"{wwiii_src}{t.strftime('%Y/%m')}/gribs/{fname}"
         else:
@@ -111,10 +113,10 @@ def fetch_wwiii(var, kwargs):
         conn.commit()
         insert_hash(kwargs, f'fetch_wwiii_{wwiii_varmap[var]}')
         if 'lock' in kwargs.keys(): kwargs['lock'].release()
-        print(f"WWIII {kwargs['start'].date().isoformat()} {table}: "
-              f"processed and inserted {n2-n1} rows. "
-              f"{null} null values removed, "
-              f"{len(agg[0]) - (n2-n1)} duplicates ignored")
+        logging.info(f"WWIII {kwargs['start'].date().isoformat()} {table}: "
+                f"processed and inserted {n2-n1} rows for region {fmt_coords(kwargs)}. "
+                f"{null} null values removed, "
+                f"{len(agg[0]) - (n2-n1)} duplicates ignored")
 
     # open the file, parse data, insert values
     grib = pygrib.open(fetchfile)
@@ -192,10 +194,12 @@ def load_wwiii(var, kwargs):
        )
 
     slices = np.array(db.fetchall(), dtype=object).T
-    assert len(slices) == 5, \
-            "no data found, try adjusting query bounds or fetching some"
-    val, lat, lon, epoch, source = slices
+    #assert len(slices) == 5, "no data found, try adjusting query bounds or fetching some"
+    if len(slices) == 0:
+        logging.warning(f'WWIII {var}: no data found in region {fmt_coords(kwargs)}, returning empty arrays')
+        return np.array([[],[],[],[]])
 
+    val, lat, lon, epoch, source = slices
     return np.array((val, lat, lon, epoch), dtype=np.float)
 
 
@@ -232,7 +236,10 @@ class Wwiii():
                 kwargs['west'],                 kwargs['east'], 
                 dt_2_epoch(kwargs['start']),    dt_2_epoch(kwargs['end'])
             ])))
-        wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = np.array(db.fetchall()).T
+        qry = np.array(db.fetchall()).T
+        assert len(qry) == 10, \
+                f'no windspeed data found in region {fmt_coords(kwargs)}. consider enlarging the region'
+        wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = qry
         val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))
         return np.array((val, lat, lon, epoch)).astype(float)
 

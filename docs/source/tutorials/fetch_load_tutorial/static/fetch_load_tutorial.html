@@ -13102,8 +13102,8 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
-<span class="kn">from</span> <span class="nn">kadlu</span> <span class="k">import</span> <span class="n">chs</span><span class="p">,</span> <span class="n">era5</span><span class="p">,</span> <span class="n">hycom</span><span class="p">,</span> <span class="n">wwiii</span><span class="p">,</span> <span class="n">source_map</span><span class="p">,</span> <span class="n">data_util</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">kadlu</span> <span class="kn">import</span> <span class="n">chs</span><span class="p">,</span> <span class="n">era5</span><span class="p">,</span> <span class="n">hycom</span><span class="p">,</span> <span class="n">wwiii</span><span class="p">,</span> <span class="n">source_map</span><span class="p">,</span> <span class="n">data_util</span>
 </pre></div>
 
     </div>
@@ -13216,7 +13216,7 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">data_util</span><span class="o">.</span><span class="n">epoch_2_dt</span><span class="p">(</span><span class="n">epoch</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">data_util</span><span class="p">()</span><span class="o">.</span><span class="n">epoch_2_dt</span><span class="p">(</span><span class="n">epoch</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
 </pre></div>
 
     </div>
@@ -13385,42 +13385,6 @@ class functions:
 </pre></div>
 
     </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>2020-03-03 14:10:56,479 INFO Sending request to https://cds.climate.copernicus.eu/api/v2/resources/reanalysis-era5-single-levels
-2020-03-03 14:10:58,043 INFO Request is completed
-2020-03-03 14:10:58,046 INFO Downloading http://136.156.132.210/cache-compute-0005/cache/data2/adaptor.mars.internal-1583256056.1745522-19056-8-6f74b241-1567-4cf4-8bea-37fbb68846ca.grib to /home/oliskir/src/anaconda3/envs/kadlu_env/lib/python3.6/site-packages/storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2013-01-01.grb2 (7.3M)
-2020-03-03 14:10:59,564 INFO Download rate 4.8M/s
-2020-03-03 14:11:01,263 INFO Sending request to https://cds.climate.copernicus.eu/api/v2/resources/reanalysis-era5-single-levels
-2020-03-03 14:11:02,028 INFO Downloading http://136.156.132.236/cache-compute-0007/cache/data9/adaptor.mars.internal-1583256083.5988646-28970-32-49274a18-df7d-4aa1-a0e2-56498018428a.grib to /home/oliskir/src/anaconda3/envs/kadlu_env/lib/python3.6/site-packages/storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2013-01-02.grb2 (7.3M)
-2020-03-03 14:11:03,831 INFO Download rate 4M/s
-2020-03-03 14:11:05,827 INFO Sending request to https://cds.climate.copernicus.eu/api/v2/resources/reanalysis-era5-single-levels
-2020-03-03 14:11:06,440 INFO Downloading http://136.156.132.105/cache-compute-0000/cache/data2/adaptor.mars.internal-1583256096.2115095-18232-34-6874ae51-3d30-4458-bf7c-a817b47cdcdd.grib to /home/oliskir/src/anaconda3/envs/kadlu_env/lib/python3.6/site-packages/storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2013-01-03.grb2 (7.3M)
-2020-03-03 14:11:07,978 INFO Download rate 4.7M/s
-2020-03-03 14:11:09,436 INFO Sending request to https://cds.climate.copernicus.eu/api/v2/resources/reanalysis-era5-single-levels
-2020-03-03 14:11:09,706 INFO Downloading http://136.156.132.235/cache-compute-0006/cache/data5/adaptor.mars.internal-1583256108.2023842-1887-30-759f9ddd-b179-48e7-8081-0c8c1142811f.grib to /home/oliskir/src/anaconda3/envs/kadlu_env/lib/python3.6/site-packages/storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2013-01-04.grb2 (7.3M)
-2020-03-03 14:11:11,581 INFO Download rate 3.9M/s
-2020-03-03 14:11:13,093 INFO Sending request to https://cds.climate.copernicus.eu/api/v2/resources/reanalysis-era5-single-levels
-2020-03-03 14:11:13,436 INFO Downloading http://136.156.133.42/cache-compute-0014/cache/data8/adaptor.mars.internal-1583256122.7105417-4573-11-90a3f0c5-a30f-4389-afea-8f9b4a917a3f.grib to /home/oliskir/src/anaconda3/envs/kadlu_env/lib/python3.6/site-packages/storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2013-01-05.grb2 (7.3M)
-2020-03-03 14:11:15,229 INFO Download rate 4.1M/s
-2020-03-03 14:11:17,008 INFO Sending request to https://cds.climate.copernicus.eu/api/v2/resources/reanalysis-era5-single-levels
-2020-03-03 14:11:17,231 INFO Downloading http://136.156.133.37/cache-compute-0011/cache/data9/adaptor.mars.internal-1583256136.2202325-30205-23-41d21171-8465-4748-9c29-ae4f060f8293.grib to /home/oliskir/src/anaconda3/envs/kadlu_env/lib/python3.6/site-packages/storage/ERA5_reanalysis_significant_height_of_combined_wind_waves_and_swell_2013-01-06.grb2 (7.3M)
-2020-03-03 14:11:19,239 INFO Download rate 3.6M/s
-</pre>
-</div>
-</div>
-
 </div>
 </div>
 

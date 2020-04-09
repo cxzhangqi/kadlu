@@ -11,6 +11,7 @@
 """
 
 import time
+import logging
 import requests
 import warnings
 from functools import reduce
@@ -27,6 +28,7 @@ from kadlu.geospatial.data_sources.data_util        import          \
         serialized,                                                 \
         dt_2_epoch,                                                 \
         epoch_2_dt,                                                 \
+        fmt_coords,                                                 \
         str_def,                                                    \
         index
 
@@ -48,7 +50,7 @@ def slices_str(var, slices, steps=(1, 1, 1, 1)):
 
 def fetch_grid():
     """ download lat/lon arrays for grid indexing """
-    print("fetching hycom lat/lon grid arrays...")
+    logging.info("fetching hycom lat/lon grid arrays...")
     url = f"{hycom_src}/2015.ascii?lat%5B0:1:3250%5D,lon%5B0:1:4499%5D"
     grid_netcdf = requests.get(url)
     assert(grid_netcdf.status_code == 200)
@@ -183,7 +185,7 @@ def fetch_hycom(self, var, year, slices, kwargs):
 
     t3 = datetime.now()
 
-    print(f"HYCOM {epoch_2_dt([self.epoch[year][slices[0][0]]])[0].date().isoformat()} "
+    logging.info(f"HYCOM {epoch_2_dt([self.epoch[year][slices[0][0]]])[0].date().isoformat()} "
           f"{var}: downloaded {int(len(payload_netcdf.content)/8/1000)} Kb "
           f"in {(t2-t1).seconds}.{str((t2-t1).microseconds)[0:3]}s. "
           f"parsed and inserted {n2 - n1} rows in "
@@ -194,7 +196,7 @@ def fetch_hycom(self, var, year, slices, kwargs):
     return
 
 
-def load_hycom(self, var, kwargs, recursive=True):
+def load_hycom(self, var, kwargs):
     """ load hycom data from local database
 
         args:
@@ -227,47 +229,18 @@ def load_hycom(self, var, kwargs, recursive=True):
         kwargs2 = kwargs.copy()
         kwargs1['west'] = self.xgrid[0]
         kwargs2['east'] = self.xgrid[-1]
-        return np.hstack((load_hycom(self, var, kwargs1), load_hycom(self, var, kwargs2)))
+        return np.hstack((load_hycom(self, var, kwargs1), 
+                          load_hycom(self, var, kwargs2)))
 
     # check for missing data
     kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
-            hycom_varmap[var], 'hycom', parallel=2, **kwargs)
-
-    """
-    # perform nearest-time search on values if time keyword arg is supplied
-    if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
-        sql = ' AND '.join([
-               f'SELECT * FROM {var} WHERE lat >= ?',
-                'lat <= ?',
-                'lon >= ?',
-                'lon <= ?',
-                'depth >= ?',
-                'depth <= ?',
-                "source == 'hycom' "]
-            ) + 'ORDER BY ABS(time - ?) ASC LIMIT 1'
-        db.execute(sql, tuple(map(str, [
-                kwargs['south'], kwargs['north'], 
-                kwargs['west'],  kwargs['east'],
-                kwargs['top'],   kwargs['bottom'],
-                dt_2_epoch(kwargs['time'])
-            ])))
-        nearest = epoch_2_dt([db.fetchall()[0][3]])[0]
-        kwargs['start'], kwargs['end'] = nearest, nearest
-
-        if kwargs['time'] != nearest: 
-            print(f"loading data nearest to {kwargs['time']} at time {nearest}")
-    """
-
-    if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
-        kwargs['start'] = kwargs['time']
-        del kwargs['time']
-    if not 'end' in kwargs.keys(): 
-        kwargs['end'] = kwargs['start'] + timedelta(hours=3)
+            hycom_varmap[var], 'hycom', **kwargs)
 
     # validate and execute query
     assert 8 == sum(map(lambda kw: kw in kwargs.keys(),
             ['south', 'north', 'west', 'east',
              'start', 'end', 'top', 'bottom'])), 'malformed query'
+
     assert kwargs['start'] <= kwargs['end']
     sql = ' AND '.join([f"SELECT * FROM {var} WHERE lat >= ?",
             'lat <= ?',
@@ -278,6 +251,7 @@ def load_hycom(self, var, kwargs, recursive=True):
             'depth >= ?',
             'depth <= ?',
             "source == 'hycom' "]
+
         ) + 'ORDER BY time, depth, lat, lon ASC'
     db.execute(sql, tuple(map(str, [
             kwargs['south'],                kwargs['north'], 
@@ -287,7 +261,10 @@ def load_hycom(self, var, kwargs, recursive=True):
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
 
-    assert len(rowdata) > 0, f'no data for query: {kwargs}'
+    #assert len(rowdata) > 0, f'no data for query: {kwargs}'
+    if len(rowdata) == 0:
+        logging.warning(f'WWIII {var}: no data found in region {fmt_coords(kwargs)}, returning empty arrays')
+        return np.array([[],[],[],[],[]])
 
     return rowdata[0:5].astype(float)
 
@@ -317,10 +294,10 @@ def fetch_idx(self, var, kwargs):
 
         n = reduce(np.multiply, map(lambda s : s[1] - s[0] +1, slices))
         assert n > 0, f"{n} records available within query boundaries: {kwargs}"
-        print(f"HYCOM {kwargs['start'].date().isoformat()} {var}: "
-              f"downloading {n} values...")
-        fetch_hycom(self=self, slices=slices, var=var, year=year, kwargs=kwargs)
 
+        logging.info(f"HYCOM {kwargs['start'].date().isoformat()} "
+              f"downloading {n} {var} values in region {fmt_coords(kwargs)}...")
+        fetch_hycom(self=self, slices=slices, var=var, year=year, kwargs=kwargs)
         return
 
     assert kwargs['start'] <= kwargs['end']
@@ -337,7 +314,7 @@ def fetch_idx(self, var, kwargs):
     # if query spans antimeridian, make two seperate fetch requests
     year = str(kwargs['start'].year)
     if kwargs['west'] > kwargs['east']:
-        print('splitting request')
+        logging.debug('splitting request')
         kwargs1, kwargs2 = kwargs.copy(), kwargs.copy()
         kwargs1['east'] = self.xgrid[-1]
         kwargs2['west'] = self.xgrid[0]

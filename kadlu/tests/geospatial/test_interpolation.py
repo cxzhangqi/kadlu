@@ -335,7 +335,7 @@ def test_can_interpolate_irregular_3d_grid():
     for i in range(4): temp[:,i,:] = i * temp[:,i,:] # temperature increases with longitude
     temp = temp.flatten() 
     # initialize interpolator
-    ip = Interpolator3D(temp, lat, lon, depth, reg_bin=(0.01,0.01,10))
+    ip = Interpolator3D(temp, lat, lon, depth)
     # --- 4 latitudes ---
     lats = [1.2, 2.2, 0.2, 1.55]
     # --- 4 longitudes --- 

@@ -19,10 +19,12 @@ at Dalhousie University.
 You can install the latest version of Kadlu from the Python Package Index (PyPI) repository using Anaconda. 
 For more information, please consult [Kadlu's Documentation Page](https://docs.meridian.cs.dal.ca/kadlu/).
 
-The first version of Kadlu, released in March 2020, provides functionalities for fetching environmental data 
-(bathymetry, water temperature and salinity, wave height, wind speed, etc.) from online sources and loading into 
-numpy arrays, interpolation on any coordinate array or grid, and plotting. Functionalities for sound propagation 
-modelling will be included in the next release, anticipated for May 2020.
+Kadlu provides functionalities that automate the process of fetching and interpolating 
+environmental data necessary to model ocean ambient noise levels (bathymetry, water temperature 
+and salinity, wave height, wind speed, etc.). It also includes various routines that allow 
+accurate estimates of noise source levels and transmission losses in realistic ocean environments.
+You can find more information about the technical aspects of how sound propagation is modelled in 
+Kadlu in [this note](docs/_static/kadlu_sound_propagation_note.pdf).
 
 The intended users of Kadlu are researchers and students in underwater acoustics working with ambient noise modeling. 
 While Kadlu comes with complete documentation and comprehensive step-by-step tutorials, some familiarity with Python and 
@@ -36,30 +38,35 @@ Kadlu is most easily installed using the Anaconda package manager.
 Anaconda is freely available from [docs.anaconda.com/anaconda/install](https://docs.anaconda.com/anaconda/install/). 
 Make sure you get the Python 3.7 version and make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
 
- 1. Clone the Kadlu repository:
+ 1. Update your Anaconda installation to version 3.8:
+    ```bash
+    conda install -c anaconda python=3.8
+    ``` 
+
+ 2. Clone the Kadlu repository:
     ```bash
     git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
     cd kadlu
     ```
 
- 2. Create and activate Anaconda environment:
+ 3. Create and activate Anaconda environment:
     ```bash
     conda env create -f environment.yml
     conda activate kadlu_env
     ```
 
- 3. Install the PyPI package manager and Jupyter Notebook:
+ 4. Install the PyPI package manager and Jupyter Notebook:
     ```bash
     conda install pip
     conda install jupyter
     ```
 
- 4. Configure Kadlu (see below)
+ 5. Configure Kadlu (see below)
 
- 5. Install Kadlu:
+ 6. Install Kadlu:
     ```bash
     python setup.py sdist
-    pip install dist/kadlu-1.0.0.tar.gz
+    pip install dist/kadlu-2.0.0.tar.gz
     ```
 
 
@@ -69,7 +76,7 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
 
  1. Data storage location
 
-    By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code::
+    By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code:
     ```python
     from kadlu import data_util
     data_util().storage_cfg(setdir='/specify/desired/path/here/')
@@ -104,6 +111,8 @@ pytest kadlu/ --doctest-modules
  3. [Interpolate Multi-Dimensional Data](docs/source/tutorials/interp_tutorial/interp_tutorial.ipynb)
 
  4. [Plot and Export Data](docs/source/tutorials/plot_export_tutorial/plot_export_tutorial.ipynb)
+
+ 5. [Transmission Loss](docs/source/tutorials/transm_loss_tutorial/transm_loss_tutorial.ipynb)
 
 
 ## Useful resources

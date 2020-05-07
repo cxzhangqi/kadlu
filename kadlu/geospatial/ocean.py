@@ -9,6 +9,8 @@
         Uniform3D class:
         DepthInterpolator3D class
 """
+import os
+import logging
 from datetime import timedelta
 from multiprocessing import Process, Queue
 
@@ -22,15 +24,18 @@ from kadlu.geospatial.interpolation             import      \
 from kadlu.geospatial.data_sources.data_util    import      \
         reshape_2D,                                         \
         reshape_3D,                                         \
-        dt_2_epoch
+        dt_2_epoch,                                         \
+        fmt_coords
 from kadlu.geospatial.data_sources.source_map   import      \
         default_val,                                        \
-        load_map
+        load_map,                                           \
+        var3d
 from kadlu.geospatial.data_sources.chs          import Chs
 from kadlu.geospatial.data_sources.hycom        import Hycom
 from kadlu.geospatial.data_sources.era5         import Era5
 from kadlu.geospatial.data_sources.wwiii        import Wwiii
 from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
+from kadlu.utils import center_point
 
 
 def worker(interpfcn, reshapefcn, cols, var, q):
@@ -111,18 +116,25 @@ class Ocean():
                 time range for data load query (datetime)
                 if multiple times exist within range, they will be averaged
                 before computing interpolation
+
+        attrs:
+            interps: dict
+                Dictionary of data interpolators
+            origin: tuple(float, float)
+                Latitude and longitude coordinates of the centre point of the 
+                geographic bounding box. This point serves as the origin of the 
+                planar x-y coordinate system.
+            boundaries: dict
+                Bounding box for the ocean volume in space and time
     """
 
     def __init__(self,
-            load_bathymetry=0, load_temp=0, load_salinity=0, load_wavedir=0,
-            load_waveheight=0, load_waveperiod=0, load_windspeed=0,
+            load_bathymetry=0,  load_temp=0,        load_salinity=0, 
+            load_wavedir=0,     load_waveheight=0,  load_waveperiod=0, 
+            load_wind_uv=0,     load_wind_u=0,      load_wind_v=0,
+            load_water_uv=0,    load_water_u=0,     load_water_v=0,
             fetch=4, **kwargs):
 
-        if 'time' in kwargs.keys() and not 'start' in kwargs.keys():
-            kwargs['start'] = kwargs['time']
-            del kwargs['time']
-        if not 'end' in kwargs.keys(): 
-            kwargs['end'] = kwargs['start'] + timedelta(hours=3)
 
         for kw in [k for k in ('south', 'west', 'north', 'east', 'top', 'bottom', 
                 'start', 'end') if k not in kwargs.keys()]:
@@ -130,10 +142,14 @@ class Ocean():
 
         data = {}
         callbacks = []
-        vartypes = ['bathy', 'temp', 'salinity', 'wavedir', 
-                    'waveheight', 'waveperiod', 'windspeed']
-        load_args = [load_bathymetry, load_temp, load_salinity, load_wavedir, 
-                     load_waveheight, load_waveperiod, load_windspeed]
+        vartypes = ['bathy',            'temp',             'salinity', 
+                    'wavedir',          'waveheight',       'waveperiod', 
+                    'wind_uv',          'wind_u',           'wind_v', 
+                    'water_uv',         'water_u',          'water_v',]
+        load_args = [load_bathymetry,   load_temp,          load_salinity, 
+                     load_wavedir,      load_waveheight,    load_waveperiod, 
+                     load_wind_uv,      load_wind_u,        load_wind_v, 
+                     load_water_uv,     load_water_u,       load_water_v,]
 
         # if load_args are not callable, convert it to a callable function
         for v, load_arg, ix in zip(vartypes, load_args, range(len(vartypes))):
@@ -141,6 +157,7 @@ class Ocean():
 
             elif isinstance(load_arg, str):
                 key = f'{v}_{load_arg.lower()}'
+                assert key in load_map.keys(), f'no map for {key} in\n{load_map=}'
                 callbacks.append(load_map[key])
                 if fetch is not False:
                     fetch_handler(v, load_arg.lower(), parallel=fetch, **kwargs)
@@ -150,7 +167,7 @@ class Ocean():
                 data[f'{v}_lat'] = kwargs['south']
                 data[f'{v}_lon'] = kwargs['west']
                 data[f'{v}_time'] = dt_2_epoch(kwargs['start'])
-                if v in ('temp', 'salinity'): data[f'{v}_depth'] = kwargs['top']
+                if v in var3d: data[f'{v}_depth'] = kwargs['top']
                 callbacks.append(load_callback)
 
             elif isinstance(load_arg, (list, tuple, np.ndarray)):
@@ -161,7 +178,6 @@ class Ocean():
                 data[f'{v}_val'] = load_arg[0]
                 data[f'{v}_lat'] = load_arg[1]
                 data[f'{v}_lon'] = load_arg[2]
-                #if len(load_arg) >= 4: data[f'{v}_time'] = load_arg[3]
                 if len(load_arg) == 4: data[f'{v}_depth'] = load_arg[3]
                 callbacks.append(load_callback)
 
@@ -172,9 +188,9 @@ class Ocean():
 
         # prepare data pipeline
         pipe = zip(callbacks, vartypes)
-        is_3D = [v in ('temp', 'salinity') for v in vartypes]
+        is_3D = [v in var3d for v in vartypes]
         is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
-        columns = (fcn(v=v, data=data, **kwargs) for fcn, v in pipe)
+        columns = [fcn(v=v, data=data, **kwargs) for fcn, v in pipe]
         intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
         reshapers = (reshape_3D if v else reshape_2D for v in is_3D)
         # map interpolations to dictionary in parallel
@@ -185,26 +201,47 @@ class Ocean():
             interpolators, reshapers, columns, vartypes
         )
 
-        # compute interpolations in parallel and store in dictionary
-        for i in interpolations: i.start()
-        while len(self.interps.keys()) < len(vartypes):
-            obj = q.get()
-            self.interps[obj[0]] = obj[1]
-        for i in interpolations: i.join()
+        # assert that no empty arrays were returned by load function
+        for col, var in zip(columns, vartypes):
+            if isinstance(col[0], (int, float)): continue
+            assert len(col[0]) > 0, (
+                    f'no data found for {var} in region {fmt_coords(kwargs)}. '
+                    f'consider expanding the region')
 
-        """
-        # used for debugging without parallelization for nicer stack traces
-        for i,r,c,v in zip(interpolators, reshapers, columns, vartypes):
-            print(f'interpolating {v}')
-            obj = i(**r(c))
-            q.put((v, obj))
+        # compute interpolations in parallel and store in dict attribute
+        if not os.environ.get('LOGLEVEL') == 'DEBUG':
+            for i in interpolations: i.start()
+            while len(self.interps.keys()) < len(vartypes):
+                obj = q.get()
+                self.interps[obj[0]] = obj[1]
+            for i in interpolations: i.join()
 
-        while len(self.interps.keys()) < len(vartypes):
-            obj = q.get()
-            self.interps[obj[0]] = obj[1]
-        """
+        # debug mode: disable parallelization for nicer stack traces
+        elif os.environ.get('LOGLEVEL') == 'DEBUG':
+            logging.debug('OCEAN DEBUG MSG: parallelization disabled')
+            for i,r,c,v in zip(interpolators, reshapers, columns, vartypes):
+                logging.debug(f'interpolating {v}')
+                logging.debug(f'{i = }\n{r = }\n{c = }\n{v = }')
+                obj = i(**r(c))
+                q.put((v, obj))
+
+            while len(self.interps.keys()) < len(vartypes):
+                obj = q.get()
+                self.interps[obj[0]] = obj[1]
+                logging.debug(f'done {obj[0]}... {len(self.interps.keys())}/{len(vartypes)}')
 
         q.close()
+
+        # set ocean boundaries and interpolator origins
+        self.boundaries = kwargs.copy()  
+        # matt_s 2020-04-06
+        # i added .copy() to prevent the ocean boundaries attribute from 
+        # changing when kwargs changes - attributes work like pointers
+        # more info here https://docs.python.org/3.8/library/copy.html
+        self.origin = center_point(lat=[kwargs['south'], kwargs['north']], 
+                                   lon=[kwargs['west'],  kwargs['east']])
+        for v in vartypes: self.interps[v].origin = self.origin
+
         return
 
     def bathy(self, lat, lon, grid=False):
@@ -213,27 +250,27 @@ class Ocean():
     def bathy_xy(self, x, y, grid=False):
         return self.interps['bathy'].interp_xy(x, y, grid)
 
-    def bathy_deriv(self, lat, lon, axis='lon', grid=False):
+    def bathy_deriv(self, lat, lon, axis, grid=False):
         assert axis in ('lat', 'lon'), 'axis must be \'lat\' or \'lon\''
         return self.interps['bathy'].interp(lat, lon, grid,
               lat_deriv_order=(axis=='lat'), lon_deriv_order=(axis=='lon'))
 
-    def bathy_deriv_xy(self, x, y, grid=False):
+    def bathy_deriv_xy(self, x, y, axis, grid=False):
         assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
         return self.interps['bathy'].interp_xy(x, y, grid,
-                lat_deriv_order=(axis=='y'), lon_deriv_order=(axis=='x'))
-
-    def temp(self, lat, lon, depth, grid=False):
-        return self.interps['temp'].interp(lat, lon, depth, grid)
-
-    def temp_xy(self, x, y, z, grid=False):
-        return self.interps['temp'].interp_xy(x, y, z, grid)
+                x_deriv_order=(axis=='x'), y_deriv_order=(axis=='y'))
 
     def salinity(self,lat, lon, depth, grid=False):
         return self.interps['salinity'].interp(lat, lon, depth, grid)
 
     def salinity_xy(self, x, y, z, grid=False):
         return self.interps['salinity'].interp_xy(x, y, z, grid)
+
+    def temp(self, lat, lon, depth, grid=False):
+        return self.interps['temp'].interp(lat, lon, depth, grid)
+
+    def temp_xy(self, x, y, z, grid=False):
+        return self.interps['temp'].interp_xy(x, y, z, grid)
 
     def wavedir(self, lat, lon, grid=False):
         return self.interps['wavedir'].interp(lat, lon, grid)
@@ -253,9 +290,39 @@ class Ocean():
     def waveperiod_xy(self, x, y, grid=False):
         return self.interps['waveperiod'].interp_xy(x, y, grid)
 
-    def windspeed(self, lat, lon, grid=False):
-        return self.interps['windspeed'].interp(lat, lon, grid)
+    def wind_uv(self, lat, lon, grid=False):
+        return self.interps['wind_uv'].interp(lat, lon, grid)
 
-    def windspeed_xy(self, x, y, grid=False):
-        return self.interps['windspeed'].interp_xy(x, y, grid)
+    def wind_uv_xy(self, x, y, grid=False):
+        return self.interps['wind_uv'].interp_xy(x, y, grid)
+
+    def wind_u(self, lat, lon, grid=False):
+        return self.interps['wind_u'].interp(lat, lon, grid)
+
+    def wind_u_xy(self, x, y, grid=False):
+        return self.interps['wind_u'].interp_xy(x, y, grid)
+
+    def wind_v(self, lat, lon, grid=False):
+        return self.interps['wind_v'].interp(lat, lon, grid)
+
+    def wind_v_xy(self, x, y, grid=False):
+        return self.interps['wind_v'].interp_xy(x, y, grid)
+
+    def water_uv(self, lat, lon, grid=False):
+        return self.interps['water_uv'].interp(lat, lon, grid)
+
+    def water_uv_xy(self, x, y, grid=False):
+        return self.interps['water_uv'].interp_xy(x, y, grid)
+
+    def water_u(self, lat, lon, grid=False):
+        return self.interps['water_u'].interp(lat, lon, grid)
+
+    def water_u_xy(self, x, y, grid=False):
+        return self.interps['water_u'].interp_xy(x, y, grid)
+
+    def water_v(self, lat, lon, grid=False):
+        return self.interps['water_v'].interp(lat, lon, grid)
+
+    def water_v_xy(self, x, y, grid=False):
+        return self.interps['water_v'].interp_xy(x, y, grid)
 

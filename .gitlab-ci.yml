@@ -4,22 +4,50 @@ stages:
 - build
 - test
 - deploy
-- trig
+#- trig
+
+cache:
+ key: kadlu_cache_key
+ paths:
+    #- /root/kadlu_data/
+  - /builds/public_projects/kadlu/data/
+  - data/
 
 before_script:
   - source activate kadlu_env 
   - 'echo -e "\nurl: https://cds.climate.copernicus.eu/api/v2\nkey: 20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3\n" > /root/.cdsapirc'
 
-#after_script:
-#  - rm -rf kadlu/tests/assets/tmp/*
+create-package:
+ type: build
+ stage: build
+ script:
+  - source activate kadlu_env
+  - python setup.py sdist
+  - pip install dist/kadlu-2.0.0.tar.gz
+ only:
+  - master
+ artifacts:
+  paths:
+   - dist/kadlu-2.0.0.tar.gz
 
 run-tests:
  type: test
+ stage: test
+ only: 
+  - master
  script:
-  - pytest --doctest-modules kadlu/
+  # different loglevels can be set by passing environment variables:
+  # 'DEBUG', 'INFO', 'WARNING', or 'ERROR'
+  - export LOGLEVEL='INFO' && pytest --doctest-modules kadlu/ --tb=short -s --durations=5
+
+ artifacts:
+  paths:
+  - /builds/public_projects/kadlu/data/
+  - data/
 
 create-docs:
  type: deploy
+ stage: deploy
  before_script: # overwrites global before_script
   - source activate kadlu_env
   - pip install --upgrade pip
@@ -30,16 +58,4 @@ create-docs:
   - cd docs/ && make html && cd ..
  only:
   - master
-
-create-package:
- type: deploy
- script:
-  - source activate kadlu_env
-  - python setup.py sdist
-  - pip install dist/kadlu-1.0.0.tar.gz
- only:
-  - master
- artifacts:
-  paths:
-   - dist/kadlu-1.0.0.tar.gz
 

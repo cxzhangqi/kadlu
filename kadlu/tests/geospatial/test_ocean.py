@@ -12,6 +12,7 @@
 """
 
 import os
+import logging
 from datetime import datetime
 
 import pytest
@@ -45,17 +46,16 @@ def test_null_ocean():
     assert o.wavedir(test_lat, test_lon) == 0
     assert o.waveheight(test_lat, test_lon) == 0
     assert o.waveperiod(test_lat, test_lon) == 0
-    assert o.windspeed(test_lat, test_lon) == 0
-    #assert o.origin == LatLon(0,0)
-    #assert o.SW == LatLon(-90,-180)
-    #assert o.NE == LatLon(90,180)
+    assert o.wind_uv(test_lat, test_lon) == 0
+    assert o.origin == (45, -63.5)
+    assert o.boundaries == bounds
 
 def test_uniform_bathy():
     """ Test that ocean can be initialized with uniform bathymetry"""
     #o = Ocean(default=False, cache=False, load_bathymetry=-500.5)
-    o = Ocean(load_bathymetry=-500.5, **bounds)
+    o = Ocean(load_bathymetry=500.5, **bounds)
 
-    assert o.bathy(test_lat, test_lon) == -500.5
+    assert o.bathy(test_lat, test_lon) == 500.5
     assert o.temp(test_lat, test_lon, test_depth) == 0
 
 def test_interp_uniform_temp():
@@ -88,6 +88,7 @@ def test_chs_bathy():
     # check that all nodes have meaningful bathymetry values
     assert np.all(bathy < 10000)
     assert np.all(bathy > -15000)
+    assert o.interps['bathy'].origin == o.origin
 
 def test_interp_chs_bathy():
     """ Test that we can interpolate bathymetry data 
@@ -168,3 +169,31 @@ def test_array_bathy():
     assert res == -100
     res = o.bathy(lat=44.5, lon=-59.8)
     assert pytest.approx(res == -150., abs=1e-6)
+
+def test_small_full_ocean():
+    """ test that the ocean can be initialized for a very small region """
+
+    bounds = dict(
+            start=datetime(2015, 1, 9), end=datetime(2015, 1, 9, 3),
+            south=44.2,                 west=-64.4, 
+            north=44.21,                east=-64.39, 
+            top=0,                      bottom=1
+        )
+    try:
+        o = Ocean(load_bathymetry='chs', load_temp='hycom', load_salinity='hycom', 
+                load_wavedir='era5', load_waveheight='wwiii', load_waveperiod='era5', 
+                load_wind_uv='wwiii', **bounds)
+    except AssertionError as err:
+        # this is intended behaviour
+        logging.info('CAUGHT EXCEPTION: ' + str(err))
+        pass 
+    except Exception as err:
+        raise err
+
+
+def test_wind_water_uv():
+        o = Ocean(load_water_u='hycom', load_water_v='hycom', load_water_uv='hycom', 
+                load_wind_u='era5', load_wind_v='era5', load_wind_uv='era5', 
+                **bounds)
+    
+

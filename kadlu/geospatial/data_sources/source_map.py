@@ -1,12 +1,12 @@
 """
-    some data fetching utils and maps
+    some data fetching utils, function maps, and constant variables
 """
 
 from datetime import datetime, timedelta
 
 import kadlu.geospatial.data_sources.chs as chs
-import kadlu.geospatial.data_sources.hycom as hycom
 import kadlu.geospatial.data_sources.era5 as era5
+import kadlu.geospatial.data_sources.hycom as hycom
 import kadlu.geospatial.data_sources.wwiii as wwiii
 
 
@@ -14,46 +14,56 @@ import kadlu.geospatial.data_sources.wwiii as wwiii
 # helpful for passing source strings to the ocean module,
 # and having the module determine which function to use for loading
 fetch_map = dict(
-        bathy_chs           = chs.Chs().fetch_bathymetry,
+        bathy_chs           = chs  .Chs()  .fetch_bathymetry,
         temp_hycom          = hycom.Hycom().fetch_temp,
         salinity_hycom      = hycom.Hycom().fetch_salinity,
+        water_uv_hycom      = hycom.Hycom().fetch_water_v,
         water_u_hycom       = hycom.Hycom().fetch_water_u,
         water_v_hycom       = hycom.Hycom().fetch_water_v,
-        wavedir_era5        = era5.Era5().fetch_wavedirection,
-        waveheight_era5     = era5.Era5().fetch_windwaveswellheight,
-        waveperiod_era5     = era5.Era5().fetch_waveperiod,
-        windspeedU_era5     = era5.Era5().fetch_wind_u,
-        windspeedV_era5     = era5.Era5().fetch_wind_v,
+        wavedir_era5        = era5 .Era5() .fetch_wavedirection,
+        waveheight_era5     = era5 .Era5() .fetch_windwaveswellheight,
+        waveperiod_era5     = era5 .Era5() .fetch_waveperiod,
+        wind_uv_era5        = era5 .Era5() .fetch_wind_uv,
+        wind_u_era5         = era5 .Era5() .fetch_wind_u,
+        wind_v_era5         = era5 .Era5() .fetch_wind_v,
         wavedir_wwiii       = wwiii.Wwiii().fetch_wavedirection,
         waveheight_wwiii    = wwiii.Wwiii().fetch_windwaveheight,
         waveperiod_wwiii    = wwiii.Wwiii().fetch_waveperiod,
-        windspeedU_wwiii    = wwiii.Wwiii().fetch_wind_u,
-        windspeedV_wwiii    = wwiii.Wwiii().fetch_wind_v
+        wind_uv_wwiii       = wwiii.Wwiii().fetch_wind_uv,
+        wind_u_wwiii        = wwiii.Wwiii().fetch_wind_u,
+        wind_v_wwiii        = wwiii.Wwiii().fetch_wind_v,
     )
 
 load_map = dict(
-        bathy_chs           = chs.Chs().load_bathymetry,
+        bathy_chs           = chs  .Chs()  .load_bathymetry,
         temp_hycom          = hycom.Hycom().load_temp,
         salinity_hycom      = hycom.Hycom().load_salinity,
+        water_uv_hycom      = hycom.Hycom().load_water_uv,
         water_u_hycom       = hycom.Hycom().load_water_u,
         water_v_hycom       = hycom.Hycom().load_water_v,
-        wavedir_era5        = era5.Era5().load_wavedirection,
+        wavedir_era5        = era5 .Era5() .load_wavedirection,
+        waveheight_era5     = era5 .Era5() .load_windwaveswellheight,
+        waveperiod_era5     = era5 .Era5() .load_waveperiod,
+        wind_uv_era5        = era5 .Era5() .load_wind_uv,
+        wind_u_era5         = era5 .Era5() .load_wind_uv,
+        wind_v_era5         = era5 .Era5() .load_wind_uv,
         wavedir_wwiii       = wwiii.Wwiii().load_wavedirection,
-        waveheight_era5     = era5.Era5().load_windwaveswellheight,
         waveheight_wwiii    = wwiii.Wwiii().load_windwaveheight,
-        waveperiod_era5     = era5.Era5().load_waveperiod,
         waveperiod_wwiii    = wwiii.Wwiii().load_waveperiod,
-        windspeed_era5      = era5.Era5().load_wind_uv,
-        windspeed_wwiii     = wwiii.Wwiii().load_wind_uv
+        wind_uv_wwiii       = wwiii.Wwiii().load_wind_uv,
+        wind_u_wwiii        = wwiii.Wwiii().load_wind_u,
+        wind_v_wwiii        = wwiii.Wwiii().load_wind_v,
     )
 
 # some reasonable default kwargs
 default_val = dict(
-        south=45.0, west=-68.5,
-        north=51.5, east=-56.5,
-        top=0, bottom=-5000,
-        start=datetime(2015, 3, 1), end=datetime(2015, 3, 1, 3)
+        south=44.25, west=-64.5,
+        north=44.70, east=-63.33,
+        top=0, bottom=5000,
+        start=datetime(2015, 3, 1), end=datetime(2015, 3, 1, 12)
     )
+
+var3d = ('temp', 'salinity', 'water_u', 'water_v', 'water_uv',)
 
 source_map = (
     """

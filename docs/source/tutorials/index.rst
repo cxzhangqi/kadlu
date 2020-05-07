@@ -14,4 +14,5 @@ package would also be an advantage.
    Fetch and Load<fetch_load_tutorial/index>
    Interpolate<interp_tutorial/index>
    Plot and Export<plot_export_tutorial/index>
-
+   Transmission Loss<transm_loss_tutorial/index>
+   Geophony<geophony_tutorial/index>

@@ -36,34 +36,21 @@ the physical principles of underwater sound propagation would also be an advanta
 
 Kadlu is most easily installed using the Anaconda package manager.
 Anaconda is freely available from [docs.anaconda.com/anaconda/install](https://docs.anaconda.com/anaconda/install/). 
-Make sure you get the Python 3.7 version and make sure to pick the installer appropriate for your OS (Linux, macOS, Windows) 
+Kadlu runs on the most recent stable version of Python 3. 
 
- 1. Update your Anaconda installation to version 3.8:
-    ```bash
-    conda install -c anaconda python=3.8
-    ``` 
-
- 2. Clone the Kadlu repository:
+ 1. Clone the Kadlu repository
     ```bash
     git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
     cd kadlu
     ```
 
- 3. Create and activate Anaconda environment:
+ 2. Create and activate an Anaconda environment. Note that pip and jupyter are included in the environment
     ```bash
     conda env create -f environment.yml
     conda activate kadlu_env
     ```
 
- 4. Install the PyPI package manager and Jupyter Notebook:
-    ```bash
-    conda install pip
-    conda install jupyter
-    ```
-
- 5. Configure Kadlu (see below)
-
- 6. Install Kadlu:
+ 3. Install Kadlu
     ```bash
     python setup.py sdist
     pip install dist/kadlu-2.0.0.tar.gz

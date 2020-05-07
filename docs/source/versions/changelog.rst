@@ -2,7 +2,13 @@ Change log
 ==========
 
 
-**Version 1.0.0** (March, 2020)
+**version 1.0.0** (march, 2020)
 
-* First release
+* first release
+
+
+**Version 2.0.0** (May 2020)
+
+* Added acoustic modeling toolset
+* Improvements to automated data fetching and storage
 

@@ -7,7 +7,7 @@ from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 
 # gulf st lawrence
 kwargs = dict(
-        south=40, west=-70, north=59, east=-55,
+        south=40, west=-65, north=41, east=-64,
         start=datetime(2018, 2, 1), end=datetime(2018, 2, 3)
     )
 
@@ -31,7 +31,9 @@ def test_era5_fetch_waveperiod():
 def test_era5_fetch_wind():
     #if not Era5().fetch_wind(**kwargs):
     #    print('era5 query was fetched already, skipping...')
-    fetch_handler('windspeed', 'era5', **kwargs)
+    fetch_handler('wind_u', 'era5', **kwargs)
+    fetch_handler('wind_v', 'era5', **kwargs)
+    fetch_handler('wind_uv', 'era5', **kwargs)
 
 def test_era5_load_windwaveswellheight():
     height, lat, lon, time = Era5().load_windwaveswellheight(**kwargs)

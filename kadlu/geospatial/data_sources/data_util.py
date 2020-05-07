@@ -7,6 +7,7 @@ import sys
 import json
 import pickle
 import sqlite3
+import logging
 import warnings
 import configparser
 from os import path
@@ -19,9 +20,13 @@ from contextlib import contextmanager, redirect_stdout, redirect_stderr
 import numpy as np
 
 
+LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
+logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
+
+
 # database tables for data fetching and loading
 chs_table    = 'chs_bathy'
-hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
+#hycom_tables = ['salinity', 'water_temp', 'water_u', 'water_v']
 wwiii_tables = ['hs', 'dp', 'tp', 'windU', 'windV']
 era5_tables  = [
         'significant_height_of_combined_wind_waves_and_swell',
@@ -63,10 +68,10 @@ def storage_cfg(setdir=None):
     try:
         storage_location = cfg['storage']['storage_location']
     except KeyError:                        # missing config.ini file
-        return default_storage('missing kadlu/config.ini.')
+        return default_storage('storage location not configured.')
 
     if storage_location == '':              # null value in config.ini
-        return default_storage('null value in kadlu/config.ini.')
+        return default_storage('null value in config.')
 
     if not path.isdir(storage_location):    # verify the location exists
         return default_storage('storage location does not exist.')
@@ -101,17 +106,6 @@ def database_cfg():
     db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
                f'idx_{chs_table} on {chs_table}(lon, lat, val, source)')
 
-    # hycom environmental data tables
-    for var in hycom_tables:
-        db.execute(f'CREATE TABLE IF NOT EXISTS {var}'
-                    '( val     REAL NOT NULL,' 
-                    '  lat     REAL NOT NULL,' 
-                    '  lon     REAL NOT NULL,' 
-                    '  time    INT  NOT NULL,' 
-                    '  depth   INT  NOT NULL,' 
-                    '  source  TEXT NOT NULL )')
-        db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
-                   f'idx_{var} on {var}(time, lon, lat, depth, val, source)')
 
     # wave data tables
     for var in era5_tables + wwiii_tables:
@@ -123,12 +117,6 @@ def database_cfg():
                     '  source  TEXT    NOT NULL) ') 
         db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
                    f'idx_{var} on {var}(time, lon, lat, val, source)')
-
-    db.execute('CREATE TABLE IF NOT EXISTS fetch_map'
-                '(  hash    INT  NOT NULL, '
-                '   bytes   BLOB         ) ' )
-    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
-                 f'idx_fetched on fetch_map(hash)')
 
     return conn, db
 
@@ -167,26 +155,40 @@ def hash_key(kwargs, seed,
     return key
 
 
-def insert_hash(kwargs, seed='', obj=None):
+def insert_hash(kwargs={}, seed='', obj=None):
     """ create hash index in database to record query history.
         this is used for mapping the coverage of fetched data,
         optionally include an object to be serialized and cached
     """
     qry = kwargs.copy()
-    conn, db = database_cfg()
     if 'lock' in qry.keys(): del qry['lock']
     key = hash_key(qry, seed)
+    #conn, db = database_cfg()
+    conn = sqlite3.connect(storage_cfg() + 'checksums.db')
+    db = conn.cursor()
+    db.execute('CREATE TABLE IF NOT EXISTS fetch_map'
+                '(  hash    INT  NOT NULL, '
+                '   bytes   BLOB         ) ' )
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
+                 f'idx_fetched on fetch_map(hash)')
     db.execute('INSERT OR IGNORE INTO fetch_map VALUES (?,?)',
                (key, pickle.dumps(obj)))
     conn.commit()
     return
 
 
-def serialized(kwargs, seed=''):
+def serialized(kwargs={}, seed=''):
     """ returns true if fetch query hash exists in database else False """
     key = hash_key(kwargs, seed)
     if 'lock' in kwargs.keys(): kwargs['lock'].acquire()
-    conn, db = database_cfg()
+    #conn, db = database_cfg()
+    conn = sqlite3.connect(storage_cfg() + 'checksums.db')
+    db = conn.cursor()
+    db.execute('CREATE TABLE IF NOT EXISTS fetch_map'
+                '(  hash    INT  NOT NULL, '
+                '   bytes   BLOB         ) ' )
+    db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS '
+                 f'idx_fetched on fetch_map(hash)')
     db.execute('SELECT * FROM fetch_map WHERE hash == ?', (key,))
     res = db.fetchone()
     if 'lock' in kwargs.keys(): kwargs['lock'].release()
@@ -313,6 +315,17 @@ def ll_2_regionstr(south, north, west, east, regions, default=[]):
         return default
 
     return np.unique(matching)
+
+
+def fmt_coords(kwargs):
+      return (
+            f"{abs(kwargs['south']):.2f}°{'S' if kwargs['south'] <= 0 else 'N'},"
+            f"{abs(kwargs['west']):.2f}°{'W' if kwargs['west'] <= 0 else 'E'}"
+            f"{','+str(kwargs['top'])+'m' if 'top' in kwargs.keys() else ''}:"
+            f"{abs(kwargs['north']):.2f}°{'S' if kwargs['north'] <= 0 else 'N'},"
+            f"{abs(kwargs['east']):.2f}°{'W' if kwargs['east'] <= 0 else 'E'}"
+            f"{','+str(kwargs['bottom'])+'m' if 'bottom' in kwargs.keys() else ''}"
+        )
 
 
 

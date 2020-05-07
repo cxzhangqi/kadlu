@@ -6,6 +6,7 @@
 """
 
 import os
+import logging
 import warnings
 from os.path import isfile, dirname
 from configparser import ConfigParser
@@ -23,10 +24,13 @@ from kadlu.geospatial.data_sources.data_util    import              \
         serialized,                                                 \
         dt_2_epoch,                                                 \
         epoch_2_dt,                                                 \
+        fmt_coords,                                                 \
         dev_null,                                                   \
         str_def,                                                    \
         cfg
 
+
+logging.getLogger('cdsapi').setLevel(logging.WARNING)
 
 conn, db = database_cfg()
 
@@ -138,9 +142,9 @@ def fetch_era5(var, kwargs):
     insert_hash(kwargs, f'fetch_era5_{era5_varmap[var]}')
     if 'lock' in kwargs.keys(): kwargs['lock'].release()
 
-    print(f"ERA5 {msg.validDate.date().isoformat()} {var}: "
-          f"processed and inserted {n2-n1} rows. "
-          f"{len(agg[0])- (n2-n1)} duplicates ignored")
+    logging.info(f"ERA5 {msg.validDate.date().isoformat()} {var}: "
+                 f"processed and inserted {n2-n1} rows in region {fmt_coords(kwargs)}. "
+                 f"{len(agg[0])- (n2-n1)} duplicates ignored")
 
     return True
 
@@ -193,9 +197,12 @@ def load_era5(var, kwargs):
             dt_2_epoch(kwargs['start']), dt_2_epoch(kwargs['end'])
         ])))
     rowdata = np.array(db.fetchall(), dtype=object).T
-    assert len(rowdata) > 0, "no data found for query"
-    val, lat, lon, epoch, source = rowdata 
+    #assert len(rowdata) > 0, "no data found for query"
+    if len(rowdata) == 0:
+        logging.warning(f'ERA5 {var}: no data found in region {fmt_coords(kwargs)}, returning empty arrays')
+        return np.array([[],[],[],[]])
 
+    val, lat, lon, epoch, source = rowdata 
     return np.array((val, lat, lon, epoch), dtype=np.float)
 
 

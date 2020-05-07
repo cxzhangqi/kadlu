@@ -1,6 +1,5 @@
 name: kadlu_env
 channels:
-  #  - defaults
   - conda-forge
 dependencies:
   - make
@@ -15,11 +14,12 @@ dependencies:
   - cftime
   - netCDF4
   - h5py
-  - GDAL
   - pygrib
   - cdsapi
   - tqdm
   - gsw
   - cartopy
   - imageio
+  #- GDAL
+  - Pillow
 

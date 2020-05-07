@@ -24,3 +24,6 @@ config.ini
 docs/source/tutorials/plot_export_tutorial/figures/
 docs/source/tutorials/plot_export_tutorial/waveheight.csv
 docs/source/tutorials/plot_export_tutorial/waveheight.mat
+
+docs/upload_docs_LAN.sh
+http

@@ -5,8 +5,7 @@ waters, but contains tools useful for many other underwater sound modelling task
 
 Kadlu is written in Python and utilizes a number of powerful software packages 
 including [NumPy](https://numpy.org/), [HDF5](https://www.hdfgroup.org/), 
-[NetCDF-4](https://www.unidata.ucar.edu/software/netcdf/), 
-[SQLite](https://www.sqlite.org/index.html), and [GDAL](https://www.gdal.org/).
+[NetCDF-4](https://www.unidata.ucar.edu/software/netcdf/), and [SQLite](https://www.sqlite.org/index.html).
 It is licensed under the [GNU GPLv3 license](https://www.gnu.org/licenses/) 
 and hence freely available for anyone to use and modify.
 The project is hosted on GitLab at 
@@ -24,7 +23,7 @@ environmental data necessary to model ocean ambient noise levels (bathymetry, wa
 and salinity, wave height, wind speed, etc.). It also includes various routines that allow 
 accurate estimates of noise source levels and transmission losses in realistic ocean environments.
 You can find more information about the technical aspects of how sound propagation is modelled in 
-Kadlu in [this note](docs/_static/kadlu_sound_propagation_note.pdf).
+Kadlu in [this note](docs/source/_static/kadlu_sound_propagation_note.pdf).
 
 The intended users of Kadlu are researchers and students in underwater acoustics working with ambient noise modeling. 
 While Kadlu comes with complete documentation and comprehensive step-by-step tutorials, some familiarity with Python and 

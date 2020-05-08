@@ -37,19 +37,23 @@ Kadlu is most easily installed using the Anaconda package manager.
 Anaconda is freely available from [docs.anaconda.com/anaconda/install](https://docs.anaconda.com/anaconda/install/). 
 Kadlu runs on the most recent stable version of Python 3. 
 
- 1. Clone the Kadlu repository
+ 1. Update your Anaconda installation to the latest version of Python: ::
+
+    conda install -c anaconda python=3.8
+
+ 2. Clone the Kadlu repository
     ```bash
     git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
     cd kadlu
     ```
 
- 2. Create and activate an Anaconda environment. Note that pip and jupyter are included in the environment
+ 3. Create and activate an Anaconda environment. Note that pip and jupyter are included in the environment
     ```bash
     conda env create -f environment.yml
     conda activate kadlu_env
     ```
 
- 3. Install Kadlu
+ 4. Install Kadlu
     ```bash
     python setup.py sdist
     pip install dist/kadlu-2.0.0.tar.gz

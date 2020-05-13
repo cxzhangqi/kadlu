@@ -38,10 +38,11 @@ Anaconda is freely available from [docs.anaconda.com/anaconda/install](https://d
 Kadlu runs on the most recent stable version of Python 3. 
 
  1. Ensure that Anaconda and Python are up to date:
-
+    ```bash
     conda update conda
     conda update --all
     conda install -c anaconda python=3
+    ```
 
  2. Clone the Kadlu repository
     ```bash

@@ -12,7 +12,7 @@ from kadlu.geospatial.data_sources.data_util import serialized
 from kadlu.geospatial.data_sources.data_util import fmt_coords
 
 
-def fetch_handler(var, src, dx=2, dy=2, dt=timedelta(days=1), **kwargs):
+def bin_request(fetchfcn, dx=2, dy=2, dt=timedelta(days=1), **kwargs):
     """ check fetch query hash history and generate fetch requests
 
         requests are batched into dx° * dy° * dt request bins,
@@ -36,21 +36,6 @@ def fetch_handler(var, src, dx=2, dy=2, dt=timedelta(days=1), **kwargs):
 
         return: nothing
     """
-
-    assert f'{var}_{src}' in source_map.fetch_map.keys() \
-            or f'{var}U_{src}' in source_map.fetch_map.keys(), 'invalid query, '\
-        f'could not find {src=} for {var=}. options are: '\
-        f'{list(f.rsplit("_", 1)[::-1] for f in source_map.fetch_map.keys())}'
-
-    # no request chunking for non-temporal data 
-    if src == 'chs':  
-        qry = kwargs.copy()
-        for k in ('start', 'end', 'top', 'bottom', 'lock'):
-            if k in qry.keys(): del qry[k]  # trim hash indexing entropy
-        # TODO: split into 1-degree bins for better indexing
-        source_map.fetch_map[f'{var}_{src}'](**qry.copy())
-        return
-
     # break request into gridded dx*dy*dt chunks for querying
     lower, upper = -1, +1
     xlimit = lambda x, bound: int(x - (x % (dx * -bound)))
@@ -75,12 +60,39 @@ def fetch_handler(var, src, dx=2, dy=2, dt=timedelta(days=1), **kwargs):
                     qry['bottom'] = 5000
 
                 if not serialized(qry, f'fetch_{src}_{var}'):
-                    source_map.fetch_map[f'{var}_{src}'](**qry.copy())
+                    fetchfcn(**qry.copy())
                 else:
                     logging.debug(f'FETCH_HANDLER DEBUG MSG: '
                             f'already fetched {t.date().isoformat()} '
                             f'{fmt_coords(qry)} {src}_{var}! continuing...')
         t += dt
+
+    return 
+
+
+def fetch_handler(var, src, **kwargs):
+    """ middleware to map fetch requests to the associated function """
+
+    assert f'{var}_{src}' in source_map.fetch_map.keys() \
+            or f'{var}U_{src}' in source_map.fetch_map.keys(), 'invalid query, '\
+        f'could not find {src=} for {var=}. options are: '\
+        f'{list(f.rsplit("_", 1)[::-1] for f in source_map.fetch_map.keys())}'
+
+
+    # no request chunking for non-temporal data 
+    if src == 'chs':  
+        qry = kwargs.copy()
+        for k in ('start', 'end', 'top', 'bottom', 'lock'):
+            if k in qry.keys(): del qry[k]  # trim hash indexing entropy
+        # TODO: split into 1-degree bins for better indexing
+        source_map.fetch_map[f'{var}_{src}'](**qry.copy())
+        return
+
+    # determine how data should be fetched from input variable and source
+    fetchfcn = source_map.fetch_map[f'{var}_{src}']
+
+    # bin the requests for fetching
+    bin_request(fetchfcn, **kwargs)
     
     return 
 

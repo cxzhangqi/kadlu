@@ -168,7 +168,6 @@ def fetch_hycom(self, var, year, slices, kwargs):
         meta, data = payload_netcdf.text.split\
         ("---------------------------------------------\n")
 
-    t2 = datetime.now()
 
     # parse response into numpy array
     arrs = data.split("\n\n")[:-1]

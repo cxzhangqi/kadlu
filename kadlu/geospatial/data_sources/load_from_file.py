@@ -68,38 +68,30 @@ def load_files(var, filenames, **kwargs):
     return rowdata[0:5].astype(float)
 
 
-def process_rasters_2D(var, filepath):
+def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000, step=0.1)):
     """ process and store arbitrary 2D data from raster format """
-    # open image and interpret pixels as elevation
+    """
+    var = 'bathymetry'
+    filepath = storage_cfg() + 'bathy_2002.tiff'
+
+    """
+    
+    # open image and validate metadata
     im = Image.open(filepath)
+    assert im.size == (np.arange(meta['west'], meta['east'], meta['step']).size, np.arange(meta['south'], meta['north'], meta['step']).size), 'metadata does not fit data'
+
+    # interpret pixels as elevation
     nan = float(im.tag[42113][0])
     val = np.ndarray((im.size[0], im.size[1]))
-    for yi in range(im.size[1]):
-        val[:,yi] = np.array(list(map(im.getpixel, zip(
-                [yi for xi in range(im.size[0])], 
-                range(im.size[1])))))
+    for yi in range(im.size[1]): val[yi] = np.array(list(map(im.getpixel, zip([yi for xi in range(im.size[0])], range(im.size[1])))))
     mask = np.flip(val == nan, axis=0)
 
     # generate latlon arrays
-    #file_south, file_west = parse_sw_corner(filepath)
-    # TODO: 
-    # get SW corner of data from file
-    assert False, 'need to get SW corner'
-    dlat = 0.001
-    if file_south < 68:
-        dlon = 0.001
-    elif file_south >=68 and file_south < 80:
-        dlon = 0.002
-    elif file_south >= 80:
-        dlon = 0.004
-    file_xmax = im.size[0] * dlon + file_west
-    file_ymax = im.size[1] * dlat + file_south
-    file_lon = np.linspace(start=file_west,  stop=file_xmax, num=im.size[0])
-    file_lat = np.linspace(start=file_south, stop=file_ymax, num=im.size[1])
+    lon, lat = np.arange(meta['west'], meta['east'], meta['step']), np.arange(meta['south'], meta['north'], meta['step'])
 
     # select non-masked entries, remove missing, build grid
     z1 = np.flip(val, axis=0)
-    x1, y1 = np.meshgrid(file_lon, file_lat)
+    x1, y1 = np.meshgrid(lon, lat)
     x2, y2, z2 = x1[~mask], y1[~mask], np.abs(z1[~mask])
     source = ['chs' for z in z2]
     grid = list(map(tuple, np.vstack((z2, y2, x2, source)).T))

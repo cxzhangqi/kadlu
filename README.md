@@ -41,7 +41,7 @@ Kadlu runs on the most recent stable version of Python 3.
     ```bash
     conda update conda
     conda update --all
-    conda install -c anaconda python=3
+    conda install -c anaconda python=3.8
     ```
 
  2. Clone the Kadlu repository

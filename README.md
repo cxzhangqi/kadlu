@@ -73,6 +73,9 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
     Kadlu uses ECMWF's Era5 dataset as one of the optional data sources for wave height/direction/period and wind speed data.
     In order to access Era5 reanalysis data from the ECMWF, it is necessary to first obtain an API token.
     This can be obtained by registering an account at [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token and URL will be displayed on the aforementioned webpage under heading 'Install the CDS API key'.
+    
+    Additionally, you will need to accept the [Copernicus Terms of Use](https://cds.climate.copernicus.eu/cdsapp/#!/terms/licence-to-use-copernicus-products) to activate the token.
+    
     Configure Kadlu to use the token by executing:
     ```python
     from kadlu import data_util

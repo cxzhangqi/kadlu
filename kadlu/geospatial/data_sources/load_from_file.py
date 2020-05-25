@@ -1,7 +1,11 @@
+import os
 import logging
+import zipfile
+import requests
 from PIL import Image
 from datetime import datetime
-from scipy.io import netcdf
+#from scipy.io import netcdf
+import netCDF4
 
 import numpy as np
 
@@ -110,7 +114,8 @@ def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, 
 
 
 def process_netcdf_2D(var, filename):
-    f = netcdf.netcdf_file(storage_cfg() + filename, 'r')
+    ncfile = netCDF4.Dataset(filename)
+    print(ncfile.data_model)
 
 
 class LoadFromFile():
@@ -118,4 +123,37 @@ class LoadFromFile():
     # build file loading API
     pass
 
+
+class FetchFromWeb():
+    
+    def fetch_gebco_geotiff():
+        url = 'https://www.bodc.ac.uk/data/open_download/gebco/gebco_2020/geotiff/'
+
+    def fetch_gebco_netcdf():
+        """ fetch gebco netcdf bathymetry, and return the filepath of extracted data """
+        logging.info('downloading and decompressing 8gb gebco netcdf bathymetry')
+
+        # TODO:
+        # replace filename with stored file hash so that the compressed version
+        # may be removed, and only keep the decompressed data
+
+        if not os.path.isfile(storage_cfg()+'gebco_netcdf.zip'):
+            # download zipped netcdf to storage directory
+            url = 'https://www.bodc.ac.uk/data/open_download/gebco/gebco_2020/zip/'
+            with requests.get(url, stream=True) as payload_netcdf:
+                assert payload_netcdf.status_code == 200, 'error fetching file'
+                with open(storage_cfg()+'gebco_netcdf.zip', 'wb') as f:
+                    for chunk in payload_netcdf.iter_content(chunk_size=8192): 
+                        f.write(chunk)
+
+            # unzip it
+            with zipfile.ZipFile(storage_cfg()+'gebco_netcdf.zip', 'r') as zipf:
+                zipf.extractall(storage_cfg())
+
+        # get abspath of extracted netcdf data and return it
+        unzipped = zipfile.ZipFile(storage_cfg()+"gebco_netcdf.zip", "r").namelist()
+        logging.info(f'extracted {unzipped} to {storage_cfg()}')
+        is_nc = [fname for fname in unzipped if fname[-3:] == '.nc']
+
+        return storage_cfg() + is_nc[0]
 

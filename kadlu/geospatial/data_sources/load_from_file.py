@@ -115,6 +115,7 @@ def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, 
 
 def process_netcdf_2D(var, filename):
     ncfile = netCDF4.Dataset(filename)
+    
     print(ncfile.data_model)
 
 

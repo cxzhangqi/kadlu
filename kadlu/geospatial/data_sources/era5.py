@@ -58,6 +58,7 @@ def fetch_era5(var, kwargs):
         return:
             True if new data was fetched, else False 
     """
+    # cleaner stack trace by raising outside of try/except
     err = False
     try: c = cdsapi.Client(url=cfg['cdsapi']['url'], key=cfg['cdsapi']['key'])
     except KeyError:
@@ -65,10 +66,10 @@ def fetch_era5(var, kwargs):
         except Exception:
             err = True  
 
-    if err: # make the stack trace less ugly by raising outside of try/except
+    if err: 
         raise KeyError('CDS API has not been configured for the ERA5 module. '
                        'obtain an API token from the following URL and run '
-                       'data_util.era5_cfg(url="URL_HERE", key="TOKEN_HERE"). '
+                       'data_util().era5_cfg(url="URL_HERE", key="TOKEN_HERE"). '
                        'https://cds.climate.copernicus.eu/api-how-to')
 
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(), 

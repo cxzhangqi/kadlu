@@ -356,8 +356,9 @@ def dev_null():
             sys.stderr = sys.__stderr__
 
 
+"""
 class DataUtil():
-    """ user API for data utils """
+    # user API for data utils 
     def epoch_2_dt(self, arr):              return epoch_2_dt(arr)
     def dt_2_epoch(self, arr):              return dt_2_epoch(arr)
     def index(self, sorted_arr):            return index(sorted_arr)
@@ -366,5 +367,6 @@ class DataUtil():
     def storage_cfg(self, setdir=None):     return storage_cfg(setdir)
     def database_cfg(self):                 return database_cfg()
     def era5_cfg(self, key=None, url=None): return era5_cfg(key, url)
+"""
 
 

@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 #   $ twine upload dist/*
 
 setup(name='kadlu',
-        version='2.0.0',
+        version='2.1.0',
         description="MERIDIAN Python package for ocean ambient noise modelling",
         url='https://gitlab.meridian.cs.dal.ca/public_projects/kadlu',
         author='Oliver Kirsebom, Matthew Smith',

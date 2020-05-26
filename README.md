@@ -67,12 +67,17 @@ Kadlu runs on the most recent stable version of Python 3.
 
 Kadlu allows configuration for how data is accessed and stored on your machine. These preferences are defined in kadlu/config.ini
 
+ 0. Import Kadlu
+
+    ```python
+    import kadlu
+    ```
+
  1. Data storage location
 
     By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code:
     ```python
-    from kadlu import data_util
-    data_util().storage_cfg(setdir='/specify/desired/path/here/')
+    kadlu.storage_cfg(setdir='/specify/desired/path/here/')
     ```
 
  2. ECMWF - CDS API Token
@@ -82,8 +87,7 @@ Kadlu allows configuration for how data is accessed and stored on your machine. 
     This can be obtained by registering an account at [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token and URL will be displayed on the aforementioned webpage under heading 'Install the CDS API key'.
     Configure Kadlu to use the token by executing:
     ```python
-    from kadlu import data_util
-    data_util().era5_cfg(key="TOKEN_HERE", url="URL_HERE")
+    kadlu.era5_cfg(key="TOKEN_HERE", url="URL_HERE")
     ```
 
 

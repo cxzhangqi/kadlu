@@ -21,20 +21,22 @@ Create and activate Anaconda environment: ::
     conda env create -f environment.yml
     conda activate kadlu_env
  
-Install the PyPI package manager and Jupyter Notebook: ::
+Install kadlu to the Anaconda environment: ::
     
-    conda install pip
-    conda install jupyter
+    python setup.py sdist
+    pip install dist/kadlu-2.0.0.tar.gz
 
-Configure Kadlu: ::
 
-0. Import Kadlu
+Configuration
+=============
+
+0. Import Kadlu: ::
 
     import kadlu
 
 1. Data storage location
 
-By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code:
+By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code: ::
 
     kadlu.storage_cfg(setdir='/specify/desired/path/here/')
 
@@ -44,14 +46,10 @@ Kadlu uses ECMWF's Era5 dataset as one of the optional data sources for wave hei
 In order to access Era5 reanalysis data from the ECMWF, it is necessary to first obtain an API token.
 This can be obtained by registering an account at [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token and URL will be displayed on the aforementioned webpage under heading 'Install the CDS API key'.
 Additionally, you will need to accept the [Copernicus Terms of Use](https://cds.climate.copernicus.eu/cdsapp/#!/terms/licence-to-use-copernicus-products) to activate the token.
-Configure Kadlu to use the token by executing:
+Configure Kadlu to use the token by executing: ::
 
     kadlu.era5_cfg(key="TOKEN_HERE", url="URL_HERE")
 
-Install Kadlu: ::
-    
-    python setup.py sdist
-    pip install dist/kadlu-2.0.0.tar.gz
 
 Check that everything is working by running pytest: ::
 

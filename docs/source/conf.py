@@ -24,9 +24,9 @@ copyright = '2020 MERIDIAN'
 author = 'Matthew Smith, Oliver Kirsebom'
 
 # The short X.Y version
-version = '2.0'
+version = '2.1'
 # The full version, including alpha/beta/rc tags
-release = '2.0.0'
+release = '2.1.0'
 
 
 # -- General configuration ---------------------------------------------------

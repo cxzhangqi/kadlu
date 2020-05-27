@@ -1,12 +1,16 @@
 #!/bin/bash
 
-# Note: the host kadlu_docs must be configured in your ~/.ssh/config 
-
-echo 'Enter path to kadlu folder, e.g., /home/user/'
-read path
+# Note: the host kadlu_docs must be configured in ~/.ssh/config 
 
 # kadlu source directory
-KADLUDIR="$path/kadlu"
+if [ ! -d $HOME/kadlu ]; then 
+   echo 'Enter path to kadlu folder, e.g., /home/user/'
+   read path
+   KADLUDIR="$path/kadlu"
+else
+   KADLUDIR="$HOME/kadlu"
+fi
+
 
 # update sphinx, install sphinx theme, build the docs
 python3 -m pip install --upgrade pip

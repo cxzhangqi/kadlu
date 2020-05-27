@@ -4,7 +4,7 @@ Change log
 
 **Version 2.1.0** (May 27, 2020)
 
-* ...
+* Update kadlu configuration interface 
 
 **Version 2.0.0** (May 8, 2020)
 

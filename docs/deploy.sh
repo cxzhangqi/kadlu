@@ -1,6 +1,11 @@
 #!/bin/bash
 
-# Note: the host kadlu_docs must be configured in ~/.ssh/config 
+# SCRIPT DEPENDENCY
+#  - the host kadlu_docs must be configured in ~/.ssh/config 
+#  - twine is used to upload to pypi
+#     - pip install twine
+#     - the kadlu deployment token must be configured in ~/.pypirc
+#  - vim is used as the text editor to edit the changelog
 
 # kadlu source directory
 if [ ! -d $HOME/kadlu ]; then 

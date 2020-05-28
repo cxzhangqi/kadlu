@@ -1,13 +1,20 @@
 Change log
 ==========
 
+**Version 2.1.1** (May 28, 2020)
 
-**Version 2.0.0** (May 2020)
+* Update kadlu deployment scripting
+
+**Version 2.1.0** (May 27, 2020)
+
+* Update kadlu configuration interface 
+
+**Version 2.0.0** (May 8, 2020)
 
 * Added sound propagation modelling toolset
 * Improvements to automated data fetching and storage
 
 
-**Version 1.0.0** (March, 2020)
+**Version 1.0.0** (March 16, 2020)
 
 * First release

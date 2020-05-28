@@ -1,11 +1,14 @@
 from setuptools import setup, find_packages
 
+import os
+
 # create distribution and upload to pypi.org with:
 #   $ python setup.py sdist bdist_wheel
 #   $ twine upload dist/*
 
 setup(name='kadlu',
-        version='2.1.0',
+        #version='2.1.1',
+        version=os.environ.get('KADLUVERSION', '0.0.0'), 
         description="MERIDIAN Python package for ocean ambient noise modelling",
         url='https://gitlab.meridian.cs.dal.ca/public_projects/kadlu',
         author='Oliver Kirsebom, Matthew Smith',

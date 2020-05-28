@@ -1,6 +1,9 @@
 Change log
 ==========
 
+**Version 2.1.1** (May 28, 2020)
+
+* Update kadlu deployment scripting
 
 **Version 2.1.0** (May 27, 2020)
 

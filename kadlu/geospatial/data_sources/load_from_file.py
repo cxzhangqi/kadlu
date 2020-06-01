@@ -22,14 +22,15 @@ conn, db = database_cfg()
 raster_table = lambda var: f'raster_{var}'
 
 
-def load_files(var, filenames, **kwargs):
+#def load_files(var, filenames, **kwargs):
     """ this function will accept a list of files as string, and determine if 
         they have been extracted and processed already.
         if not, it will determine if they should be processed as netcdf
         or geotiff.
 
         the content within query bounds will then be returned
-    """
+"""
+"""
 
     if isinstance(filenames, str): filenames = [filenames]
 
@@ -70,6 +71,7 @@ def load_files(var, filenames, **kwargs):
         return np.array([[],[],[],[],[]])
         
     return rowdata[0:5].astype(float)
+"""
 
 
 def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000, step=0.1)):
@@ -106,37 +108,59 @@ def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, 
     n2 = db.execute(f"SELECT COUNT(*) FROM {raster_table(var)}").fetchall()[0][0]
     db.execute("COMMIT")
     conn.commit()
-    logging.info(f"CHS {filepath.split('/')[-1]} bathymetry in region "
+    logging.info(f"RASTER {filepath.split('/')[-1]} {var} in region "
           f"{fmt_coords(dict(south=south,west=west,north=north,east=east))}. "
           f"processed and inserted {n2-n1} rows. "
           f"{len(z1[~mask]) - len(grid)} null values removed, "
           f"{len(grid) - (n2-n1)} duplicate rows ignored")
 
 
-def process_netcdf_2D(var, filename):
+def load_netcdf_2D(filename, var=None):
+    """ read environmental data from netcdf and output to gridded 2D numpy array
+
+        args:
+            filename: string
+                complete filepath descriptor of netcdf file to be read
+            var: string
+                the netcdf attribute to be read as the values.
+                by default, a guess will be made based on the file metadata
+
+        returns:
+            values: numpy 2D array
+            lats:   numpy 1D array
+            lons:   numpy 1D array
+
+    """
+
     ncfile = netCDF4.Dataset(filename)
+
+    if var is None:
+        assert 'lat' in ncfile.variables.keys()
+        assert 'lon' in ncfile.variables.keys()
+        assert len(ncfile.variables.keys()) == 3
+        var = [_ for _ in ncfile.variables.keys() if _ != "lat" and _ != "lon"][0]
+
+    assert var in ncfile.variables, f'variable {var} not in file. file contains {ncfile.variables.keys()}'
+
+    logging.info(f'loading data from {ncfile.getncattr("title")}')
+
+    #nx, ny = ncfile.dimensions['lon'].size, ncfile.dimensions['lat'].size
+    #np.ndarray((ncfile.dimensions['lon'].size, ncfile.dimensions['lat'].size), dtype=float)
+
+    #val = ncfile[var][:].data.flatten()
+    #lat = np.array([ncfile['lat'][:].data for _ in range(int(len(val)/len(ncfile['lat'][:].data)))])
+
+    return ncfile[var][:].data, ncfile['lat'][:].data, ncfile['lon'][:].data
+
     
-    print(ncfile.data_model)
-
-
-class LoadFromFile():
-    # TODO: 
-    # build file loading API
-    pass
-
-
-class FetchFromWeb():
+class LoadFromWeb():
     
-    def fetch_gebco_geotiff():
-        url = 'https://www.bodc.ac.uk/data/open_download/gebco/gebco_2020/geotiff/'
+    #def fetch_gebco_geotiff(self):
+    #    url = 'https://www.bodc.ac.uk/data/open_download/gebco/gebco_2020/geotiff/'
 
-    def fetch_gebco_netcdf():
+    def fetch_gebco_netcdf(self):
         """ fetch gebco netcdf bathymetry, and return the filepath of extracted data """
         logging.info('downloading and decompressing 8gb gebco netcdf bathymetry')
-
-        # TODO:
-        # replace filename with stored file hash so that the compressed version
-        # may be removed, and only keep the decompressed data
 
         if not os.path.isfile(storage_cfg()+'gebco_netcdf.zip'):
             # download zipped netcdf to storage directory
@@ -157,4 +181,7 @@ class FetchFromWeb():
         is_nc = [fname for fname in unzipped if fname[-3:] == '.nc']
 
         return storage_cfg() + is_nc[0]
+
+    def load_gebco_netcdf(self):
+        return load_netcdf_2D(filename=self.fetch_gebco_netcdf())
 

@@ -1,16 +1,3 @@
-""" Unit tests for the the 'geospatial.ocean' module in the 'kadlu' package
-
-    Authors: Oliver Kirsebom
-    contact: oliver.kirsebom@dal.ca
-    Organization: MERIDIAN-Intitute for Big Data Analytics
-    Team: Acoustic data Analytics, Dalhousie University
-    Project: packages/kadlu
-             Project goal: Tools for underwater soundscape modeling
-     
-    License:
-
-"""
-
 import os
 import logging
 from datetime import datetime
@@ -101,6 +88,12 @@ def test_interp_chs_bathy():
     assert isinstance(b, float)
     b = o.bathy(lat=[43.2,43.7], lon=[-59.3, -59.4])
     assert len(b) == 2
+
+def test_interp_gebco_bathy():
+    o = Ocean(load_bathymetry='gebco', 
+            south=43.1, west=-59.8, north=43.8, east=-59.2, 
+            top=0, bottom=0, start=default_val['start'], end=default_val['end'])
+    
 
 def test_interp_hycom_temp():
     """ Test that ocean can be initialized with temperature data 
@@ -196,4 +189,32 @@ def test_wind_water_uv():
                 load_wind_u='era5', load_wind_v='era5', load_wind_uv='era5', 
                 **bounds)
     
+
+""" interactive testing
+
+from datetime import datetime
+kwargs = dict(
+    south=44.25, west=-64.5,
+    north=44.70, east=-63.33,
+    top=0, bottom=5000,
+    start=datetime(2015, 4, 1), end=datetime(2015, 4, 1, 12))
+
+load_bathymetry=0
+load_temp='hycom'
+load_salinity=0
+load_wavedir=0
+load_waveheight=0
+load_waveperiod=0
+load_wind_uv=0
+load_wind_u=0
+load_wind_v=0
+load_water_uv=0
+load_water_u=0
+load_water_v=0
+
+v = 'bathy'
+
+fetch=4
+
+"""
 

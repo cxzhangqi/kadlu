@@ -23,7 +23,7 @@ raster_table = lambda var: f'raster_{var}'
 
 
 #def load_files(var, filenames, **kwargs):
-    """ this function will accept a list of files as string, and determine if 
+""" this function will accept a list of files as string, and determine if 
         they have been extracted and processed already.
         if not, it will determine if they should be processed as netcdf
         or geotiff.
@@ -115,13 +115,13 @@ def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, 
           f"{len(grid) - (n2-n1)} duplicate rows ignored")
 
 
-def load_netcdf_2D(filename, var=None):
+def load_netcdf_2D(filename, var=None, **kwargs):
     """ read environmental data from netcdf and output to gridded 2D numpy array
 
         args:
             filename: string
                 complete filepath descriptor of netcdf file to be read
-            var: string
+            var: string (optional)
                 the netcdf attribute to be read as the values.
                 by default, a guess will be made based on the file metadata
 
@@ -150,7 +150,8 @@ def load_netcdf_2D(filename, var=None):
     #val = ncfile[var][:].data.flatten()
     #lat = np.array([ncfile['lat'][:].data for _ in range(int(len(val)/len(ncfile['lat'][:].data)))])
 
-    return ncfile[var][:].data, ncfile['lat'][:].data, ncfile['lon'][:].data
+    #return ncfile[var][:].data, ncfile['lat'][:].data, ncfile['lon'][:].data
+    return dict(values=ncfile[var][:].data, lats=ncfile['lat'][:].data, lons=ncfile['lon'][:].data)
 
     
 class LoadFromWeb():
@@ -158,7 +159,7 @@ class LoadFromWeb():
     #def fetch_gebco_geotiff(self):
     #    url = 'https://www.bodc.ac.uk/data/open_download/gebco/gebco_2020/geotiff/'
 
-    def fetch_gebco_netcdf(self):
+    def fetch_gebco_netcdf(self, **kwargs):
         """ fetch gebco netcdf bathymetry, and return the filepath of extracted data """
         logging.info('downloading and decompressing 8gb gebco netcdf bathymetry')
 
@@ -182,6 +183,10 @@ class LoadFromWeb():
 
         return storage_cfg() + is_nc[0]
 
-    def load_gebco_netcdf(self):
-        return load_netcdf_2D(filename=self.fetch_gebco_netcdf())
+    def load_gebco_netcdf(self, **kwargs):
+        return load_netcdf_2D(filename=self.fetch_gebco_netcdf(), **kwargs)
+
+"""
+testcol = LoadFromWeb().load_gebco_netcdf()
+"""
 

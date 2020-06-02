@@ -2,7 +2,7 @@ from datetime import datetime
 from kadlu.geospatial.data_sources.fetch_handler import fetch_handler
 
 kwargs = dict(
-        start=datetime(2015, 3, 1), end=datetime(2015, 3, 1, 12),
+        start=datetime(2015, 2, 1), end=datetime(2015, 2, 1, 12),
         south=47,                   west=-61, 
         north=50,                   east=-58, 
         top=0,                      bottom=5000,

@@ -41,7 +41,7 @@ def test_load_bathy_northumberland_strait():
 def test_load_bathy():
     bathy, lat, lon = source.load_bathymetry(south=43.1, west=-59.8, north=43.8, east=-59.2)
     assert (len(bathy) == len(lat) == len(lon))
-    assert (len(bathy) > 0)
+    assert (len(bathy) > 0), 'no data'
     assert np.all(np.logical_and(lat >= 43.1, lat <= 43.8))
     assert np.all(np.logical_and(lon >= -59.8, lon <= -59.2))
     assert np.all(bathy >= -15000)

@@ -8,6 +8,7 @@ import kadlu.geospatial.data_sources.chs as chs
 import kadlu.geospatial.data_sources.era5 as era5
 import kadlu.geospatial.data_sources.hycom as hycom
 import kadlu.geospatial.data_sources.wwiii as wwiii
+from kadlu.geospatial.data_sources.load_from_file import LoadFromWeb 
 
 
 # dicts for mapping strings to callback functions
@@ -32,6 +33,7 @@ fetch_map = dict(
         wind_uv_wwiii       = wwiii.Wwiii().fetch_wind_uv,
         wind_u_wwiii        = wwiii.Wwiii().fetch_wind_u,
         wind_v_wwiii        = wwiii.Wwiii().fetch_wind_v,
+        bathy_gebco         = LoadFromWeb().fetch_gebco_netcdf,
     )
 
 load_map = dict(
@@ -53,6 +55,7 @@ load_map = dict(
         wind_uv_wwiii       = wwiii.Wwiii().load_wind_uv,
         wind_u_wwiii        = wwiii.Wwiii().load_wind_u,
         wind_v_wwiii        = wwiii.Wwiii().load_wind_v,
+        bathy_gebco         = LoadFromWeb().load_gebco_netcdf,
     )
 
 # some reasonable default kwargs

@@ -1,13 +1,5 @@
-""" The ocean module provides a unified interface to fetching, loading 
+""" The ocean module provides an interface to fetching, loading 
     and interpolating ocean variables.
-
-    Contents:
-        GridData2D class:
-        Interpolator2D class:
-        Interpolator3D class:
-        Uniform2D class:
-        Uniform3D class:
-        DepthInterpolator3D class
 """
 import os
 import logging
@@ -186,24 +178,25 @@ class Ocean():
 
         q = Queue()
 
-        # prepare data pipeline
+        # prepare data pipeline: map interpolations to dictionary in parallel
         pipe = zip(callbacks, vartypes)
-        is_3D = [v in var3d for v in vartypes]
+        shape = [v in var3d for v in vartypes]
         is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
         columns = [fcn(v=v, data=data, **kwargs) for fcn, v in pipe]
         intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
-        reshapers = (reshape_3D if v else reshape_2D for v in is_3D)
-        # map interpolations to dictionary in parallel
+        reshapers = [reshape_3D if v else reshape_2D for v in shape]
+        regridding = [r if not gridded else lambda c:c for (r, gridded) in zip(reshapers, [isinstance(c, dict) for c in columns])]
+        logging.debug(regridding)
         self.interps = {}
-        interpolators = map(lambda x, y: intrpmap[x][y], is_arr, is_3D)
+        interpolators = map(lambda x, y: intrpmap[x][y], is_arr, shape)
         interpolations = map(
             lambda i,r,c,v,q=q: Process(target=worker, args=(i,r,c,v,q)),
-            interpolators, reshapers, columns, vartypes
+            interpolators, regridding, columns, vartypes
         )
 
         # assert that no empty arrays were returned by load function
         for col, var in zip(columns, vartypes):
-            if isinstance(col[0], (int, float)): continue
+            if isinstance(col, dict) or isinstance(col[0], (int, float)): continue
             assert len(col[0]) > 0, (
                     f'no data found for {var} in region {fmt_coords(kwargs)}. '
                     f'consider expanding the region')
@@ -219,7 +212,7 @@ class Ocean():
         # debug mode: disable parallelization for nicer stack traces
         elif os.environ.get('LOGLEVEL') == 'DEBUG':
             logging.debug('OCEAN DEBUG MSG: parallelization disabled')
-            for i,r,c,v in zip(interpolators, reshapers, columns, vartypes):
+            for i,r,c,v in zip(interpolators, regridding, columns, vartypes):
                 logging.debug(f'interpolating {v}')
                 logging.debug(f'{i = }\n{r = }\n{c = }\n{v = }')
                 obj = i(**r(c))
@@ -234,10 +227,6 @@ class Ocean():
 
         # set ocean boundaries and interpolator origins
         self.boundaries = kwargs.copy()  
-        # matt_s 2020-04-06
-        # i added .copy() to prevent the ocean boundaries attribute from 
-        # changing when kwargs changes - attributes work like pointers
-        # more info here https://docs.python.org/3.8/library/copy.html
         self.origin = center_point(lat=[kwargs['south'], kwargs['north']], 
                                    lon=[kwargs['west'],  kwargs['east']])
         for v in vartypes: self.interps[v].origin = self.origin

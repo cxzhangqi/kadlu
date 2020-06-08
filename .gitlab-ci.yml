@@ -23,12 +23,12 @@ create-package:
  script:
   - source activate kadlu_env
   - python setup.py sdist
-  - pip install dist/kadlu-2.0.0.tar.gz
+  - pip install dist/kadlu-*.tar.gz
  only:
   - master
  artifacts:
   paths:
-   - dist/kadlu-2.0.0.tar.gz
+   - dist/kadlu-*.tar.gz
 
 run-tests:
  type: test

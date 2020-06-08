@@ -3,10 +3,12 @@ import logging
 import zipfile
 import requests
 from PIL import Image
+from pathlib import Path
 from datetime import datetime
+from functools import reduce
 #from scipy.io import netcdf
-import netCDF4
 
+import netCDF4
 import numpy as np
 
 from kadlu.geospatial.data_sources.fetch_handler import bin_request
@@ -14,7 +16,9 @@ from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
         storage_cfg,                                                \
         insert_hash,                                                \
-        serialized
+        serialized,                                                 \
+        index
+
 
 
 conn, db = database_cfg()
@@ -142,16 +146,16 @@ def load_netcdf_2D(filename, var=None, **kwargs):
 
     assert var in ncfile.variables, f'variable {var} not in file. file contains {ncfile.variables.keys()}'
 
-    logging.info(f'loading data from {ncfile.getncattr("title")}')
+    logging.info(f'loading {var} from {ncfile.getncattr("title")}')
 
-    #nx, ny = ncfile.dimensions['lon'].size, ncfile.dimensions['lat'].size
-    #np.ndarray((ncfile.dimensions['lon'].size, ncfile.dimensions['lat'].size), dtype=float)
+    rng_lat = index(kwargs['west'],  ncfile['lat'][:].data), index(kwargs['east'],  ncfile['lat'][:].data)
+    rng_lon = index(kwargs['south'], ncfile['lon'][:].data), index(kwargs['north'], ncfile['lon'][:].data)
 
-    #val = ncfile[var][:].data.flatten()
-    #lat = np.array([ncfile['lat'][:].data for _ in range(int(len(val)/len(ncfile['lat'][:].data)))])
+    val = ncfile[ var ][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]]
+    lat = ncfile['lat'][:].data[rng_lat[0]:rng_lat[1]]
+    lon = ncfile['lon'][:].data[rng_lon[0]:rng_lon[1]]
 
-    #return ncfile[var][:].data, ncfile['lat'][:].data, ncfile['lon'][:].data
-    return dict(values=ncfile[var][:].data, lats=ncfile['lat'][:].data, lons=ncfile['lon'][:].data)
+    return val, lat, lon
 
     
 class LoadFromWeb():
@@ -161,9 +165,10 @@ class LoadFromWeb():
 
     def fetch_gebco_netcdf(self, **kwargs):
         """ fetch gebco netcdf bathymetry, and return the filepath of extracted data """
-        logging.info('downloading and decompressing 8gb gebco netcdf bathymetry')
+        #if not os.path.isfile(storage_cfg()+'gebco_netcdf.zip'):
+        if not serialized(seed='gebco_bathy.nc'):
+            logging.info('downloading and decompressing gebco bathymetry from netcdf (~8GB)... ')
 
-        if not os.path.isfile(storage_cfg()+'gebco_netcdf.zip'):
             # download zipped netcdf to storage directory
             url = 'https://www.bodc.ac.uk/data/open_download/gebco/gebco_2020/zip/'
             with requests.get(url, stream=True) as payload_netcdf:
@@ -175,18 +180,22 @@ class LoadFromWeb():
             # unzip it
             with zipfile.ZipFile(storage_cfg()+'gebco_netcdf.zip', 'r') as zipf:
                 zipf.extractall(storage_cfg())
+            unzipped = zipfile.ZipFile(storage_cfg()+"gebco_netcdf.zip", "r").namelist()
+            ncpath = [_ for _ in unzipped if _[-3:] == '.nc'][0]
+            os.rename(storage_cfg() + ncpath, storage_cfg() + 'gebco_bathy.nc')
+            renamed = [fname if fname[-3:] != ".nc" else "gebco_bathy.nc" for fname in unzipped]
 
-        # get abspath of extracted netcdf data and return it
-        unzipped = zipfile.ZipFile(storage_cfg()+"gebco_netcdf.zip", "r").namelist()
-        logging.info(f'extracted {unzipped} to {storage_cfg()}')
-        is_nc = [fname for fname in unzipped if fname[-3:] == '.nc']
+            # store some metadata
+            insert_hash(seed='gebco_bathy.nc')
 
-        return storage_cfg() + is_nc[0]
+            logging.info(f'extracted {renamed} to {storage_cfg()}')
+
+        return storage_cfg() + 'gebco_bathy.nc'
 
     def load_gebco_netcdf(self, **kwargs):
         return load_netcdf_2D(filename=self.fetch_gebco_netcdf(), **kwargs)
 
 """
-testcol = LoadFromWeb().load_gebco_netcdf()
+testcol = LoadFromWeb().load_gebco_netcdf(**kwargs)
 """
 

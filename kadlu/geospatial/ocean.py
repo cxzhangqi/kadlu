@@ -178,20 +178,19 @@ class Ocean():
 
         q = Queue()
 
-        # prepare data pipeline: map interpolations to dictionary in parallel
+        # prepare data pipeline
         pipe = zip(callbacks, vartypes)
-        shape = [v in var3d for v in vartypes]
+        is_3D = [v in var3d for v in vartypes]
         is_arr = [not isinstance(arg, (int, float)) for arg in load_args]
         columns = [fcn(v=v, data=data, **kwargs) for fcn, v in pipe]
         intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
-        reshapers = [reshape_3D if v else reshape_2D for v in shape]
-        regridding = [r if not gridded else lambda c:c for (r, gridded) in zip(reshapers, [isinstance(c, dict) for c in columns])]
-        logging.debug(regridding)
+        reshapers = [reshape_3D if v else reshape_2D for v in is_3D]
+        # map interpolations to dictionary
         self.interps = {}
-        interpolators = map(lambda x, y: intrpmap[x][y], is_arr, shape)
+        interpolators = map(lambda x, y: intrpmap[x][y], is_arr, is_3D)
         interpolations = map(
             lambda i,r,c,v,q=q: Process(target=worker, args=(i,r,c,v,q)),
-            interpolators, regridding, columns, vartypes
+            interpolators, reshapers, columns, vartypes
         )
 
         # assert that no empty arrays were returned by load function
@@ -212,7 +211,7 @@ class Ocean():
         # debug mode: disable parallelization for nicer stack traces
         elif os.environ.get('LOGLEVEL') == 'DEBUG':
             logging.debug('OCEAN DEBUG MSG: parallelization disabled')
-            for i,r,c,v in zip(interpolators, regridding, columns, vartypes):
+            for i,r,c,v in zip(interpolators, reshapers, columns, vartypes):
                 logging.debug(f'interpolating {v}')
                 logging.debug(f'{i = }\n{r = }\n{c = }\n{v = }')
                 obj = i(**r(c))

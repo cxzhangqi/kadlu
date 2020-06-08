@@ -69,7 +69,7 @@ def fetch_era5(var, kwargs):
     if err: 
         raise KeyError('CDS API has not been configured for the ERA5 module. '
                        'obtain an API token from the following URL and run '
-                       'data_util().era5_cfg(url="URL_HERE", key="TOKEN_HERE"). '
+                       'kadlu.era5_cfg(url="URL_HERE", key="TOKEN_HERE"). '
                        'https://cds.climate.copernicus.eu/api-how-to')
 
     assert 6 == sum(map(lambda kw: kw in kwargs.keys(), 

@@ -95,7 +95,7 @@ def test_interp_gebco_bathy():
             top=0, bottom=0, start=default_val['start'], end=default_val['end'])
     
 
-def test_interp_hycom_temp():
+def test_interp_hycom_temp_chs_bathy():
     """ Test that ocean can be initialized with temperature data 
         from HYCOM with automatic fetching enabled and using 
         start/end args.

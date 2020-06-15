@@ -1,6 +1,11 @@
 Change log
 ==========
 
+**Version 2.1.2** (June 15, 2020)
+
+* Include functionality to load from arbitrary netcdf databases for 2D data
+* Scripting for automatic loading of GEBCO bathymetric data
+
 **Version 2.1.1** (May 28, 2020)
 
 * Update kadlu deployment scripting

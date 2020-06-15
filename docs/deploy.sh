@@ -47,4 +47,5 @@ EOF
 cd $KADLUDIR
 python3 $KADLUDIR/setup.py sdist bdist_wheel
 python3 -m twine upload --repository pypi $KADLUDIR/dist/*
+rm -rf dist
 

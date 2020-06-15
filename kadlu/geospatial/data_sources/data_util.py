@@ -241,7 +241,19 @@ def reshape_2D(cols):
 
 
 def reshape_3D(cols):
-    """ prepare loaded data for interpolation """
+    """ prepare loaded data for interpolation 
+    
+        args:
+            cols: flattened numpy array of shape (4, n)
+                cols[0]: values
+                cols[1]: latitude
+                cols[2]: longitude
+                cols[3]: depth
+
+        return: gridded
+            dict(values=gridspace, lats=ygrid, lons=xgrid, depths=zgrid)
+    
+    """
     if isinstance(cols[0], (float, int)):
         return dict(values=cols[0])
 

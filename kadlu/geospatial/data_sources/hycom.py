@@ -328,6 +328,8 @@ def fetch_idx(self, var, kwargs):
         return
 
     assert kwargs['start'] <= kwargs['end']
+    assert kwargs['start'] >  datetime(1994, 1, 1), 'data not available in this range'
+    assert kwargs['end']   <  datetime(2016, 1, 1), 'data not available in this range'
     assert kwargs['south'] <= kwargs['north']
     assert kwargs['top']   <= kwargs['bottom']
     assert kwargs['start'] >= datetime(1994, 1, 1)

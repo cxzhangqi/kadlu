@@ -13,7 +13,6 @@ from kadlu.geospatial.data_sources.data_util        import          \
         index
 
 
-
 conn, db = database_cfg()
 
 raster_table = lambda var: f'raster_{var}'
@@ -71,7 +70,7 @@ raster_table = lambda var: f'raster_{var}'
 """
 
 
-def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000, step=0.1)):
+def process_rasters_2D(var, filepath, kwargs=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000, step=0.1)):
     """ process and store arbitrary 2D data from raster format """
     """
     var = 'bathymetry'
@@ -81,7 +80,7 @@ def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, 
     
     # open image and validate metadata
     im = Image.open(filepath)
-    assert im.size == (np.arange(meta['west'], meta['east'], meta['step']).size, np.arange(meta['south'], meta['north'], meta['step']).size), 'metadata does not fit data'
+    assert im.size == (np.arange(kwargs['west'], kwargs['east'], kwargs['step']).size, np.arange(kwargs['south'], kwargs['north'], kwargs['step']).size), 'metadata does not match data'
 
     # interpret pixels as elevation
     nan = float(im.tag[42113][0])
@@ -90,7 +89,7 @@ def process_rasters_2D(var, filepath, meta=dict(south=-90, west=-180, north=90, 
     mask = np.flip(val == nan, axis=0)
 
     # generate latlon arrays
-    lon, lat = np.arange(meta['west'], meta['east'], meta['step']), np.arange(meta['south'], meta['north'], meta['step'])
+    lon, lat = np.arange(kwargs['west'], kwargs['east'], kwargs['step']), np.arange(kwargs['south'], kwargs['north'], kwargs['step'])
 
     # select non-masked entries, remove missing, build grid
     z1 = np.flip(val, axis=0)
@@ -126,7 +125,6 @@ def load_netcdf_2D(filename, var=None, **kwargs):
             values: numpy 2D array
             lats:   numpy 1D array
             lons:   numpy 1D array
-
     """
 
     ncfile = netCDF4.Dataset(filename)
@@ -149,15 +147,4 @@ def load_netcdf_2D(filename, var=None, **kwargs):
     lon = ncfile['lon'][:].data[rng_lon[0]:rng_lon[1]]
 
     return val, lat, lon
-
-    
-#class LoadFromWeb():
-    
-    #def fetch_gebco_geotiff(self):
-    #    url = 'https://www.bodc.ac.uk/data/open_download/gebco/gebco_2020/geotiff/'
-
-
-"""
-testcol = LoadFromWeb().load_gebco_netcdf(**kwargs)
-"""
 

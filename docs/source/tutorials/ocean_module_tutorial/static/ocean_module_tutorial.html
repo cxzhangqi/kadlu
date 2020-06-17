@@ -13301,6 +13301,24 @@ div#notebook {
 
 <div class="output_area">
 
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>2020-06-15 02:46:23  HYCOM 2015-01-09 downloading 424320 salinity values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:46:47  HYCOM 2015-01-09 salinity: downloaded 430 Kb in 21.800s. parsed and inserted 121544 rows in 2.218s. 302776 null values removed, 0 duplicates ignored
+2020-06-15 02:46:47  HYCOM 2015-01-09 downloading 424320 salinity values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:47:07  HYCOM 2015-01-09 salinity: downloaded 426 Kb in 17.170s. parsed and inserted 172832 rows in 2.712s. 247992 null values removed, 3496 duplicates ignored
+2020-06-15 02:47:07  HYCOM 2015-01-09 downloading 424320 salinity values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:47:09  HYCOM 2015-01-09 salinity: downloaded 430 Kb in 0.886s. parsed and inserted 129080 rows in 1.966s. 290400 null values removed, 4840 duplicates ignored
+2020-06-15 02:47:09  HYCOM 2015-01-09 downloading 424320 salinity values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:47:20  HYCOM 2015-01-09 salinity: downloaded 418 Kb in 6.768s. parsed and inserted 227952 rows in 3.331s. 184584 null values removed, 11784 duplicates ignored
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
     <div class="prompt output_prompt">Out[6]:</div>
 
 
@@ -13359,12 +13377,12 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># source strings passed as load arguments tells the ocean module where to source the data</span>
 <span class="n">sources</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-        <span class="n">load_bathymetry</span><span class="o">=</span><span class="s1">&#39;chs&#39;</span><span class="p">,</span>
+        <span class="n">load_bathymetry</span><span class="o">=</span><span class="s1">&#39;gebco&#39;</span><span class="p">,</span>
         <span class="n">load_temp</span><span class="o">=</span><span class="s1">&#39;hycom&#39;</span><span class="p">,</span>
         <span class="n">load_salinity</span><span class="o">=</span><span class="s1">&#39;hycom&#39;</span><span class="p">,</span>
         <span class="n">load_wavedir</span><span class="o">=</span><span class="s1">&#39;era5&#39;</span><span class="p">,</span>
@@ -13381,6 +13399,44 @@ div#notebook {
 </div>
 </div>
 
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>2020-06-15 02:47:34  HYCOM 2015-01-09 downloading 424320 water_temp values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:47:54  HYCOM 2015-01-09 water_temp: downloaded 448 Kb in 16.295s. parsed and inserted 121544 rows in 3.303s. 302776 null values removed, 0 duplicates ignored
+2020-06-15 02:47:54  HYCOM 2015-01-09 downloading 424320 water_temp values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:48:08  HYCOM 2015-01-09 water_temp: downloaded 448 Kb in 11.152s. parsed and inserted 172832 rows in 2.751s. 247992 null values removed, 3496 duplicates ignored
+2020-06-15 02:48:08  HYCOM 2015-01-09 downloading 424320 water_temp values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:48:14  HYCOM 2015-01-09 water_temp: downloaded 448 Kb in 4.961s. parsed and inserted 129080 rows in 1.845s. 290400 null values removed, 4840 duplicates ignored
+2020-06-15 02:48:14  HYCOM 2015-01-09 downloading 424320 water_temp values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:48:28  HYCOM 2015-01-09 water_temp: downloaded 448 Kb in 10.328s. parsed and inserted 227952 rows in 3.152s. 184584 null values removed, 11784 duplicates ignored
+2020-06-15 02:48:31  ERA5 2015-01-09 mean_wave_direction: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:48:33  ERA5 2015-01-09 mean_wave_direction: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:48:36  ERA5 2015-01-09 mean_wave_direction: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:48:38  ERA5 2015-01-09 mean_wave_direction: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:48:50  ERA5 2015-01-09 significant_height_of_combined_wind_waves_and_swell: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:48:52  ERA5 2015-01-09 significant_height_of_combined_wind_waves_and_swell: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:48:55  ERA5 2015-01-09 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:48:58  ERA5 2015-01-09 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:49:01  ERA5 2015-01-09 mean_wave_period: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:49:04  ERA5 2015-01-09 mean_wave_period: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:49:07  ERA5 2015-01-09 mean_wave_period: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:49:09  ERA5 2015-01-09 mean_wave_period: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:49:09  loading elevation from The GEBCO_2020 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
@@ -13392,7 +13448,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">waveheight</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">48.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">])</span>  <span class="c1"># query waveheight interpolator</span>
@@ -13408,7 +13464,7 @@ div#notebook {
 
 <div class="output_area">
 
-    <div class="prompt output_prompt">Out[9]:</div>
+    <div class="prompt output_prompt">Out[10]:</div>
 
 
 
@@ -13441,7 +13497,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">bathy_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span>
@@ -13462,7 +13518,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;bathymetry:</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span>  <span class="n">o</span><span class="o">.</span><span class="n">bathy</span><span class="p">(</span>   <span class="n">lat</span><span class="o">=</span><span class="p">[</span><span class="mf">47.5</span><span class="p">,</span> <span class="mf">48.1</span><span class="p">],</span> <span class="n">lon</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="o">-</span><span class="mf">62.5</span><span class="p">]))</span>
@@ -13471,26 +13527,6 @@ div#notebook {
 </pre></div>
 
     </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>bathymetry:	 [ 61.72563263 157.83399702]
-temperature:	 [10. 10.]
-salinity:	 [35. 35.]
-</pre>
-</div>
-</div>
-
 </div>
 </div>
 
@@ -13505,57 +13541,13 @@ salinity:	 [35. 35.]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">source_map</span><span class="p">)</span>
 </pre></div>
 
     </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>
-    CHS   (Canadian Hydrography Service)
-          load_bathymetry:          bathymetric data in Canada&#39;s waterways. variable resolution 
-
-    ERA5  (Global environmental dataset from Copernicus Climate Data Store)
-          load_windwaveswellheight: combined height of wind, waves, and swell. metres
-          load_wavedirection:       mean wave direction, degrees
-          load_waveperiod:          mean wave period, seconds
-          load_wind_uv:             wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
-          load_wind_u:              wind speed coordinate U-vector, m/s
-          load_wind_v:              wind speed coordinate V-vector, m/s 
-
-    HYCOM (Hybrid Coordinate Ocean Model)
-          load_salinity:            g/kg salt in water
-          load_temp:                degrees celsius
-          load_water_uv:            ocean current computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
-          load_water_u:             ocean current coordinate U-vector, m/s
-          load_water_v:             ocean current coordinate V-vector, m/s 
-
-    WWIII (WaveWatch Ocean Model Gen 3)
-          load_wavedirection:       primary wave direction, degrees
-          load_waveperiod:          primary mean wave period, seconds
-          load_windwaveheight:      combined height of wind and waves, metres
-          load_wind_uv:             wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
-          load_wind_u:              wind speed coordinate U-vector, m/s
-          load_wind_v:              wind speed coordinate V-vector, m/s
-    
-</pre>
-</div>
-</div>
-
 </div>
 </div>
 

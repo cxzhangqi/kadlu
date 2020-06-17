@@ -13103,7 +13103,9 @@ div#notebook {
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
-<span class="kn">from</span> <span class="nn">kadlu</span> <span class="kn">import</span> <span class="n">chs</span><span class="p">,</span> <span class="n">era5</span><span class="p">,</span> <span class="n">hycom</span><span class="p">,</span> <span class="n">wwiii</span><span class="p">,</span> <span class="n">source_map</span><span class="p">,</span> <span class="n">data_util</span>
+
+<span class="kn">import</span> <span class="nn">kadlu</span>
+<span class="kn">from</span> <span class="nn">kadlu</span> <span class="kn">import</span> <span class="n">chs</span><span class="p">,</span> <span class="n">era5</span><span class="p">,</span> <span class="n">gebco</span><span class="p">,</span> <span class="n">hycom</span><span class="p">,</span> <span class="n">wwiii</span><span class="p">,</span> <span class="n">source_map</span>
 </pre></div>
 
     </div>
@@ -13121,7 +13123,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>With Kadlu, environmental data can be retrieved and loaded with a single line of code. Here, we demonstrate how to obtain modelled, surface salinity data from HYCOM for the geographic region $47^{\circ}$N to $49^{\circ}$N and $-63^{\circ}$W to $-61^{\circ}$W for the first week of January 2013.</p>
+<p>With Kadlu, environmental data can be downloaded and stored in one step. Here, we demonstrate how to obtain modeled surface salinity data from HYCOM for the geographic region $47^{\circ}$N to $49^{\circ}$N and $-63^{\circ}$W to $-61^{\circ}$W for the first week of January 2013.</p>
 
 </div>
 </div>
@@ -13140,6 +13142,71 @@ div#notebook {
 </pre></div>
 
     </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>2020-06-15 02:13:08  HYCOM 2013-01-01 downloading 212160 salinity values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:13:23  HYCOM 2013-01-01 salinity: downloaded 215 Kb in 14.681s. parsed and inserted 60772 rows in 1.120s. 151388 null values removed, 0 duplicates ignored
+2020-06-15 02:13:23  HYCOM 2013-01-01 downloading 212160 salinity values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:13:33  HYCOM 2013-01-01 salinity: downloaded 213 Kb in 8.175s. parsed and inserted 86416 rows in 1.809s. 123996 null values removed, 1748 duplicates ignored
+2020-06-15 02:13:33  HYCOM 2013-01-01 downloading 212160 salinity values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:13:38  HYCOM 2013-01-01 salinity: downloaded 215 Kb in 3.194s. parsed and inserted 64540 rows in 1.155s. 145200 null values removed, 2420 duplicates ignored
+2020-06-15 02:13:38  HYCOM 2013-01-01 downloading 212160 salinity values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:13:40  HYCOM 2013-01-01 salinity: downloaded 209 Kb in 0.788s. parsed and inserted 113976 rows in 1.917s. 92292 null values removed, 5892 duplicates ignored
+2020-06-15 02:13:40  HYCOM 2013-01-02 downloading 477360 salinity values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:14:18  HYCOM 2013-01-02 salinity: downloaded 485 Kb in 35.436s. parsed and inserted 121544 rows in 1.806s. 340623 null values removed, 15193 duplicates ignored
+2020-06-15 02:14:18  HYCOM 2013-01-02 downloading 477360 salinity values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:14:54  HYCOM 2013-01-02 salinity: downloaded 479 Kb in 33.855s. parsed and inserted 172832 rows in 2.918s. 278991 null values removed, 25537 duplicates ignored
+2020-06-15 02:14:54  HYCOM 2013-01-02 downloading 477360 salinity values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:15:21  HYCOM 2013-01-02 salinity: downloaded 483 Kb in 25.480s. parsed and inserted 129080 rows in 1.936s. 326700 null values removed, 21580 duplicates ignored
+2020-06-15 02:15:21  HYCOM 2013-01-02 downloading 477360 salinity values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:15:43  HYCOM 2013-01-02 salinity: downloaded 470 Kb in 19.196s. parsed and inserted 227952 rows in 3.728s. 207657 null values removed, 41751 duplicates ignored
+2020-06-15 02:15:43  HYCOM 2013-01-03 downloading 477360 salinity values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:16:15  HYCOM 2013-01-03 salinity: downloaded 485 Kb in 29.423s. parsed and inserted 121544 rows in 2.564s. 340623 null values removed, 15193 duplicates ignored
+2020-06-15 02:16:15  HYCOM 2013-01-03 downloading 477360 salinity values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:16:37  HYCOM 2013-01-03 salinity: downloaded 479 Kb in 17.546s. parsed and inserted 172832 rows in 3.876s. 278991 null values removed, 25537 duplicates ignored
+2020-06-15 02:16:37  HYCOM 2013-01-03 downloading 477360 salinity values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:16:51  HYCOM 2013-01-03 salinity: downloaded 483 Kb in 12.549s. parsed and inserted 129080 rows in 1.943s. 326700 null values removed, 21580 duplicates ignored
+2020-06-15 02:16:51  HYCOM 2013-01-03 downloading 477360 salinity values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:16:55  HYCOM 2013-01-03 salinity: downloaded 470 Kb in 0.958s. parsed and inserted 227952 rows in 3.211s. 207657 null values removed, 41751 duplicates ignored
+2020-06-15 02:16:55  HYCOM 2013-01-04 downloading 477360 salinity values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:17:27  HYCOM 2013-01-04 salinity: downloaded 485 Kb in 29.303s. parsed and inserted 121544 rows in 1.852s. 340623 null values removed, 15193 duplicates ignored
+2020-06-15 02:17:27  HYCOM 2013-01-04 downloading 477360 salinity values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:17:56  HYCOM 2013-01-04 salinity: downloaded 479 Kb in 26.272s. parsed and inserted 172832 rows in 2.922s. 278991 null values removed, 25537 duplicates ignored
+2020-06-15 02:17:56  HYCOM 2013-01-04 downloading 477360 salinity values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:18:16  HYCOM 2013-01-04 salinity: downloaded 483 Kb in 17.910s. parsed and inserted 129080 rows in 2.611s. 326700 null values removed, 21580 duplicates ignored
+2020-06-15 02:18:16  HYCOM 2013-01-04 downloading 477360 salinity values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:19:03  HYCOM 2013-01-04 salinity: downloaded 470 Kb in 43.635s. parsed and inserted 227952 rows in 3.255s. 207657 null values removed, 41751 duplicates ignored
+2020-06-15 02:19:03  HYCOM 2013-01-05 downloading 477360 salinity values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:19:45  HYCOM 2013-01-05 salinity: downloaded 485 Kb in 40.228s. parsed and inserted 121544 rows in 1.920s. 340623 null values removed, 15193 duplicates ignored
+2020-06-15 02:19:45  HYCOM 2013-01-05 downloading 477360 salinity values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:20:17  HYCOM 2013-01-05 salinity: downloaded 479 Kb in 28.121s. parsed and inserted 172832 rows in 4.463s. 278991 null values removed, 25537 duplicates ignored
+2020-06-15 02:20:17  HYCOM 2013-01-05 downloading 477360 salinity values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:20:48  HYCOM 2013-01-05 salinity: downloaded 483 Kb in 28.471s. parsed and inserted 129080 rows in 2.587s. 326700 null values removed, 21580 duplicates ignored
+2020-06-15 02:20:48  HYCOM 2013-01-05 downloading 477360 salinity values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:21:04  HYCOM 2013-01-05 salinity: downloaded 470 Kb in 12.357s. parsed and inserted 227952 rows in 3.341s. 207657 null values removed, 41751 duplicates ignored
+2020-06-15 02:21:04  HYCOM 2013-01-06 downloading 424320 salinity values in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m...
+2020-06-15 02:21:32  HYCOM 2013-01-06 salinity: downloaded 431 Kb in 25.582s. parsed and inserted 106351 rows in 1.967s. 302776 null values removed, 15193 duplicates ignored
+2020-06-15 02:21:32  HYCOM 2013-01-06 downloading 424320 salinity values in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m...
+2020-06-15 02:21:56  HYCOM 2013-01-06 salinity: downloaded 426 Kb in 20.408s. parsed and inserted 151228 rows in 4.414s. 247992 null values removed, 25100 duplicates ignored
+2020-06-15 02:21:56  HYCOM 2013-01-06 downloading 424320 salinity values in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m...
+2020-06-15 02:22:12  HYCOM 2013-01-06 salinity: downloaded 430 Kb in 12.413s. parsed and inserted 112945 rows in 2.603s. 290400 null values removed, 20975 duplicates ignored
+2020-06-15 02:22:12  HYCOM 2013-01-06 downloading 424320 salinity values in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m...
+2020-06-15 02:22:32  HYCOM 2013-01-06 salinity: downloaded 418 Kb in 17.156s. parsed and inserted 199458 rows in 2.957s. 184584 null values removed, 40278 duplicates ignored
+</pre>
+</div>
+</div>
+
 </div>
 </div>
 
@@ -13213,10 +13280,10 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">data_util</span><span class="p">()</span><span class="o">.</span><span class="n">epoch_2_dt</span><span class="p">(</span><span class="n">epoch</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">kadlu</span><span class="o">.</span><span class="n">epoch_2_dt</span><span class="p">(</span><span class="n">epoch</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
 </pre></div>
 
     </div>
@@ -13252,7 +13319,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">source_map</span><span class="p">)</span>
@@ -13274,7 +13341,10 @@ div#notebook {
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>
     CHS   (Canadian Hydrography Service)
-          load_bathymetry:          bathymetric data in Canada&#39;s waterways. variable resolution 
+          load_bathymetry:          bathymetric data in Canada&#39;s waterways. metres, variable resolution 
+
+    GEBCO (General Bathymetric Chart of the Oceans)
+          load_bathymetry:          global bathymetric and topographic data. metres below sea level 
 
     ERA5  (Global environmental dataset from Copernicus Climate Data Store)
           load_windwaveswellheight: combined height of wind, waves, and swell. metres
@@ -13317,7 +13387,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">hycom</span><span class="p">())</span>
@@ -13371,7 +13441,7 @@ class functions:
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
@@ -13380,11 +13450,130 @@ class functions:
         <span class="n">bottom</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="n">start</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2013</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2013</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
 
-<span class="n">bathy</span><span class="p">,</span> <span class="n">lat1</span><span class="p">,</span> <span class="n">lon1</span> <span class="o">=</span> <span class="n">chs</span><span class="p">()</span><span class="o">.</span><span class="n">load_bathymetry</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<span class="n">waveheight</span><span class="p">,</span> <span class="n">lat2</span><span class="p">,</span> <span class="n">lon2</span><span class="p">,</span> <span class="n">epoch2</span> <span class="o">=</span> <span class="n">era5</span><span class="p">()</span><span class="o">.</span><span class="n">load_windwaveswellheight</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">bathy1</span><span class="p">,</span> <span class="n">lat1</span><span class="p">,</span> <span class="n">lon1</span> <span class="o">=</span> <span class="n">gebco</span><span class="p">()</span><span class="o">.</span><span class="n">load_bathymetry</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<span class="n">waveheight2</span><span class="p">,</span> <span class="n">lat2</span><span class="p">,</span> <span class="n">lon2</span><span class="p">,</span> <span class="n">epoch2</span> <span class="o">=</span> <span class="n">era5</span><span class="p">()</span><span class="o">.</span><span class="n">load_windwaveswellheight</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </pre></div>
 
     </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>2020-06-15 02:24:50  loading elevation from The GEBCO_2020 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals
+2020-06-15 02:28:32  ERA5 2013-01-01 significant_height_of_combined_wind_waves_and_swell: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:28:35  ERA5 2013-01-01 significant_height_of_combined_wind_waves_and_swell: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:28:39  ERA5 2013-01-01 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:28:42  ERA5 2013-01-01 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:28:53  ERA5 2013-01-02 significant_height_of_combined_wind_waves_and_swell: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:28:56  ERA5 2013-01-02 significant_height_of_combined_wind_waves_and_swell: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:28:59  ERA5 2013-01-02 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:29:02  ERA5 2013-01-02 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:29:13  ERA5 2013-01-03 significant_height_of_combined_wind_waves_and_swell: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:29:16  ERA5 2013-01-03 significant_height_of_combined_wind_waves_and_swell: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:29:19  ERA5 2013-01-03 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:29:22  ERA5 2013-01-03 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:29:34  ERA5 2013-01-04 significant_height_of_combined_wind_waves_and_swell: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:29:37  ERA5 2013-01-04 significant_height_of_combined_wind_waves_and_swell: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:29:40  ERA5 2013-01-04 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:29:43  ERA5 2013-01-04 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:30:06  ERA5 2013-01-05 significant_height_of_combined_wind_waves_and_swell: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:30:08  ERA5 2013-01-05 significant_height_of_combined_wind_waves_and_swell: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:30:12  ERA5 2013-01-05 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:30:15  ERA5 2013-01-05 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:30:26  ERA5 2013-01-06 significant_height_of_combined_wind_waves_and_swell: processed and inserted 529 rows in region 46.00°N,64.00°W,0m:48.00°N,62.00°W,5000m. 0 duplicates ignored
+2020-06-15 02:30:29  ERA5 2013-01-06 significant_height_of_combined_wind_waves_and_swell: processed and inserted 414 rows in region 48.00°N,64.00°W,0m:50.00°N,62.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:30:31  ERA5 2013-01-06 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 46.00°N,62.00°W,0m:48.00°N,60.00°W,5000m. 115 duplicates ignored
+2020-06-15 02:30:34  ERA5 2013-01-06 significant_height_of_combined_wind_waves_and_swell: processed and inserted 368 rows in region 48.00°N,62.00°W,0m:50.00°N,60.00°W,5000m. 207 duplicates ignored
+2020-06-15 02:32:25  loading elevation from The GEBCO_2020 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals
+2020-06-15 02:44:06  loading elevation from The GEBCO_2020 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals
+2020-06-15 02:44:39  loading elevation from The GEBCO_2020 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Manual-loading-from-netcdf-and-geotiff">Manual loading from netcdf and geotiff<a class="anchor-link" href="#Manual-loading-from-netcdf-and-geotiff">&#182;</a></h3><p>Kadlu can load from arbitrary netcdf- and geotiff-formatted data using the functions 'load_netcdf_2D' and 'load_geotiff_2D'. In the case of netcdf databases, the data must contain three variables, two of which are 'lat' and 'lon'. Kadlu will make an assumption that the X and Y axis are specified in coordinate degrees.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">kadlu</span> <span class="kn">import</span> <span class="n">load_netcdf_2D</span>
+
+<span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">south</span><span class="o">=</span><span class="mi">47</span><span class="p">,</span> <span class="n">west</span><span class="o">=-</span><span class="mi">63</span><span class="p">,</span> <span class="n">north</span><span class="o">=</span><span class="mi">49</span><span class="p">,</span> <span class="n">east</span><span class="o">=-</span><span class="mi">61</span><span class="p">)</span>
+
+<span class="n">bathy3</span><span class="p">,</span> <span class="n">lat3</span><span class="p">,</span> <span class="n">lon3</span> <span class="o">=</span> <span class="n">load_netcdf_2D</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;/storage/gebco_bathy.nc&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>When loading from an arbitrary netcdf database, data transformation must be done by the user. For example, when loading GEBCO netcdf data directly from the file instead of the gebco().load_bathymetry function, bathymetric values will be returned as a measure of elevation (equal to depth * -1)</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># returns a 2D array of elevation values</span>
+<span class="n">bathy3</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt output_prompt">Out[13]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>array([[-4339, -4339, -4340, ..., -4902, -4902, -4901],
+       [-4345, -4343, -4343, ..., -4905, -4903, -4903],
+       [-4345, -4349, -4349, ..., -4905, -4905, -4906],
+       ...,
+       [-5253, -5253, -5254, ..., -5252, -5252, -5252],
+       [-5248, -5250, -5250, ..., -5252, -5252, -5252],
+       [-5248, -5240, -5246, ..., -5254, -5253, -5253]], dtype=int16)</pre>
+</div>
+
+</div>
+
 </div>
 </div>
 

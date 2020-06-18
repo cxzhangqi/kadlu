@@ -71,28 +71,28 @@ var3d = ('temp', 'salinity', 'water_u', 'water_v', 'water_uv',)
 source_map = (
     """
     CHS   (Canadian Hydrography Service)
-          load_bathymetry:          bathymetric data in Canada's waterways. metres, variable resolution \n
+          bathymetry:       bathymetric data in Canada's waterways. metres, variable resolution \n
     GEBCO (General Bathymetric Chart of the Oceans)
-          load_bathymetry:          global bathymetric and topographic data. metres below sea level \n
+          bathymetry:       global bathymetric and topographic data. metres below sea level \n
     ERA5  (Global environmental dataset from Copernicus Climate Data Store)
-          load_windwaveswellheight: combined height of wind, waves, and swell. metres
-          load_wavedirection:       mean wave direction, degrees
-          load_waveperiod:          mean wave period, seconds
-          load_wind_uv:             wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
-          load_wind_u:              wind speed coordinate U-vector, m/s
-          load_wind_v:              wind speed coordinate V-vector, m/s \n
+          wavedir:          mean wave direction, degrees
+          waveheight:       combined height of wind, waves, and swell. metres
+          waveperiod:       mean wave period, seconds
+          wind_uv:          wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
+          wind_u:           wind speed coordinate U-vector, m/s
+          wind_v:           wind speed coordinate V-vector, m/s \n
     HYCOM (Hybrid Coordinate Ocean Model)
-          load_salinity:            g/kg salt in water
-          load_temp:                degrees celsius
-          load_water_uv:            ocean current computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
-          load_water_u:             ocean current coordinate U-vector, m/s
-          load_water_v:             ocean current coordinate V-vector, m/s \n
+          salinity:         g/kg salt in water
+          temp:             degrees celsius
+          water_uv:         ocean current computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
+          water_u:          ocean current coordinate U-vector, m/s
+          water_v:          ocean current coordinate V-vector, m/s \n
     WWIII (WaveWatch Ocean Model Gen 3)
-          load_wavedirection:       primary wave direction, degrees
-          load_waveperiod:          primary mean wave period, seconds
-          load_windwaveheight:      combined height of wind and waves, metres
-          load_wind_uv:             wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
-          load_wind_u:              wind speed coordinate U-vector, m/s
-          load_wind_v:              wind speed coordinate V-vector, m/s
+          wavedir:          primary wave direction, degrees
+          waveheight:       combined height of wind and waves, metres
+          waveperiod:       primary mean wave period, seconds
+          wind_uv:          wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
+          wind_u:           wind speed coordinate U-vector, m/s
+          wind_v:           wind speed coordinate V-vector, m/s
     """)
 

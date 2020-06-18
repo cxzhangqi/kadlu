@@ -3,7 +3,7 @@ import logging
 import zipfile
 import requests
 
-from kadlu.geospatial.data_sources.load_from_file import load_netcdf_2D
+from kadlu.geospatial.data_sources.load_from_file import load_netcdf
 from kadlu.geospatial.data_sources.data_util        import          \
         storage_cfg,                                                \
         insert_hash,                                                \
@@ -42,7 +42,7 @@ class Gebco():
 
 
     def load_bathymetry(self, **kwargs):
-        val, lat, lon = load_netcdf_2D(filename=self.fetch_bathymetry(), **kwargs)
+        val, lat, lon = load_netcdf(filename=self.fetch_bathymetry(), **kwargs)
         return val * -1, lat, lon
 
 

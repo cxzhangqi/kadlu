@@ -9,11 +9,7 @@ from .geospatial.data_sources.data_util import \
         dt_2_epoch,     \
         index,          \
         reshape_2D,     \
-        reshape_3D      
-
-# load data from local files
-from .geospatial.data_sources.load_from_file import load_netcdf
-from .geospatial.data_sources.load_from_file import load_raster
+        reshape_3D
 
 # loading with automatic fetching
 from .geospatial.data_sources.source_map import source_map 
@@ -23,8 +19,13 @@ from .geospatial.data_sources.gebco import Gebco as gebco
 from .geospatial.data_sources.hycom import Hycom as hycom
 from .geospatial.data_sources.wwiii import Wwiii as wwiii
 
+# load data from local files
+from .geospatial.data_sources.load_from_file import load_netcdf
+from .geospatial.data_sources.load_from_file import load_raster
+
 # user-facing data loading API
 from .geospatial.data_sources.source_map import load_map
+
 
 def load(source, var, **kwargs):
     """ automated fetching and loading from web sources 
@@ -52,7 +53,7 @@ def load(source, var, **kwargs):
     if var == 'bathymetry' or var == 'depth' or var == 'elevation': var = 'bathy'
 
     loadkey = f'{var}_{source}'
-    assert loadkey in load_map.keys(), 'invalid variable or source. valid options include: \n\n'\
+    assert loadkey in load_map.keys(), 'invalid source or variable. valid options include: \n\n'\
             f'{list(f.rsplit("_", 1)[::-1] for f in load_map.keys())}\n\n'\
             f'for more info, print(kadlu.source_map)'
 
@@ -75,13 +76,13 @@ def load_file(filepath, **kwargs):
             val, lat, lon, [time, depth]
             times are in epoch format
     """
-
     assert os.path.isfile(filepath), f'could not find {filepath}'
+    ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(ext == filepath.lower()[-len(ext):] for ext in extensions)
 
-    if filepath[-3:].lower() == '.nc':
+    if ext(filepath, ('.nc',)):
         return load_netcdf(filepath, **kwargs)
 
-    elif filepath[-5:].lower() in ('.tiff', '.geotiff'):       
+    elif ext(filepath, ('.tif', '.tiff', '.gtiff',)):       
         return load_raster(filepath, **kwargs)
 
     else:

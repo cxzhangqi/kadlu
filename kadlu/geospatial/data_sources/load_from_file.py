@@ -1,10 +1,13 @@
 import logging
 from PIL import Image
+from PIL.ExifTags import TAGS
+from functools import reduce
+from xml.etree import ElementTree as ET
+import json
 
 import netCDF4
 import numpy as np
 
-#from kadlu.geospatial.data_sources.fetch_handler import bin_request
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
         storage_cfg,                                                \
@@ -13,58 +16,58 @@ from kadlu.geospatial.data_sources.data_util        import          \
         index
 
 
-conn, db = database_cfg()
-
-
-def load_raster(filepath, kwargs=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000, step=0.1)):
+def load_raster(filepath, **kwargs):
     """ load 2D data from raster file """
     """
     #var = 'bathymetry'
-    filepath = storage_cfg() + 'BlueMarbleNG_2004-12-01_rgb_3600x1800.TIFF'
-    kwargs=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000, step=0.1)
-
+    filepath = storage_cfg() + 'gebco_2020_n0.0_s-90.0_w-180.0_e-90.0.tif'
+    filepath = storage_cfg() + 'test.tif'
+    kwargs=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000)
     """
     
-    # open image and validate metadata
+    # suppress decompression bomb error and open raster
+    Image.MAX_IMAGE_PIXELS = 500000000
     im = Image.open(filepath)
-    assert im.size == (np.arange(kwargs['west'], kwargs['east'], kwargs['step']).size, np.arange(kwargs['south'], kwargs['north'], kwargs['step']).size), 'metadata does not match data'
+    nan = float(im.tag_v2[42113])
 
-    # interpret pixels as elevation
-    nan = float(im.tag[42113][0])
-    val = np.ndarray((im.size[0], im.size[1]))
-    for yi in range(im.size[1]): val[yi] = np.array(list(map(im.getpixel, zip([yi for xi in range(im.size[0])], range(im.size[1])))))
-    mask = np.flip(val == nan, axis=0)
+    # GDAL raster format
+    # http://duff.ess.washington.edu/data/raster/drg/docs/geotiff.txt
+    if 33922 in im.tag.tagdata.keys():
+        i,j,k,x,y,z = im.tag_v2[33922]  # ModelTiepointTag
+        dx, dy, dz  = im.tag_v2[33550]  # ModelPixelScaleTag
+        meta        = im.tag_v2[42112]  # GdalMetadata
+        tree        = ET.fromstring(meta)
+        params      = {entry.attrib['name'] : entry.text for entry in tree}
+        logging.info(f'{tree.tag}\nraster coordinate system: {im.tag_v2[34737]}\n{json.dumps(params, indent=2, sort_keys=True)}')
 
-    # generate latlon arrays
-    lon, lat = np.arange(kwargs['west'], kwargs['east'], kwargs['step']), np.arange(kwargs['south'], kwargs['north'], kwargs['step'])
+    # NASA / Jet Propulsion Laboratory raster format
+    # https://landsat.usgs.gov/sites/default/files/documents/geotiff_spec.pdf
+    elif 34264 in im.tag.tagdata.keys():
+        a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p = im.tag_v2[34264]  # ModelTransformationTag
+        dx,x,dy,y,dz,z = a,d,abs(f),h,k,l  # refer to page 28 for transformation matrix
 
-    # select non-masked entries, remove missing, build grid
+    else: assert False, 'unknown metadata tag encoding'
+    assert not (z or dz), 'TODO: implement 3D raster support'
+
+    # construct grid and interpret pixels as elevation
+    if reduce(np.multiply, im.size) > 10000000: logging.info('this could take a few moments...')
+    lon = np.arange(x, x+(dx*im.size[0]), dx)
+    lat = np.arange(y-(dy*im.size[1]), y, dy)
+    grid = np.ndarray((im.size[0], im.size[1]))
+    for yi in range(im.size[1]): grid[yi] = np.array(list(map(im.getpixel, zip([yi for xi in range(im.size[0])], range(im.size[1])))))
+    mask = np.flip(grid == nan, axis=0)
+    val = np.ma.MaskedArray(grid, mask=mask)
+
+    # select non-masked entries, remove missing
     z1 = np.flip(val, axis=0)
     x1, y1 = np.meshgrid(lon, lat)
     x2, y2, z2 = x1[~mask], y1[~mask], np.abs(z1[~mask])
-    #source = ['chs' for z in z2]
-    #grid = list(map(tuple, np.vstack((z2, y2, x2, source)).T))
-
-    """
-    # insert into db
-    raster_table = lambda var: f'raster_{var}'
-    n1 = db.execute(f"SELECT COUNT(*) FROM {raster_table(var)}").fetchall()[0][0]
-    db.executemany(f"INSERT OR IGNORE INTO {raster_table(var)} VALUES (?,?,?,?)", grid)
-    n2 = db.execute(f"SELECT COUNT(*) FROM {raster_table(var)}").fetchall()[0][0]
-    db.execute("COMMIT")
-    conn.commit()
-    logging.info(f"RASTER {filepath.split('/')[-1]} {var} in region "
-          f"{fmt_coords(dict(south=south,west=west,north=north,east=east))}. "
-          f"processed and inserted {n2-n1} rows. "
-          f"{len(z1[~mask]) - len(grid)} null values removed, "
-          f"{len(grid) - (n2-n1)} duplicate rows ignored")
-    """
     
     return z2, y2, x2
 
 
 def load_netcdf(filename, var=None, **kwargs):
-    """ read environmental data from netcdf and output to gridded 2D numpy array
+    """ read environmental data from netcdf and output to gridded numpy array
 
         args:
             filename: string

@@ -72,8 +72,6 @@ source_map = (
     """
     CHS   (Canadian Hydrography Service)
           bathymetry:       bathymetric data in Canada's waterways. metres, variable resolution \n
-    GEBCO (General Bathymetric Chart of the Oceans)
-          bathymetry:       global bathymetric and topographic data. metres below sea level \n
     ERA5  (Global environmental dataset from Copernicus Climate Data Store)
           wavedir:          mean wave direction, degrees
           waveheight:       combined height of wind, waves, and swell. metres
@@ -81,6 +79,8 @@ source_map = (
           wind_uv:          wind speed computed as sqrt(u^2 + v^2) / 2, where u, v are direction vectors
           wind_u:           wind speed coordinate U-vector, m/s
           wind_v:           wind speed coordinate V-vector, m/s \n
+    GEBCO (General Bathymetric Chart of the Oceans)
+          bathymetry:       global bathymetric and topographic data. metres below sea level \n
     HYCOM (Hybrid Coordinate Ocean Model)
           salinity:         g/kg salt in water
           temp:             degrees celsius

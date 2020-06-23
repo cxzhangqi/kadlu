@@ -19,13 +19,14 @@ from kadlu.geospatial.data_sources.data_util        import          \
         index
 
 
-def load_raster(filepath, plot=True, **kwargs):
+def load_raster(filepath, plot=True, cmap=None, **kwargs):
     """ load data from raster file """
     """
     #var = 'bathymetry'
     filepath = storage_cfg() + 'gebco_2020_n0.0_s-90.0_w-180.0_e-90.0.tif'
     filepath = storage_cfg() + 'test.tif'
     filepath = storage_cfg() + 'GEBCO_BATHY_2002-01-01_rgb_3600x1800.TIFF'
+    filepath = storage_cfg() + 'BlueMarbleNG_2004-12-01_rgb_3600x1800.TIFF'
     kwargs=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000)
     """
     
@@ -43,24 +44,23 @@ def load_raster(filepath, plot=True, **kwargs):
         tree        = ET.fromstring(meta)
         params      = {entry.attrib['name'] : entry.text for entry in tree}
         logging.info(f'{tree.tag}\nraster coordinate system: {im.tag_v2[34737]}\n{json.dumps(params, indent=2, sort_keys=True)}')
+        lat = np.arange(y, y + (dy * im.size[1]), dy)[ :: -1]
 
     # NASA / jet propulsion labs raster format
     # https://landsat.usgs.gov/sites/default/files/documents/geotiff_spec.pdf
     elif 34264 in im.tag.tagdata.keys():
         a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p = im.tag_v2[34264]  # ModelTransformationTag
         dx,x,dy,y,dz,z = a,d,f,h,k,l  # refer to page 27 for transformation matrix
+        lat = np.arange(y, y + (dy * im.size[1]), dy)
 
     else: assert False, 'unknown metadata tag encoding'
     assert not (z or dz), 'TODO: implement 3D raster support'
 
-    # construct grid and interpret pixels as elevation
-    if reduce(np.multiply, im.size) > 10000000: 
-        logging.info('this could take a few moments...')
+    # construct grid and decode pixel values
+    if reduce(np.multiply, im.size) > 10000000: logging.info('this could take a few moments...')
     lon = np.arange(x, x + (dx * im.size[0]), dx)
-    lat = np.arange(y, y + (dy * im.size[1]), dy)[::-1]
-    grid = np.ndarray((im.size[0], im.size[1]))
-    for yi in range(im.size[1]): 
-        grid[yi] = np.array(list(map(im.getpixel, zip([yi for xi in range(im.size[0])], range(im.size[1])))))
+    grid = np.ndarray(list(map(int, reduce(np.append, (im.size,np.array(im.getpixel((0,0))).shape)))))
+    for yi in range(im.size[0]): grid[yi] = np.array(list(map(im.getpixel, zip([yi for xi in range(im.size[0])], range(im.size[1])))))
     mask = grid == nan
     val = np.ma.MaskedArray(grid, mask=mask)
     x1, y1 = np.meshgrid(lon, lat, indexing='ij')
@@ -68,7 +68,10 @@ def load_raster(filepath, plot=True, **kwargs):
     if plot:
         fig = plt.figure()
         ax = fig.add_subplot(1,1,1, projection='scatter_density')
-        ax.scatter_density(x1, y1, c=val.data)
+        ax.set_title(filepath)
+        density = ax.scatter_density(x1, y1, c=val, cmap=cmap)
+        fig.colorbar(density, label='pixel value')
+        plt.tight_layout()
         plt.show()
     
     return val, y1, x1
@@ -111,3 +114,13 @@ def load_netcdf(filename, var=None, **kwargs):
 
     return val, lat, lon
 
+"""
+
+filepath = storage_cfg() + 'gebco_2020_n0.0_s-90.0_w-180.0_e-90.0.tif'
+filepath = storage_cfg() + 'test.tif'
+filepath = storage_cfg() + 'GEBCO_BATHY_2002-01-01_rgb_3600x1800.TIFF'
+filepath = storage_cfg() + 'BlueMarbleNG_2004-12-01_rgb_3600x1800.TIFF'
+
+load_raster(filepath)
+
+"""

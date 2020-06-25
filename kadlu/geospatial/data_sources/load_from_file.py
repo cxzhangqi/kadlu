@@ -19,21 +19,35 @@ from kadlu.geospatial.data_sources.data_util        import          \
         index
 
 
-def load_raster(filepath, plot=True, cmap=None, **kwargs):
+def load_raster(filepath, plot=False, cmap=None, **kwargs):
     """ load data from raster file """
     """
     #var = 'bathymetry'
-    filepath = storage_cfg() + 'gebco_2020_n0.0_s-90.0_w-180.0_e-90.0.tif'
+    filepath = storage_cfg() + 'gebco_2020_n90.0_s0.0_w-90.0_e0.0.tif'
     filepath = storage_cfg() + 'test.tif'
     filepath = storage_cfg() + 'GEBCO_BATHY_2002-01-01_rgb_3600x1800.TIFF'
     filepath = storage_cfg() + 'BlueMarbleNG_2004-12-01_rgb_3600x1800.TIFF'
-    kwargs=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000)
+
+    plot=True
+    cmap=None
+    #kwargs=dict(south=-90, west=-180, north=90, east=180, top=0, bottom=50000)
+    kwargs=dict(south=60, west=-, north=61, east=180, top=0, bottom=50000)
+
+    kwargs['north'], kwargs['east'] = 60.4709, 61.26033
+    kwargs['south'], kwargs['west'] = 60.46333,61.15905
+
+    kwargs['north'], kwargs['east'] = 62.4709,  63.26033
+    kwargs['south'], kwargs['west'] = 60.46333, 61.15905
+
+We have two moorings 2019-2020  August 2019 to end September 2020  (yes, some futures in there as well).
+  Mooring HiBioA 2019-2020 … located at:   60 degrees, 28.254 minutes N,  61 degrees, 15.620 W
+  Mooring HiBioC 2019-2020 … located at:   60 degrees, 27.7998 minutes N,  61 degrees, 09.543 W
+
     """
     
-    # suppress decompression bomb error and open raster
+    # load raster
     Image.MAX_IMAGE_PIXELS = 500000000
     im = Image.open(filepath)
-    nan = float(im.tag_v2[42113])
 
     # GDAL raster format
     # http://duff.ess.washington.edu/data/raster/drg/docs/geotiff.txt
@@ -41,38 +55,56 @@ def load_raster(filepath, plot=True, cmap=None, **kwargs):
         i,j,k,x,y,z = im.tag_v2[33922]  # ModelTiepointTag
         dx, dy, dz  = im.tag_v2[33550]  # ModelPixelScaleTag
         meta        = im.tag_v2[42112]  # GdalMetadata
-        tree        = ET.fromstring(meta)
-        params      = {entry.attrib['name'] : entry.text for entry in tree}
+        xml         = ET.fromstring(meta)
+        params      = {tag.attrib['name'] : tag.text for tag in xml}
         logging.info(f'{tree.tag}\nraster coordinate system: {im.tag_v2[34737]}\n{json.dumps(params, indent=2, sort_keys=True)}')
         lat = np.arange(y, y + (dy * im.size[1]), dy)[ :: -1]
+        #rng_lat = index(kwargs['west'], lat),  index(kwargs['east'], lat)
+        rng_lat = index(kwargs['south'], lat),  index(kwargs['north'], lat)
 
-    # NASA / jet propulsion labs raster format
+    # NASA / jet propulsion labs raster format (page 27)
     # https://landsat.usgs.gov/sites/default/files/documents/geotiff_spec.pdf
     elif 34264 in im.tag.tagdata.keys():
-        a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p = im.tag_v2[34264]  # ModelTransformationTag
-        dx,x,dy,y,dz,z = a,d,f,h,k,l  # refer to page 27 for transformation matrix
+        dx,_,_,x,_,dy,_,y,_,_,dz,z,_,_,_,_ = im.tag_v2[34264]  # ModelTransformationTag
         lat = np.arange(y, y + (dy * im.size[1]), dy)
+        rng_lat = index(kwargs['south'], -lat),  index(kwargs['north'], -lat)
 
     else: assert False, 'unknown metadata tag encoding'
-    assert not (z or dz), 'TODO: implement 3D raster support'
+
+    lon = np.arange(x, x + (dx * im.size[0]), dx)
+    rng_lon = index(kwargs['west'], lon), index(kwargs['east'], lon)
+
+    assert not (z or dz), '3D rasters not supported yet'
 
     # construct grid and decode pixel values
-    if reduce(np.multiply, im.size) > 10000000: logging.info('this could take a few moments...')
-    lon = np.arange(x, x + (dx * im.size[0]), dx)
-    grid = np.ndarray(list(map(int, reduce(np.append, (im.size,np.array(im.getpixel((0,0))).shape)))))
-    for yi in range(im.size[0]): grid[yi] = np.array(list(map(im.getpixel, zip([yi for xi in range(im.size[0])], range(im.size[1])))))
-    mask = grid == nan
+    if reduce(np.multiply, (rng_lon[1] - rng_lon[0], rng_lat[1] - rng_lat[0])) > 10000000: logging.info('this could take a few moments...')
+    #grid = np.ndarray(list(map(int, reduce(np.append, (im.size[0],np.array(im.getpixel((0,0))).shape)))))
+    grid = np.ndarray((len(np.arange(rng_lon[0], rng_lon[1])), len(np.arange(rng_lat[0], rng_lat[1]))))
+    for yi in np.arange(rng_lon[0], rng_lon[1]) -rng_lon[0]: 
+        grid[yi] = np.array(list(map(im.getpixel, zip(
+            map(int, [yi for xi in np.arange(rng_lon[0], rng_lon[1]) -rng_lon[0]]), 
+            map(int,               np.arange(rng_lat[0], rng_lat[1]) -rng_lat[0] )
+        ))))
+    mask = grid == float(im.tag_v2[42113])
     val = np.ma.MaskedArray(grid, mask=mask)
-    x1, y1 = np.meshgrid(lon, lat, indexing='ij')
+    x1, y1 = np.meshgrid(lon[rng_lon[0]:rng_lon[1]], -1*lat[rng_lat[0]:rng_lat[1]], indexing='ij')
 
     if plot:
         fig = plt.figure()
         ax = fig.add_subplot(1,1,1, projection='scatter_density')
-        ax.set_title(filepath)
-        density = ax.scatter_density(x1, y1, c=val, cmap=cmap)
-        fig.colorbar(density, label='pixel value')
-        plt.tight_layout()
-        plt.show()
+        if borderless:
+            ax.set_xticks([]), ax.set_yticks([])
+            plt.axis('scaled')
+            raster = ax.scatter_density(x1, y1, c=val, cmap=cmap, vmin=0, vmax=256)
+            #raster = ax.scatter_density(lon, lat, c=val, cmap=cmap, vmin=0, vmax=256)
+            plt.tight_layout()
+            plt.show()
+            #ax.scatter(x1, y1, c=val)
+            #fig.savefig(storage_cfg()+'figures/test_raster.png', figsize=(200,200), dpi=300)
+        else:
+            ax.set_title(filepath)
+            raster = ax.scatter_density(x1, y1, c=val, cmap=cmap)
+            plt.show()
     
     return val, y1, x1
 
@@ -114,13 +146,3 @@ def load_netcdf(filename, var=None, **kwargs):
 
     return val, lat, lon
 
-"""
-
-filepath = storage_cfg() + 'gebco_2020_n0.0_s-90.0_w-180.0_e-90.0.tif'
-filepath = storage_cfg() + 'test.tif'
-filepath = storage_cfg() + 'GEBCO_BATHY_2002-01-01_rgb_3600x1800.TIFF'
-filepath = storage_cfg() + 'BlueMarbleNG_2004-12-01_rgb_3600x1800.TIFF'
-
-load_raster(filepath)
-
-"""

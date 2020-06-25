@@ -217,7 +217,7 @@ def epoch_2_dt(ep_arr):
 
 def index(val, sorted_arr):
     """ converts value in coordinate array to grid index """
-    if val > sorted_arr[-1]: return len(sorted_arr) - 1
+    if val > sorted_arr[-1]: return len(sorted_arr)
     return np.nonzero(sorted_arr >= val)[0][0]
 
 

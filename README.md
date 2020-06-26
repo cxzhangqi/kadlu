@@ -15,9 +15,6 @@ Kadlu was developed by the [MERIDIAN](http://meridian.cs.dal.ca/) Data Analytics
 support and assistance of David Barclay and Calder Robinson, both from the Department of Oceanography 
 at Dalhousie University.
 
-You can install the latest version of Kadlu from the Python Package Index (PyPI) repository using Anaconda. 
-For more information, please consult [Kadlu's Documentation Page](https://docs.meridian.cs.dal.ca/kadlu/).
-
 Kadlu provides functionalities that automate the process of fetching and interpolating 
 environmental data necessary to model ocean ambient noise levels (bathymetry, water temperature 
 and salinity, wave height, wind speed, etc.). It also includes various routines that allow 

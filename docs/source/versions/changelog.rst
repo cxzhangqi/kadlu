@@ -1,6 +1,11 @@
 Change log
 ==========
 
+**Version 2.2.0** (June 26, 2020)
+* Added functionality to load data from local files in raster format
+* Improved build scripts
+* Added default ERA5 token
+
 **Version 2.1.3** (June 15, 2020)
 
 * Include functionality to load from arbitrary netcdf databases for 2D data

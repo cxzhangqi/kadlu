@@ -16,21 +16,25 @@ setup(name='kadlu',
         license='GNU General Public License v3.0',
         packages=find_packages(),
         install_requires=[
-            'numpy',
-            'scipy',
-            'pytest',
-            'cdsapi',
-            'pyproj',
-            'matplotlib',
-            'geos',     # needed for cartopy
-            'proj',     # needed for cartopy
-            'Pillow',
-            'imageio',
-            'netcdf4',
-            'mpl_scatter_density',
-            'pygrib',
             'cartopy',
+            #'cftime',
+            'cdsapi',
+            'geos',     # needed for cartopy
+            'gsw',
+            'imageio',
+            'matplotlib',
+            'mpl_scatter_density',
+            'netcdf4',  # DEPENDS ON LIBRARIES:
+            'numpy',
+            'pandas',
+            'Pillow',
+            'proj',     # needed for cartopy
+            'pygrib',   # DEPENDS ON eccodes 
+            'pyproj',
             'pyqt5',
+            'pytest',
+            'scipy',
+            #'tqdm',
             ],
         setup_requires=['pytest-runner',],
         tests_require=['pytest',],

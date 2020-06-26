@@ -4,23 +4,28 @@ channels:
 dependencies:
   - python=3
   - cartopy
-  - cftime
+  #- cftime
   - cdsapi
   - cython
+  - geos
   - gsw
   #- h5py
   - imageio
   - jupyter
   - make
   - matplotlib
+  - mpl_scatter_density
   - netCDF4
   - numpy
   - pandas
   - Pillow
   - pip
-  - pytest
+  - Proj
   - pygrib
+  - pyproj
+  - pyqt5
+  - pytest
   - scipy
   - setuptools
-  - tqdm
+  #- tqdm
 

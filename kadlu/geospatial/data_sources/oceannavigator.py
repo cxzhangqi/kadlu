@@ -16,8 +16,7 @@ except:
    print("If you are on a Windows machine, please install PIL (imaging library) using 'python -m pip install Pillow' in the Anaconda Prompt")
    exit()
 import json
-​
-​
+
 def requestFile():
    # json object for the query
    query = {"area":[{"innerrings":[],
@@ -45,14 +44,10 @@ def requestFile():
 "time":2211451200,
 "type":"map",
 "variable":"vosaline"}
-​
-​
    # Assemble full request
    base_url = "http://navigator.oceansdata.ca/api/v1.0/plot/?"
    url = base_url + urlencode({"query": json.dumps(query)}) + '&save&format=csv&size=10x7&dpi=144'
    print(url)
-​
-​
    # Save file and finish
    data_file = requests.get(url, stream=True)
    dump = data_file.raw
@@ -62,7 +57,6 @@ def requestFile():
       print('Saving File')
       shutil.copyfileobj(dump, location)
       print('Done')
-​
-​
+
 if __name__ == '__main__':
    requestFile()

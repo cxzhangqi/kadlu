@@ -37,68 +37,42 @@ Kadlu is most easily installed using the Anaconda package manager.
 Anaconda is freely available from [docs.anaconda.com/anaconda/install](https://docs.anaconda.com/anaconda/install/). 
 Kadlu runs on the most recent stable version of Python 3. 
 
- 1. Ensure that Anaconda and Python are up to date:
+ 1. Download dependency list and install dependencies using anaconda
     ```bash
-    conda update conda
-    conda update --all
-    conda install -c anaconda python=3.8
+    curl https://gitlab.meridian.cs.dal.ca/public_projects/kadlu/-/raw/master/environment.yml > environment.yml
+    conda env create -f environment.yml python=3.8
     ```
 
- 2. Clone the Kadlu repository
+ 2. Activate the conda environment
     ```bash
-    git clone https://gitlab.meridian.cs.dal.ca/public_projects/kadlu.git
-    cd kadlu
-    ```
-
- 3. Create and activate an Anaconda environment. Note that pip and jupyter are included in the environment
-    ```bash
-    conda env create -f environment.yml
     conda activate kadlu_env
     ```
 
- 4. Install Kadlu
+ 3. Install Kadlu
     ```bash
-    python setup.py sdist
-    pip install dist/kadlu-2.0.0.tar.gz
+    pip install kadlu
     ```
 
 
 ## Configuration
 
-Kadlu allows configuration for how data is stored on your machine, such as the data storage location and configuring external API keys. 
-
- 0. Import Kadlu
-
+Kadlu allows configuration for where data is stored on your machine. By default, a folder 'kadlu_data' will be created in the home directory. To specify a custom location, run the following code:
     ```python
     import kadlu
-    ```
-
- 1. Data storage location
-
-    By default, a folder 'kadlu_data' will be created in the user's home directory. To specify a custom location, run the following code:
-    ```python
     kadlu.storage_cfg(setdir='/specify/desired/path/here/')
     ```
 
- 2. ECMWF - CDS API Token
 
-    Kadlu uses ECMWF's Era5 dataset as one of the optional data sources for wave height/direction/period and wind speed data.
-    In order to access Era5 reanalysis data from the ECMWF, it is necessary to first obtain an API token.
+Optionally add an API token for fetching ERA5 data
+
+    Kadlu uses ECMWF's Era5 dataset as one of the data sources for wave height/direction/period and wind speed data.
+    By default, an API token is included with kadlu, but if you intend to make frequent use of the Era5 dataset, please consider obtaining your own token.
     This can be obtained by registering an account at [Copernicus API](https://cds.climate.copernicus.eu/api-how-to). Once logged in, your token and URL will be displayed on the aforementioned webpage under heading 'Install the CDS API key'.
-
     Additionally, you will need to accept the [Copernicus Terms of Use](https://cds.climate.copernicus.eu/cdsapp/#!/terms/licence-to-use-copernicus-products) to activate the token.
     Configure Kadlu to use the token by executing:
     ```python
     kadlu.era5_cfg(key="TOKEN_HERE", url="URL_HERE")
     ```
-
-
-## Check your installation
-
-Check that everything is working by running pytest:
-```bash
-pytest kadlu/ --doctest-modules
-```
 
 
 ## Jupyter notebook tutorials
@@ -117,3 +91,4 @@ pytest kadlu/ --doctest-modules
 ## Useful resources
 
  *  [gsw Python package](https://github.com/TEOS-10/GSW-Python) (Python implementation of the Thermodynamic Equation of Seawater 2010)
+

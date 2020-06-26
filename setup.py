@@ -7,7 +7,6 @@ import os
 #   $ twine upload dist/*
 
 setup(name='kadlu',
-        #version='2.1.1',
         version=os.environ.get('KADLUVERSION', '0.0.0'), 
         description="MERIDIAN Python package for ocean ambient noise modelling",
         url='https://gitlab.meridian.cs.dal.ca/public_projects/kadlu',

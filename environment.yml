@@ -14,7 +14,7 @@ dependencies:
   - jupyter
   - make
   - matplotlib
-  - mpl_scatter_density
+  #- mpl_scatter_density
   - netCDF4
   - numpy
   - pandas
@@ -23,7 +23,7 @@ dependencies:
   - Proj
   - pygrib
   - pyproj
-  - pyqt5
+  #- pyqt5
   - pytest
   - scipy
   - setuptools

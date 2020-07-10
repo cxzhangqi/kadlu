@@ -1,10 +1,5 @@
-from setuptools import setup, find_packages
-
 import os
-
-# create distribution and upload to pypi.org with:
-#   $ python setup.py sdist bdist_wheel
-#   $ twine upload dist/*
+from setuptools import setup, find_packages
 
 setup(name='kadlu',
         version=os.environ.get('KADLUVERSION', '0.0.0'), 
@@ -13,7 +8,7 @@ setup(name='kadlu',
         author='Oliver Kirsebom, Matthew Smith',
         author_email='oliver.kirsebom@dal.ca, matthew.smith@dal.ca',
         license='GNU General Public License v3.0',
-        packages=find_packages(),
+        packages=find_packages(exclude=('tests',)),
         install_requires=[
             'cartopy',
             #'cftime',
@@ -31,14 +26,13 @@ setup(name='kadlu',
             'pygrib',   # DEPENDS ON eccodes 
             'pyproj',
             'pyqt5',
-            'pytest',
             'scipy',
             #'tqdm',
             ],
         setup_requires=['pytest-runner',],
         tests_require=['pytest',],
         include_package_data=True,
+        exclude_package_data={'':['tests']},
         python_requires='>=3.8',
-        #zip_safe=False
     )
 

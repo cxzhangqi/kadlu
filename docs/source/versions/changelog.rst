@@ -1,7 +1,13 @@
 Change log
 ==========
 
+**Version 2.2.1** (July 21, 2020)
+
+* Bug fix to loading data from era5 source
+* Update to setup script
+
 **Version 2.2.0** (June 26, 2020)
+
 * Added functionality to load data from local files in raster format
 * Improved build scripts
 * Added default ERA5 token

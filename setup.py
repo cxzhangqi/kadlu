@@ -11,26 +11,25 @@ setup(name='kadlu',
         packages=find_packages(exclude=('tests',)),
         install_requires=[
             'cartopy',
-            #'cftime',
             'cdsapi',
             'geos',     # needed for cartopy
             'gsw',
             'imageio',
             'matplotlib',
             'mpl_scatter_density',
-            'netcdf4',  # DEPENDS ON LIBRARIES:
+            'netcdf4',  # DEPENDS ON binaries
             'numpy',
             'pandas',
             'Pillow',
             'proj',     # needed for cartopy
-            'pygrib',   # DEPENDS ON eccodes 
+            'pygrib',   # DEPENDS ON eccodes binaries
             'pyproj',
             'pyqt5',
             'scipy',
             #'tqdm',
             ],
         setup_requires=['pytest-runner',],
-        tests_require=['pytest',],
+        tests_require=['pytest','pytest-parallel'],
         include_package_data=True,
         exclude_package_data={'':['tests']},
         python_requires='>=3.8',

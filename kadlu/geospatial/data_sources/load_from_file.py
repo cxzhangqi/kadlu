@@ -38,6 +38,7 @@ def load_raster(filepath, plot=False, cmap=None, **kwargs):
             lats:   numpy 1D array
             lons:   numpy 1D array
     """
+    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180))
 
     # load raster
     Image.MAX_IMAGE_PIXELS = 500000000
@@ -68,8 +69,8 @@ def load_raster(filepath, plot=False, cmap=None, **kwargs):
         lon = np.arange(x, x + (dx * im.size[0]), dx)
         rng_lon = index(kwargs['west'], lon), index(kwargs['east'], lon)
 
-    else: assert False, 'unknown metadata tag encoding'
-    assert not (z or dz), '3D rasters not supported yet'
+    else: assert False, f'error {filepath}: unknown metadata tag encoding'
+    assert not (z or dz), f'error {filepath}: 3D rasters not supported yet'
 
     # construct grid and decode pixel values
     if reduce(np.multiply, (rng_lon[1] - rng_lon[0], rng_lat[1] - rng_lat[0])) > 10000000: 
@@ -123,7 +124,7 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
             lats:   numpy 1D array
             lons:   numpy 1D array
     """
-
+    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180))
     ncfile = netCDF4.Dataset(filename)
 
     if var is None:
@@ -132,7 +133,7 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
         assert len(ncfile.variables.keys()) == 3
         var = [_ for _ in ncfile.variables.keys() if _ != "lat" and _ != "lon"][0]
 
-    assert var in ncfile.variables, f'variable {var} not in file. file contains {ncfile.variables.keys()}'
+    assert var in ncfile.variables, f'error {filepath}: variable {var} not in file. file contains {ncfile.variables.keys()}'
 
     logging.info(f'loading {var} from {ncfile.getncattr("title")}')
 

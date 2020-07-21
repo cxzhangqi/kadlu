@@ -1,15 +1,16 @@
 import os
 
 # data utils
-from .geospatial.data_sources.data_util import \
-        era5_cfg,       \
-        database_cfg,   \
-        storage_cfg,    \
-        epoch_2_dt,     \
-        dt_2_epoch,     \
-        index,          \
-        reshape_2D,     \
-        reshape_3D
+from .geospatial.data_sources.data_util import (
+        database_cfg,
+        dt_2_epoch,
+        epoch_2_dt,
+        era5_cfg,
+        index,
+        reshape_2D,
+        reshape_3D,
+        storage_cfg,
+    )
 
 # loading with automatic fetching
 from .geospatial.data_sources.source_map import source_map 
@@ -25,6 +26,9 @@ from .geospatial.data_sources.load_from_file import load_raster
 
 # user-facing data loading API
 from .geospatial.data_sources.source_map import load_map
+
+# systematic file testing for all files in kadlu_data/corpus/
+def test_files(): from .tests.geospatial.data_sources import test_files
 
 
 def load(source, var, **kwargs):
@@ -53,7 +57,7 @@ def load(source, var, **kwargs):
     if var == 'bathymetry' or var == 'depth' or var == 'elevation': var = 'bathy'
 
     loadkey = f'{var}_{source}'
-    assert loadkey in load_map.keys(), 'invalid source or variable. valid options include: \n\n'\
+    assert loadkey in load_map.keys(), f'error: invalid source or variable. valid options include: \n\n'\
             f'{list(f.rsplit("_", 1)[::-1] for f in load_map.keys())}\n\n'\
             f'for more info, print(kadlu.source_map)'
 
@@ -76,7 +80,7 @@ def load_file(filepath, **kwargs):
             val, lat, lon, [time, depth]
             times are in epoch format
     """
-    assert os.path.isfile(filepath), f'could not find {filepath}'
+    assert os.path.isfile(filepath), f'error: could not find {filepath}'
     ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(ext == filepath.lower()[-len(ext):] for ext in extensions)
 
     if ext(filepath, ('.nc',)):
@@ -86,5 +90,5 @@ def load_file(filepath, **kwargs):
         return load_raster(filepath, **kwargs)
 
     else:
-        assert False, 'unknown file format - currently only .nc and .tiff formats are accepted'
+        assert False, f'error {filepath}: unknown file format - currently only .nc and .tif formats are accepted'
 

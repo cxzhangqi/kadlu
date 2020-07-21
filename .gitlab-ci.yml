@@ -29,6 +29,11 @@ run-tests:
  script:
   # different loglevels can be set by passing environment variables:
   # 'DEBUG', 'INFO', 'WARNING', or 'ERROR'
-  - export LOGLEVEL='INFO' && pytest --doctest-modules kadlu/ --tb=short -s --durations=5
+  - export LOGLEVEL='INFO' 
+  - python3 -B -m pytest kadlu --doctest-modules --tb=short -s --durations=5 --ignore=kadlu/tests/geospatial/data_sources/test_files.py
+  # the DEBUGOPTS are passed as args to a pytest subprocess call for file testing
+  - export DEBUGOPTS='--tb=line --durations=0' # --pdb --workers=auto
+  - python3 -B kadlu/tests/geospatial/data_sources/test_files.py
+
 
 

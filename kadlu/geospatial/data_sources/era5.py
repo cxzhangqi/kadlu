@@ -8,8 +8,8 @@
 import os
 import logging
 import warnings
+import configparser
 from os.path import isfile, dirname
-from configparser import ConfigParser
 from datetime import datetime, timedelta
 
 import cdsapi
@@ -41,6 +41,35 @@ era5_varmap = dict(zip(
          '10m_u_component_of_wind',
          '10m_v_component_of_wind'),
         ('waveheight', 'wavedir', 'waveperiod', 'windspeedU', 'windspeedV')))
+
+
+cfg = configparser.ConfigParser()       # read .ini into dictionary object
+cfgfile = os.path.join(dirname(dirname(dirname(dirname(__file__)))), "config.ini")
+cfg.read(cfgfile)
+
+def era5_cfg(key=None, url=None):
+    if 'cdsapi' not in cfg.sections():
+        cfg.add_section('cdsapi')
+
+    if key is not None:
+        cfg.set('cdsapi', 'key', key)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
+    else:
+        cfg.set('cdsapi', 'key', '20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3')
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
+
+    if url is not None:
+        cfg.set('cdsapi', 'url', url)
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
+    else:
+        cfg.set('cdsapi', 'url', 'https://cds.climate.copernicus.eu/api/v2')
+        with open(cfgfile, 'w') as f:
+            cfg.write(f)
+
+    return 
 
 
 def fetch_era5(var, kwargs):

@@ -296,23 +296,6 @@ def str_def(self, info, args):
     return (f'{info}\n\nfunction input arguments:\n\t{args}\n\nclass functions:\n\t'
             + '\n\t'.join(fcns) + '\n')
 
-#def era5_cfg(key=None, url=None):
-def era5_cfg(key="20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3", url="https://cds.climate.copernicus.eu/api/v2"):
-    if 'cdsapi' not in cfg.sections():
-        cfg.add_section('cdsapi')
-
-    if key is not None:
-        cfg.set('cdsapi', 'key', key)
-        with open(cfgfile, 'w') as f:
-            cfg.write(f)
-
-    if url is not None:
-        cfg.set('cdsapi', 'url', url)
-        with open(cfgfile, 'w') as f:
-            cfg.write(f)
-
-    return 
-
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
     """ convert input bounds to region strings with seperating axis theorem """

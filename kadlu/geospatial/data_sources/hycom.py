@@ -401,7 +401,12 @@ class Hycom():
     def load_water_u  (self, **kwargs): return load_hycom(self, 'water_u',    kwargs)
     def load_water_v  (self, **kwargs): return load_hycom(self, 'water_v',    kwargs)
     def load_water_uv (self, **kwargs):
-        sql = ' AND '.join(['SELECT * FROM hycom_water_u '\
+        kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
+                hycom_varmap['water_u'], 'hycom', parallel=1, **kwargs)
+        kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
+                hycom_varmap['water_v'], 'hycom', parallel=1, **kwargs)
+
+        sql = ' AND '.join(['SELECT hycom_water_u.val, hycom_water_u.lat, hycom_water_u.lon, hycom_water_u.time, hycom_water_u.depth, hycom_water_v.val FROM hycom_water_u '\
                 'INNER JOIN hycom_water_v '\
                 'ON hycom_water_u.lat == hycom_water_v.lat',
                 'hycom_water_u.lon == hycom_water_v.lon',
@@ -414,7 +419,7 @@ class Hycom():
                 'hycom_water_u.time <= ?',
                 'hycom_water_u.depth >= ?',
                 'hycom_water_u.depth <= ?',
-            ]) + ' ORDER BY time, lat, lon ASC'
+            ]) + ' ORDER BY hycom_water_u.time, hycom_water_u.lat, hycom_water_u.lon ASC'
 
         db.execute(sql, tuple(map(str, [
                 kwargs['south'],                kwargs['north'], 
@@ -429,7 +434,7 @@ class Hycom():
             return np.array([[],[],[],[],[]])
 
         logging.debug(f'{qry.shape}  {qry[:,0]}')
-        water_u, lat, lon, epoch, depth, _, water_v, _,_,_,_,_ = qry
+        water_u, lat, lon, epoch, depth, water_v = qry
         val = np.sqrt(np.square(water_u.astype(float)), np.square(water_v.astype(float)))
         return np.array((val, lat, lon, epoch, depth)).astype(float)
 

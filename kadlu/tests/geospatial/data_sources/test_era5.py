@@ -64,11 +64,23 @@ def test_era5_load_wind_uv():
 def test_era5_load_wind():
     ns_offset = 1
     ew_offset = 1
-    result = kadlu.load(source='era5', var='wind_uv', 
+
+    uval,lat,lon,epoch = kadlu.load(source='era5', var='wind_u', 
                         start=datetime(2016, 3, 9) , end=datetime(2016,3,11),
                         south=44.5541333 - ns_offset, west=-64.17682 - ew_offset, 
                         north=44.5541333 + ns_offset, east=-64.17682 + ew_offset, 
                         top=0, bottom=0)
 
+    vval,lat,lon,epoch = kadlu.load(source='era5', var='wind_v', 
+                        start=datetime(2016, 3, 9) , end=datetime(2016,3,11),
+                        south=44.5541333 - ns_offset, west=-64.17682 - ew_offset, 
+                        north=44.5541333 + ns_offset, east=-64.17682 + ew_offset, 
+                        top=0, bottom=0)
+
+    uvval,lat,lon,epoch = kadlu.load(source='era5', var='wind_uv', 
+                        start=datetime(2016, 3, 9) , end=datetime(2016,3,11),
+                        south=44.5541333 - ns_offset, west=-64.17682 - ew_offset, 
+                        north=44.5541333 + ns_offset, east=-64.17682 + ew_offset, 
+                        top=0, bottom=0)
 
 

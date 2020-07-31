@@ -38,7 +38,7 @@ wwiii_src = "https://data.nodc.noaa.gov/thredds/fileServer/ncep/nww3/"
 #    https://polar.ncep.noaa.gov/waves/implementations.php
 wwiii_varmap = dict(zip(
         ('hs','dp','tp', 'windU', 'windV', 'wind'),
-        ('waveheight','wavedir','waveperiod', 'windspeedU', 'windspeedV', 'windspeed')))
+        ('waveheight','wavedir','waveperiod', 'wind_u', 'wind_v', 'wind_uv')))
 
 wwiii_global = Boundary(-90, 90, -180, 180, 'glo_30m')  # global
 wwiii_regions = [
@@ -219,7 +219,13 @@ class Wwiii():
     def load_wind_u(self,           **kwargs):  return load_wwiii('windU',  kwargs)
     def load_wind_v(self,           **kwargs):  return load_wwiii('windV',  kwargs)
     def load_wind_uv(self,          **kwargs):
-        sql = ' AND '.join(['SELECT * FROM windU '\
+
+        kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
+                wwiii_varmap['windU'], 'wwiii', parallel=1, **kwargs)
+        kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
+                wwiii_varmap['windV'], 'wwiii', parallel=1, **kwargs)
+
+        sql = ' AND '.join(['SELECT windU.val, windU.lat, windU.lon, windU.time, windV.val FROM windU '\
             'INNER JOIN windV '\
             'ON windU.lat == windV.lat',
             'windU.lon == windV.lon',
@@ -229,7 +235,7 @@ class Wwiii():
             'windU.lon >= ?',
             'windU.lon <= ?',
             'windU.time >= ?',
-            'windU.time <= ?']) + ' ORDER BY time, lat, lon ASC'
+            'windU.time <= ?']) + ' ORDER BY windU.time, windU.lat, windU.lon ASC'
 
         db.execute(sql, tuple(map(str, [
                 kwargs['south'],                kwargs['north'], 

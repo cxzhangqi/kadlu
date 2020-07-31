@@ -1,4 +1,5 @@
 import pytest
+import kadlu
 import logging
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import wwiii
@@ -87,4 +88,14 @@ def test_wwiii_fetch_waveperiod():
 def test_wwiii_load_waveperiod():
     wave, lat, lon, time = Wwiii().load_waveperiod(south=south, west=west, north=north, east=east, start=start, end=end)
   
+
+def test_load_wind_uv():
+    # gulf st lawrence
+    south =  46
+    north =  52
+    west  = -70
+    east  = -56
+    result = kadlu.load(source='wwiii', var='wind_uv', south=south, west=west, north=north, east=east, start=start, end=end)
+    print(result)
+
 

@@ -274,9 +274,6 @@ class Era5():
         kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
                 era5_varmap['10m_v_component_of_wind'], 'era5', parallel=1, **kwargs)
 
-        #fetch_era5('10m_u_component_of_wind', kwargs)
-        #fetch_era5('10m_v_component_of_wind', kwargs)
-
         sql = ' AND '.join(['SELECT u_component_of_wind.val, u_component_of_wind.lat, u_component_of_wind.lon, u_component_of_wind.time, v_component_of_wind.val FROM u_component_of_wind '\
             'INNER JOIN v_component_of_wind '\
             'ON u_component_of_wind.lat == v_component_of_wind.lat',

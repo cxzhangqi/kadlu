@@ -39,8 +39,9 @@ era5_varmap = dict(zip(
          'mean_wave_direction',
          'mean_wave_period',
          '10m_u_component_of_wind',
-         '10m_v_component_of_wind'),
-        ('waveheight', 'wavedir', 'waveperiod', 'windspeedU', 'windspeedV')))
+         '10m_v_component_of_wind',
+         ),
+        ('waveheight', 'wavedir', 'waveperiod', 'wind_u', 'wind_v')))
 
 
 cfg = configparser.ConfigParser()       # read .ini into dictionary object
@@ -268,11 +269,15 @@ class Era5():
             the data. the JOIN ensures only values with a matching pair
             are loaded
         """
+        kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
+                era5_varmap['10m_u_component_of_wind'], 'era5', parallel=1, **kwargs)
+        kadlu.geospatial.data_sources.fetch_handler.fetch_handler(
+                era5_varmap['10m_v_component_of_wind'], 'era5', parallel=1, **kwargs)
 
-        fetch_era5('10m_u_component_of_wind', kwargs)
-        fetch_era5('10m_v_component_of_wind', kwargs)
+        #fetch_era5('10m_u_component_of_wind', kwargs)
+        #fetch_era5('10m_v_component_of_wind', kwargs)
 
-        sql = ' AND '.join(['SELECT * FROM u_component_of_wind '\
+        sql = ' AND '.join(['SELECT u_component_of_wind.val, u_component_of_wind.lat, u_component_of_wind.lon, u_component_of_wind.time, v_component_of_wind.val FROM u_component_of_wind '\
             'INNER JOIN v_component_of_wind '\
             'ON u_component_of_wind.lat == v_component_of_wind.lat',
             'u_component_of_wind.lon == v_component_of_wind.lon',
@@ -282,15 +287,18 @@ class Era5():
             'u_component_of_wind.lon >= ?',
             'u_component_of_wind.lon <= ?',
             'u_component_of_wind.time >= ?',
-            'u_component_of_wind.time <= ?']) + ' ORDER BY time, lat, lon ASC'
+            'u_component_of_wind.time <= ?']) + ' ORDER BY u_component_of_wind.time, u_component_of_wind.lat, u_component_of_wind.lon ASC'
+
         db.execute(sql, tuple(map(str, [
                 kwargs['south'],                kwargs['north'], 
                 kwargs['west'],                 kwargs['east'], 
                 dt_2_epoch(kwargs['start']), dt_2_epoch(kwargs['end'])
             ])))
-        wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = np.array(db.fetchall()).T
-        val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))
+
+        wind_u, lat, lon, epoch, wind_v = np.array(db.fetchall()).T
+        val = np.sqrt(np.square(wind_u), np.square(wind_v))
         return np.array((val, lat, lon, epoch)).astype(float)
+
 
     def __str__(self):
         info = '\n'.join([

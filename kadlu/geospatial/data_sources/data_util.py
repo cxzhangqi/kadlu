@@ -7,7 +7,7 @@ import sys
 import json
 import pickle
 import sqlite3
-import logging
+#import logging
 import warnings
 import configparser
 from os import path
@@ -16,12 +16,13 @@ from hashlib import md5
 from functools import reduce
 from datetime import datetime, timedelta
 from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from io import StringIO
 
 import numpy as np
 
 
-LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
-logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
+#LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
+#logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
 
 
 # database tables for data fetching and loading
@@ -40,6 +41,10 @@ era5_tables  = [
 cfg = configparser.ConfigParser()       # read .ini into dictionary object
 cfgfile = os.path.join(dirname(dirname(dirname(dirname(__file__)))), "config.ini")
 cfg.read(cfgfile)
+
+
+
+ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(x == filepath.lower()[-len(x):] for x in extensions)
 
 
 def storage_cfg(setdir=None):
@@ -338,6 +343,18 @@ class Boundary():
                     self.west  > other.east or
                     self.north < other.south or
                     self.south > other.north)
+
+
+class Capturing(list):
+    # https://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio
+        sys.stdout = self._stdout
 
 
 @contextmanager

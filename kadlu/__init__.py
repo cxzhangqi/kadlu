@@ -1,10 +1,16 @@
 import os
+import logging
+
+LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
+logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
 
 # data utils
 from .geospatial.data_sources.data_util import (
+        Capturing,
         database_cfg,
         dt_2_epoch,
         epoch_2_dt,
+        ext,
         index,
         reshape_2D,
         reshape_3D,
@@ -29,8 +35,8 @@ from .geospatial.data_sources.load_from_file import load_raster
 # user-facing data loading API
 from .geospatial.data_sources.source_map import load_map
 
-# systematic file testing for all files in kadlu_data/corpus/
-def test_files(): from .tests.geospatial.data_sources import test_files
+# systematic file testing for all files in kadlu_data/testfiles/
+from .tests.geospatial.data_sources.test_files import test_files
 
 
 def load(source, var, **kwargs):
@@ -83,7 +89,7 @@ def load_file(filepath, **kwargs):
             times are in epoch format
     """
     assert os.path.isfile(filepath), f'error: could not find {filepath}'
-    ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(ext == filepath.lower()[-len(ext):] for ext in extensions)
+    #ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(ext == filepath.lower()[-len(ext):] for ext in extensions)
 
     if ext(filepath, ('.nc',)):
         return load_netcdf(filepath, **kwargs)

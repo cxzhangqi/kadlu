@@ -1,7 +1,7 @@
 """ 
 dynamically generate tests for a given set of input data files.
 source code tests will be generated and appended to a script using files in the 
-kadlu_data/corpus directory as inputs, which will then be executed in a 
+kadlu_data/testfiles directory as inputs, which will then be executed in a 
 subprocess and delete itself upon execution. 
 
 pytest config can be passed using the DEBUGOPTS env variable:
@@ -28,10 +28,13 @@ usage:
 
     see the DEBUGOPTS env var and 'man pytest' for further usage information
 """
+import os, kadlu, subprocess
 
-IMPORTS = 'import os, kadlu'; exec(f'{IMPORTS}, subprocess')
-CORPUS, _, CFILES = list(os.walk(kadlu.storage_cfg()+'corpus'))[0]
-EXPORTS = lambda C,PATH=CORPUS: f'def test_loadfile_{C.replace(".","").replace("-","").replace(" ","")}():\n\tres = kadlu.load_file(os.path.join("{PATH}","{C}")); print(f"\\n{C}:\\n{{res}}\\n"); assert res, "error: {C}"\n\n'
-with open('scriptoutput.py', 'w') as OUTPUT: OUTPUT.write(IMPORTS+'\n\n'+''.join(map(EXPORTS, CFILES))+'os.remove("scriptoutput.py")')
-subprocess.run(f'python3 -B -m pytest scriptoutput.py {os.environ.get("DEBUGOPTS","--pdb --tb=native -s")}'.split())
+class test_files():
+    def __init__(self):
+        IMPORTS = 'import os, kadlu'
+        CORPUS, _, CFILES = list(os.walk(kadlu.storage_cfg()+'testfiles'))[0]
+        EXPORTS = lambda C,PATH=CORPUS: f'def test_loadfile_{C.replace(".","").replace("-","").replace(" ","")}():\n\tres = kadlu.load_file(os.path.join("{PATH}","{C}")); print(f"\\n{C}:\\n{{res}}\\n"); assert res, "error: {C}"\n\n'
+        with open('scriptoutput.py', 'w') as OUTPUT: OUTPUT.write(IMPORTS+'\n\n'+''.join(map(EXPORTS, CFILES))+'os.remove("scriptoutput.py")')
+        subprocess.run(f'python3 -B -m pytest scriptoutput.py {os.environ.get("DEBUGOPTS","--pdb --tb=native -s")}'.split())
 

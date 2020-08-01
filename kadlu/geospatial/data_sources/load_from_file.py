@@ -13,6 +13,7 @@ import numpy as np
 
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
+        epoch_2_dt,                                                 \
         storage_cfg,                                                \
         insert_hash,                                                \
         serialized,                                                 \
@@ -127,22 +128,44 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
     if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180))
     ncfile = netCDF4.Dataset(filename)
 
-    if var is None:
-        assert 'lat' in ncfile.variables.keys()
-        assert 'lon' in ncfile.variables.keys()
-        assert len(ncfile.variables.keys()) == 3
-        var = [_ for _ in ncfile.variables.keys() if _ != "lat" and _ != "lon"][0]
+    varmap = dict(
+            MAPSTA      =   ['f', lambda ncfile: ncfile['MAPSTA'][:].data != 0],
+            time        =   ['t', lambda t: t],
+            epoch       =   ['t', lambda e: epoch_2_dt(e)],
+            #hs          [   ('w', lambda w: w],
+            lon         =   ['x', lambda x: x],
+            longitude   =   ['x', lambda x: x],
+            lat         =   ['y', lambda y: y],
+            latitude    =   ['y', lambda y: y],
+            depth       =   ['z', lambda z: z],
+            elevation   =   ['z', lambda z: abs(z)],
+        )
 
-    assert var in ncfile.variables, f'error {filepath}: variable {var} not in file. file contains {ncfile.variables.keys()}'
+    axes = dict([(varmap[var][0], np.append(varmap[var][1], var)) for var in ncfile.variables.keys() if var in varmap.keys()])
+    uvars = [_ for _ in ncfile.variables.keys() if _ not in varmap.keys()]
+    axes.update({'v': [lambda v: v, var or uvars[0]]})
+
+    assert 'x' in axes.keys(), f'missing x axis: {uvars = }'
+    assert 'y' in axes.keys(), f'missing y axis: {uvars = }'
+    assert len(axes) >= len(ncfile.variables.keys()), f'missing axis from: {uvars = }'
+    assert sum(key in varmap.keys() for key in ncfile.variables.keys()) >= len(axes)-1, 'not all vars match'
+    assert len(uvars) == 1, f'more than one unknown variable: {uvars = }'
+    assert uvars[0] in ncfile.variables.keys(), f'variable {var} could not be found in {ncfile.variables.keys()}'
+    assert axes['v'][1] in ncfile.variables, f'error {filepath}: var {var} not in file. file contains {ncfile.variables.keys()}'
 
     logging.info(f'loading {var} from {ncfile.getncattr("title")}')
 
-    rng_lat = index(kwargs['west'],  ncfile['lat'][:].data), index(kwargs['east'],  ncfile['lat'][:].data)
-    rng_lon = index(kwargs['south'], ncfile['lon'][:].data), index(kwargs['north'], ncfile['lon'][:].data)
 
-    val = ncfile[ var ][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]]
-    lat = ncfile['lat'][:].data[rng_lat[0]:rng_lat[1]]
-    lon = ncfile['lon'][:].data[rng_lon[0]:rng_lon[1]]
+    rng_lat = index(kwargs['west'],  ncfile[axes['y'][1]][:].data), index(kwargs['east'],  ncfile[axes['y'][1]][:].data)
+    rng_lon = index(kwargs['south'], ncfile[axes['x'][1]][:].data), index(kwargs['north'], ncfile[axes['x'][1]][:].data)
+
+    val = ncfile[axes['v'][1]][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]]
+    lat = ncfile[axes['y'][1]][:].data[rng_lat[0]:rng_lat[1]]
+    lon = ncfile[axes['x'][1]][:].data[rng_lon[0]:rng_lon[1]]
+
+    assert 't' not in axes.keys(), 'time axis not yet supported'
+    assert 'z' not in axes.keys(), 'depth axis not yet supported'
+    assert 'f' not in axes.keys(), 'functions axis not yet supported'
 
     # plot the data
     if plot:

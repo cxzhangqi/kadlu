@@ -36,7 +36,7 @@ run-tests:
   # the DEBUGOPTS are passed as args to a pytest subprocess call for file testing
   - export DEBUGOPTS='--tb=line --durations=0' # --pdb --workers=auto
   # 
-  - python3 -B -m pytest kadlu --doctest-modules --tb=short -s --durations=5 --ignore=kadlu/tests/geospatial/data_sources/test_files.py
   - python3 -c 'import kadlu; kadlu.ifremer().fetch_ifremer_netcdf_hs2013()'
   - python3 -c 'import kadlu; kadlu.test_files()'
+  - python3 -B -m pytest kadlu --doctest-modules --tb=short -s --durations=5 --ignore=kadlu/tests/geospatial/data_sources/test_files.py
 

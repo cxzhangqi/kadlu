@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 import matplotlib
-matplotlib.use('qt5agg')
+'Qt5Agg' in matplotlib.rcsetup.all_backends and matplotlib.use('Qt5Agg')
 import mpl_scatter_density
 import matplotlib.pyplot as plt
 import netCDF4

@@ -17,8 +17,8 @@ from .geospatial.data_sources.data_util import (
         storage_cfg,
     )
 
-# datasource API token configuration
-#from .geospatial.data_sources.era5 import era5_cfg
+# automatic fetching without loading
+from .geospatial.data_sources.ifremer import Ifremer as ifremer 
 
 # loading with automatic fetching
 from .geospatial.data_sources.source_map import source_map 
@@ -89,7 +89,6 @@ def load_file(filepath, **kwargs):
             times are in epoch format
     """
     assert os.path.isfile(filepath), f'error: could not find {filepath}'
-    #ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(ext == filepath.lower()[-len(ext):] for ext in extensions)
 
     if ext(filepath, ('.nc',)):
         return load_netcdf(filepath, **kwargs)

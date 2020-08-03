@@ -3,6 +3,7 @@ from PIL import Image
 from functools import reduce
 from xml.etree import ElementTree as ET
 import json
+from datetime import datetime
 
 import matplotlib
 matplotlib.use('qt5agg')
@@ -13,6 +14,7 @@ import numpy as np
 
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
+        dt_2_epoch,                                                 \
         epoch_2_dt,                                                 \
         storage_cfg,                                                \
         insert_hash,                                                \
@@ -125,25 +127,26 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
             lats:   numpy 1D array
             lons:   numpy 1D array
     """
-    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180))
+    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180,start=datetime(1,1,1), end=datetime.now()))
     ncfile = netCDF4.Dataset(filename)
 
     varmap = dict(
-            MAPSTA      =   ['f', lambda ncfile: ncfile['MAPSTA'][:].data != 0],
-            time        =   ['t', lambda t: t],
-            epoch       =   ['t', lambda e: epoch_2_dt(e)],
-            #hs          [   ('w', lambda w: w],
-            lon         =   ['x', lambda x: x],
-            longitude   =   ['x', lambda x: x],
-            lat         =   ['y', lambda y: y],
-            latitude    =   ['y', lambda y: y],
-            depth       =   ['z', lambda z: z],
-            elevation   =   ['z', lambda z: abs(z)],
+            MAPSTA      =   'f',  # ifremer tag: appears to be a land mask
+            #hs             'v',
+            lat         =   'y',
+            latitude    =   'y',
+            lon         =   'x',
+            longitude   =   'x',
+            time        =   't',
+            epoch       =   't',
+            depth       =   'z',
+            elevation   =   'z',
         )
 
-    axes = dict([(varmap[var][0], np.append(varmap[var][1], var)) for var in ncfile.variables.keys() if var in varmap.keys()])
+    axes = dict([(varmap[var][0], var) for var in ncfile.variables.keys() if var in varmap.keys()])
     uvars = [_ for _ in ncfile.variables.keys() if _ not in varmap.keys()]
-    axes.update({'v': [lambda v: v, var or uvars[0]]})
+    axes.update({'v': var or uvars[0]})
+
 
     assert 'x' in axes.keys(), f'missing x axis: {uvars = }'
     assert 'y' in axes.keys(), f'missing y axis: {uvars = }'
@@ -151,25 +154,37 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
     assert sum(key in varmap.keys() for key in ncfile.variables.keys()) >= len(axes)-1, 'not all vars match'
     assert len(uvars) == 1, f'more than one unknown variable: {uvars = }'
     assert uvars[0] in ncfile.variables.keys(), f'variable {var} could not be found in {ncfile.variables.keys()}'
-    assert axes['v'][1] in ncfile.variables, f'error {filepath}: var {var} not in file. file contains {ncfile.variables.keys()}'
+    assert axes['v'] in ncfile.variables, f'error {filepath}: var {var} not in file. file contains {ncfile.variables.keys()}'
 
-    logging.info(f'loading {var} from {ncfile.getncattr("title")}')
+    logging.info(f'loading {var or uvars[0]} from {ncfile.getncattr("title")}')
 
+    rng_lat = index(kwargs['west'],  ncfile[axes['y']][:].data), index(kwargs['east'],  ncfile[axes['y']][:].data)
+    rng_lon = index(kwargs['south'], ncfile[axes['x']][:].data), index(kwargs['north'], ncfile[axes['x']][:].data)
+    out = dict(
+        val = ncfile[axes['v']][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]],
+        lat = ncfile[axes['y']][:].data[rng_lat[0]:rng_lat[1]],
+        lon = ncfile[axes['x']][:].data[rng_lon[0]:rng_lon[1]],
+    )
 
-    rng_lat = index(kwargs['west'],  ncfile[axes['y'][1]][:].data), index(kwargs['east'],  ncfile[axes['y'][1]][:].data)
-    rng_lon = index(kwargs['south'], ncfile[axes['x'][1]][:].data), index(kwargs['north'], ncfile[axes['x'][1]][:].data)
+    if 't' in axes.keys(): 
+        if ncfile.variables[axes['t']].units == 'days since 1990-01-01T00:00:00Z':
+            t0 = datetime(1990,1,1)
+            rng_t = (index(dt_2_epoch(kwargs['start'], t0), ncfile[axes['t']][:].data * 24), 
+                     index(dt_2_epoch(kwargs['end'], t0), ncfile[axes['t']][:].data * 24))
+            out['time'] = epoch_2_dt(ncfile[axes['t']][:].data[rng_t[0]:rng_t[1]] * 24, t0)
+        else:
+            assert False, 'unknown time unit'
 
-    val = ncfile[axes['v'][1]][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]]
-    lat = ncfile[axes['y'][1]][:].data[rng_lat[0]:rng_lat[1]]
-    lon = ncfile[axes['x'][1]][:].data[rng_lon[0]:rng_lon[1]]
-
-    assert 't' not in axes.keys(), 'time axis not yet supported'
-    assert 'z' not in axes.keys(), 'depth axis not yet supported'
-    assert 'f' not in axes.keys(), 'functions axis not yet supported'
+    if 'z' in axes.keys(): 
+        rng_z = (index(kwargs['top'], ncfile[axes['z']][:].data),
+                 index(kwargs['top'], ncfile[axes['z']][:].data))
+        out['depth'] = ncfile[axes['z']][:].data[rng_z[0]:rng_z[1]]
+    
+    # assert 'f' not in axes.keys(), 'functions axis not yet supported'
 
     # plot the data
-    if plot:
-        x1, y1 = np.meshgrid(lon[rng_lon[0]:rng_lon[1]], lat[rng_lat[0]:rng_lat[1]], indexing='ij')
+    if plot and len(out.keys()) == 3:
+        x1, y1 = np.meshgrid(out['lon'][rng_lon[0]:rng_lon[1]], out['lat'][rng_lat[0]:rng_lat[1]], indexing='ij')
         fig = plt.figure()
         if (rng_lon[1]-rng_lon[0]) * (rng_lat[1]-rng_lat[0]) >= 100000:
             ax = fig.add_subplot(1,1,1, projection='scatter_density')
@@ -181,5 +196,5 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
             ax.scatter(x1, y1, c=val, cmap=cmap)
         plt.show()
 
-    return val, lat, lon
+    return np.array(list(out.values())) 
 

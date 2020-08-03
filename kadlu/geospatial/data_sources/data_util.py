@@ -202,18 +202,16 @@ def serialized(kwargs={}, seed=''):
     return True
 
 
-def dt_2_epoch(dt_arr):
+def dt_2_epoch(dt_arr, t0=datetime(2000,1,1,0,0,0)):
     """ convert datetimes to epoch hours """
-    t0 = datetime(2000, 1, 1, 0, 0, 0)
     delta = lambda dt: (dt - t0).total_seconds()/60/60
     if isinstance(dt_arr, (list, np.ndarray)): return list(map(int, map(delta, dt_arr)))
     elif isinstance(dt_arr, (datetime)): return int(delta(dt_arr))
     else: raise ValueError('input must be datetime or array of datetimes')
 
 
-def epoch_2_dt(ep_arr):
+def epoch_2_dt(ep_arr, t0=datetime(2000,1,1,0,0,0)):
     """ convert epoch hours to datetimes """
-    t0 = datetime(2000, 1, 1)
     delta = lambda ep : t0 + timedelta(hours=ep)
     if isinstance(ep_arr, (list, np.ndarray)): return list(map(delta, ep_arr))
     elif isinstance(ep_arr, (float, int)): return delta(ep_arr)

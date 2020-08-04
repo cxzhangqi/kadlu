@@ -1,6 +1,10 @@
 Change log
 ==========
 
+**Version 2.2.3** (August 4, 2020)
+
+* Update to bathymetry file loading
+
 **Version 2.2.2** (August 4, 2020)
 
 * Bug fixes in loading scripts

@@ -127,7 +127,8 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
             lats:   numpy 1D array
             lons:   numpy 1D array
     """
-    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180,start=datetime(1,1,1), end=datetime.now()))
+    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180,
+            start=datetime(1,1,1), end=datetime.now(), top=0, bottom=9999))
     ncfile = netCDF4.Dataset(filename)
 
     varmap = dict(
@@ -145,27 +146,24 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
 
     axes = dict([(varmap[var][0], var) for var in ncfile.variables.keys() if var in varmap.keys()])
     uvars = [_ for _ in ncfile.variables.keys() if _ not in varmap.keys()]
-    axes.update({'v': var or uvars[0]})
-
+    if len(uvars) > 0 or var: axes.update({'v': var or uvars[0]})
+    if not var: var = 'z' if uvars == [] and var == None else uvars[0]
 
     assert 'x' in axes.keys(), f'missing x axis: {uvars = }'
     assert 'y' in axes.keys(), f'missing y axis: {uvars = }'
     assert len(axes) >= len(ncfile.variables.keys()), f'missing axis from: {uvars = }'
     assert sum(key in varmap.keys() for key in ncfile.variables.keys()) >= len(axes)-1, 'not all vars match'
-    assert len(uvars) == 1, f'more than one unknown variable: {uvars = }'
-    assert uvars[0] in ncfile.variables.keys(), f'variable {var} could not be found in {ncfile.variables.keys()}'
-    assert axes['v'] in ncfile.variables, f'error {filepath}: var {var} not in file. file contains {ncfile.variables.keys()}'
+    assert len(uvars) <= 1, f'more than one unknown variable: {uvars = }'
 
     logging.info(f'loading {var or uvars[0]} from {ncfile.getncattr("title")}')
 
     rng_lat = index(kwargs['west'],  ncfile[axes['y']][:].data), index(kwargs['east'],  ncfile[axes['y']][:].data)
     rng_lon = index(kwargs['south'], ncfile[axes['x']][:].data), index(kwargs['north'], ncfile[axes['x']][:].data)
-    out = dict(
-        val = ncfile[axes['v']][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]],
-        lat = ncfile[axes['y']][:].data[rng_lat[0]:rng_lat[1]],
-        lon = ncfile[axes['x']][:].data[rng_lon[0]:rng_lon[1]],
-    )
 
+    out = {} if not 'v' in axes.keys() else dict(val=ncfile[axes['v']][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]])
+    out.update(dict(lat=ncfile[axes['y']][:].data[rng_lat[0]:rng_lat[1]], lon=ncfile[axes['x']][:].data[rng_lon[0]:rng_lon[1]]))
+
+    # temporal index range
     if 't' in axes.keys(): 
         if ncfile.variables[axes['t']].units == 'days since 1990-01-01T00:00:00Z':
             t0 = datetime(1990,1,1)
@@ -175,10 +173,16 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
         else:
             assert False, 'unknown time unit'
 
-    if 'z' in axes.keys(): 
+    # vertical index range
+    if 'z' in axes.keys() and 'v' in axes.keys(): 
         rng_z = (index(kwargs['top'], ncfile[axes['z']][:].data),
-                 index(kwargs['top'], ncfile[axes['z']][:].data))
+                 index(kwargs['bottom'], ncfile[axes['z']][:].data))
         out['depth'] = ncfile[axes['z']][:].data[rng_z[0]:rng_z[1]]
+    elif 'z' in axes.keys() and not 'v' in axes.keys() and len(axes.keys()) == 3:
+        # when loading bathymetry, z-axis are the intended first column values
+        out = dict(val=ncfile[axes['z']][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]], lat=out['lat'].copy(), lon=out['lon'].copy())
+        if axes['z'] == 'elevation': out['val'] *= -1
+    else: assert 'v' in axes.keys(), 'something may have gone wrong here...'
     
     # assert 'f' not in axes.keys(), 'functions axis not yet supported'
 
@@ -196,5 +200,5 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
             ax.scatter(x1, y1, c=val, cmap=cmap)
         plt.show()
 
-    return np.array(list(out.values())) 
+    return list(out.values())
 

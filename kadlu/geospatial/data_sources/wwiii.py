@@ -243,9 +243,12 @@ class Wwiii():
                 dt_2_epoch(kwargs['start']),    dt_2_epoch(kwargs['end'])
             ])))
         qry = np.array(db.fetchall()).T
-        assert len(qry) == 10, \
-                f'no windspeed data found in region {fmt_coords(kwargs)}. consider expanding the region'
-        wind_u, lat, lon, epoch, _, wind_v, _, _, _, _ = qry
+        #assert len(qry) > 0, \
+        #        f'no windspeed data found in region {fmt_coords(kwargs)}. consider expanding the region'
+        if len(qry) == 0:
+            logging.warning(f'ERA5 wind_uv: no data found in region {fmt_coords(kwargs)}, returning empty arrays')
+            return np.array([[],[],[],[],[]])
+        wind_u, lat, lon, epoch, wind_v = qry
         val = np.sqrt(np.square(wind_u.astype(float)), np.square(wind_v.astype(float)))
         return np.array((val, lat, lon, epoch)).astype(float)
 

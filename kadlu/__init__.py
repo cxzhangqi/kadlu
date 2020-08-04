@@ -38,6 +38,9 @@ from .geospatial.data_sources.source_map import load_map
 # systematic file testing for all files in kadlu_data/testfiles/
 from .tests.geospatial.data_sources.test_files import test_files
 
+# plotting tools
+from .plot_util import *
+
 
 def load(source, var, **kwargs):
     """ automated fetching and loading from web sources 

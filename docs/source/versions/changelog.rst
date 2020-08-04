@@ -1,6 +1,11 @@
 Change log
 ==========
 
+**Version 2.2.2** (August 4, 2020)
+
+* Bug fixes in loading scripts
+* Improved testing
+
 **Version 2.2.1** (July 21, 2020)
 
 * Bug fix to loading data from era5 source

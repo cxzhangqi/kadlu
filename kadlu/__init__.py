@@ -1,20 +1,29 @@
 import os
+import logging
+
+LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
+logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
 
 # data utils
-from .geospatial.data_sources.data_util import \
-        era5_cfg,       \
-        database_cfg,   \
-        storage_cfg,    \
-        epoch_2_dt,     \
-        dt_2_epoch,     \
-        index,          \
-        reshape_2D,     \
-        reshape_3D
+from .geospatial.data_sources.data_util import (
+        Capturing,
+        database_cfg,
+        dt_2_epoch,
+        epoch_2_dt,
+        ext,
+        index,
+        reshape_2D,
+        reshape_3D,
+        storage_cfg,
+    )
+
+# automatic fetching without loading
+from .geospatial.data_sources.ifremer import Ifremer as ifremer 
 
 # loading with automatic fetching
 from .geospatial.data_sources.source_map import source_map 
 from .geospatial.data_sources.chs import Chs as chs
-from .geospatial.data_sources.era5 import Era5 as era5
+from .geospatial.data_sources.era5 import Era5 as era5, era5_cfg
 from .geospatial.data_sources.gebco import Gebco as gebco
 from .geospatial.data_sources.hycom import Hycom as hycom
 from .geospatial.data_sources.wwiii import Wwiii as wwiii
@@ -25,6 +34,12 @@ from .geospatial.data_sources.load_from_file import load_raster
 
 # user-facing data loading API
 from .geospatial.data_sources.source_map import load_map
+
+# systematic file testing for all files in kadlu_data/testfiles/
+from .tests.geospatial.data_sources.test_files import test_files
+
+# plotting tools
+from .plot_util import *
 
 
 def load(source, var, **kwargs):
@@ -53,7 +68,7 @@ def load(source, var, **kwargs):
     if var == 'bathymetry' or var == 'depth' or var == 'elevation': var = 'bathy'
 
     loadkey = f'{var}_{source}'
-    assert loadkey in load_map.keys(), 'invalid source or variable. valid options include: \n\n'\
+    assert loadkey in load_map.keys(), f'error: invalid source or variable. valid options include: \n\n'\
             f'{list(f.rsplit("_", 1)[::-1] for f in load_map.keys())}\n\n'\
             f'for more info, print(kadlu.source_map)'
 
@@ -76,8 +91,7 @@ def load_file(filepath, **kwargs):
             val, lat, lon, [time, depth]
             times are in epoch format
     """
-    assert os.path.isfile(filepath), f'could not find {filepath}'
-    ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(ext == filepath.lower()[-len(ext):] for ext in extensions)
+    assert os.path.isfile(filepath), f'error: could not find {filepath}'
 
     if ext(filepath, ('.nc',)):
         return load_netcdf(filepath, **kwargs)
@@ -86,5 +100,5 @@ def load_file(filepath, **kwargs):
         return load_raster(filepath, **kwargs)
 
     else:
-        assert False, 'unknown file format - currently only .nc and .tiff formats are accepted'
+        assert False, f'error {filepath}: unknown file format - currently only .nc and .tif formats are accepted'
 

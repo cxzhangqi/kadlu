@@ -3,9 +3,10 @@ from PIL import Image
 from functools import reduce
 from xml.etree import ElementTree as ET
 import json
+from datetime import datetime
 
 import matplotlib
-matplotlib.use('qt5agg')
+#if 'Qt5Agg' in matplotlib.rcsetup.all_backends: matplotlib.use('Qt5Agg')
 import mpl_scatter_density
 import matplotlib.pyplot as plt
 import netCDF4
@@ -13,6 +14,8 @@ import numpy as np
 
 from kadlu.geospatial.data_sources.data_util        import          \
         database_cfg,                                               \
+        dt_2_epoch,                                                 \
+        epoch_2_dt,                                                 \
         storage_cfg,                                                \
         insert_hash,                                                \
         serialized,                                                 \
@@ -38,6 +41,7 @@ def load_raster(filepath, plot=False, cmap=None, **kwargs):
             lats:   numpy 1D array
             lons:   numpy 1D array
     """
+    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180))
 
     # load raster
     Image.MAX_IMAGE_PIXELS = 500000000
@@ -68,8 +72,8 @@ def load_raster(filepath, plot=False, cmap=None, **kwargs):
         lon = np.arange(x, x + (dx * im.size[0]), dx)
         rng_lon = index(kwargs['west'], lon), index(kwargs['east'], lon)
 
-    else: assert False, 'unknown metadata tag encoding'
-    assert not (z or dz), '3D rasters not supported yet'
+    else: assert False, f'error {filepath}: unknown metadata tag encoding'
+    assert not (z or dz), f'error {filepath}: 3D rasters not supported yet'
 
     # construct grid and decode pixel values
     if reduce(np.multiply, (rng_lon[1] - rng_lon[0], rng_lat[1] - rng_lat[0])) > 10000000: 
@@ -123,29 +127,64 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
             lats:   numpy 1D array
             lons:   numpy 1D array
     """
-
+    if kwargs == {}: kwargs.update(dict(south=-90,west=-180,north=90,east=180,start=datetime(1,1,1), end=datetime.now()))
     ncfile = netCDF4.Dataset(filename)
 
-    if var is None:
-        assert 'lat' in ncfile.variables.keys()
-        assert 'lon' in ncfile.variables.keys()
-        assert len(ncfile.variables.keys()) == 3
-        var = [_ for _ in ncfile.variables.keys() if _ != "lat" and _ != "lon"][0]
+    varmap = dict(
+            MAPSTA      =   'f',  # ifremer tag: appears to be a land mask
+            #hs             'v',
+            lat         =   'y',
+            latitude    =   'y',
+            lon         =   'x',
+            longitude   =   'x',
+            time        =   't',
+            epoch       =   't',
+            depth       =   'z',
+            elevation   =   'z',
+        )
 
-    assert var in ncfile.variables, f'variable {var} not in file. file contains {ncfile.variables.keys()}'
+    axes = dict([(varmap[var][0], var) for var in ncfile.variables.keys() if var in varmap.keys()])
+    uvars = [_ for _ in ncfile.variables.keys() if _ not in varmap.keys()]
+    axes.update({'v': var or uvars[0]})
 
-    logging.info(f'loading {var} from {ncfile.getncattr("title")}')
 
-    rng_lat = index(kwargs['west'],  ncfile['lat'][:].data), index(kwargs['east'],  ncfile['lat'][:].data)
-    rng_lon = index(kwargs['south'], ncfile['lon'][:].data), index(kwargs['north'], ncfile['lon'][:].data)
+    assert 'x' in axes.keys(), f'missing x axis: {uvars = }'
+    assert 'y' in axes.keys(), f'missing y axis: {uvars = }'
+    assert len(axes) >= len(ncfile.variables.keys()), f'missing axis from: {uvars = }'
+    assert sum(key in varmap.keys() for key in ncfile.variables.keys()) >= len(axes)-1, 'not all vars match'
+    assert len(uvars) == 1, f'more than one unknown variable: {uvars = }'
+    assert uvars[0] in ncfile.variables.keys(), f'variable {var} could not be found in {ncfile.variables.keys()}'
+    assert axes['v'] in ncfile.variables, f'error {filepath}: var {var} not in file. file contains {ncfile.variables.keys()}'
 
-    val = ncfile[ var ][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]]
-    lat = ncfile['lat'][:].data[rng_lat[0]:rng_lat[1]]
-    lon = ncfile['lon'][:].data[rng_lon[0]:rng_lon[1]]
+    logging.info(f'loading {var or uvars[0]} from {ncfile.getncattr("title")}')
+
+    rng_lat = index(kwargs['west'],  ncfile[axes['y']][:].data), index(kwargs['east'],  ncfile[axes['y']][:].data)
+    rng_lon = index(kwargs['south'], ncfile[axes['x']][:].data), index(kwargs['north'], ncfile[axes['x']][:].data)
+    out = dict(
+        val = ncfile[axes['v']][:].data[rng_lat[0]:rng_lat[1], rng_lon[0]:rng_lon[1]],
+        lat = ncfile[axes['y']][:].data[rng_lat[0]:rng_lat[1]],
+        lon = ncfile[axes['x']][:].data[rng_lon[0]:rng_lon[1]],
+    )
+
+    if 't' in axes.keys(): 
+        if ncfile.variables[axes['t']].units == 'days since 1990-01-01T00:00:00Z':
+            t0 = datetime(1990,1,1)
+            rng_t = (index(dt_2_epoch(kwargs['start'], t0), ncfile[axes['t']][:].data * 24), 
+                     index(dt_2_epoch(kwargs['end'], t0), ncfile[axes['t']][:].data * 24))
+            out['time'] = epoch_2_dt(ncfile[axes['t']][:].data[rng_t[0]:rng_t[1]] * 24, t0)
+        else:
+            assert False, 'unknown time unit'
+
+    if 'z' in axes.keys(): 
+        rng_z = (index(kwargs['top'], ncfile[axes['z']][:].data),
+                 index(kwargs['top'], ncfile[axes['z']][:].data))
+        out['depth'] = ncfile[axes['z']][:].data[rng_z[0]:rng_z[1]]
+    
+    # assert 'f' not in axes.keys(), 'functions axis not yet supported'
 
     # plot the data
-    if plot:
-        x1, y1 = np.meshgrid(lon[rng_lon[0]:rng_lon[1]], lat[rng_lat[0]:rng_lat[1]], indexing='ij')
+    if plot and len(out.keys()) == 3:
+        x1, y1 = np.meshgrid(out['lon'][rng_lon[0]:rng_lon[1]], out['lat'][rng_lat[0]:rng_lat[1]], indexing='ij')
         fig = plt.figure()
         if (rng_lon[1]-rng_lon[0]) * (rng_lat[1]-rng_lat[0]) >= 100000:
             ax = fig.add_subplot(1,1,1, projection='scatter_density')
@@ -157,5 +196,5 @@ def load_netcdf(filename, var=None, plot=False, cmap=None, **kwargs):
             ax.scatter(x1, y1, c=val, cmap=cmap)
         plt.show()
 
-    return val, lat, lon
+    return np.array(list(out.values())) 
 

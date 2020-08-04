@@ -6,7 +6,7 @@ stages:
 
 before_script:
   - source activate kadlu_env 
-  #  - python3 -m pip install mpl_scatter_density
+  - python3 -m pip install mpl_scatter_density
   - 'echo -e "\nurl: https://cds.climate.copernicus.eu/api/v2\nkey: 20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3\n" > /root/.cdsapirc'
 
 create-package:

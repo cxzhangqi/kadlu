@@ -1,4 +1,5 @@
 import pytest
+import kadlu
 import numpy as np
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources.era5 import Era5
@@ -50,7 +51,7 @@ def test_era5_load_waveperiod():
     assert(len(wave)==len(lat)==len(lon))
     assert(len(lat) > 0)
 
-def test_era5_load_wind():
+def test_era5_load_wind_uv():
     kwargs = dict(
             south=40, west=-70, north=41, east=-69,
             start=datetime(2018, 2, 1), end=datetime(2018, 2, 2)
@@ -58,5 +59,28 @@ def test_era5_load_wind():
     wind, lat, lon, time = Era5().load_wind_uv(**kwargs)
     assert(len(wind)==len(lat)==len(lon))
     assert(len(lat) > 0)
+
+
+def test_era5_load_wind():
+    ns_offset = 1
+    ew_offset = 1
+
+    uval,lat,lon,epoch = kadlu.load(source='era5', var='wind_u', 
+                        start=datetime(2016, 3, 9) , end=datetime(2016,3,11),
+                        south=44.5541333 - ns_offset, west=-64.17682 - ew_offset, 
+                        north=44.5541333 + ns_offset, east=-64.17682 + ew_offset, 
+                        top=0, bottom=0)
+
+    vval,lat,lon,epoch = kadlu.load(source='era5', var='wind_v', 
+                        start=datetime(2016, 3, 9) , end=datetime(2016,3,11),
+                        south=44.5541333 - ns_offset, west=-64.17682 - ew_offset, 
+                        north=44.5541333 + ns_offset, east=-64.17682 + ew_offset, 
+                        top=0, bottom=0)
+
+    uvval,lat,lon,epoch = kadlu.load(source='era5', var='wind_uv', 
+                        start=datetime(2016, 3, 9) , end=datetime(2016,3,11),
+                        south=44.5541333 - ns_offset, west=-64.17682 - ew_offset, 
+                        north=44.5541333 + ns_offset, east=-64.17682 + ew_offset, 
+                        top=0, bottom=0)
 
 

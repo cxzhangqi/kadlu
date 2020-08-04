@@ -6,6 +6,7 @@ stages:
 
 before_script:
   - source activate kadlu_env 
+  - python3 -m pip install mpl_scatter_density
   - 'echo -e "\nurl: https://cds.climate.copernicus.eu/api/v2\nkey: 20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3\n" > /root/.cdsapirc'
 
 create-package:
@@ -17,6 +18,7 @@ create-package:
   - pip install dist/kadlu-*.tar.gz
  only:
   - master
+  - matt_branch
  artifacts:
   paths:
    - dist/kadlu-*.tar.gz
@@ -26,9 +28,15 @@ run-tests:
  stage: test
  only: 
   - master
+  - matt_branch
  script:
   # different loglevels can be set by passing environment variables:
   # 'DEBUG', 'INFO', 'WARNING', or 'ERROR'
-  - export LOGLEVEL='INFO' && pytest --doctest-modules kadlu/ --tb=short -s --durations=5
-
+  - export LOGLEVEL='INFO' 
+  # the DEBUGOPTS are passed as args to a pytest subprocess call for file testing
+  - export DEBUGOPTS='--tb=line --durations=0' # --pdb --workers=auto
+  # 
+  - python3 -c 'import kadlu; kadlu.ifremer().fetch_ifremer_netcdf_hs2013()'
+  - python3 -c 'import kadlu; kadlu.test_files()'
+  - python3 -B -m pytest kadlu --doctest-modules --tb=short -s --durations=5 --ignore=kadlu/tests/geospatial/data_sources/test_files.py
 

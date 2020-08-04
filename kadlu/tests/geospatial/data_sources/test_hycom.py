@@ -1,4 +1,5 @@
 import pytest
+import kadlu
 import numpy as np
 from datetime import datetime, timedelta
 from kadlu.geospatial.data_sources import hycom
@@ -101,28 +102,6 @@ def test_load_temp():
 #def test_fetch_water_u():
 #    hycom.Hycom().fetch_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
 
-def test_load_water_u():
-    val, lat, lon, time, depth = hycom.Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
-    # commented to improve test speed
-    """
-    assert(len(val) == len(lat) == len(lon) == len(time))
-    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
-    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
-    """
-
-#def test_fetch_water_v():
-#    hycom.Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
-
-def test_load_water_v():
-    val, lat, lon, time, depth = hycom.Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
-    # commented to improve test speed
-    """
-    assert(len(val) == len(lat) == len(lon) == len(time))
-    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
-    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
-    """
-
-
 def test_load_water_uv():
     bounds = dict(
             south =  44,
@@ -136,6 +115,33 @@ def test_load_water_uv():
         )
 
     data = hycom.Hycom().load_water_uv(**bounds)
+
+    # alternate api
+    uvval = kadlu.load(source='hycom', var='water_uv', **bounds)
+
+
+def test_load_water_u():
+    val, lat, lon, time, depth = hycom.Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+    uval = kadlu.load(source='hycom',var='water_u', **bounds)
+    # commented to improve test speed
+    """
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
+    """
+
+#def test_fetch_water_v():
+#    hycom.Hycom().fetch_water_v(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+
+def test_load_water_v():
+    val, lat, lon, time, depth = hycom.Hycom().load_water_u(south=south, north=north, west=west, east=east, start=start, end=end, top=top, bottom=bottom)
+    vval = kadlu.load(source='hycom',var='water_v', **bounds)
+    # commented to improve test speed
+    """
+    assert(len(val) == len(lat) == len(lon) == len(time))
+    assert(sum(lat <= 90) == sum(lat >= -90) == len(lat))
+    assert(sum(lon <= 180) == sum(lon >= -180) == len(lon))
+    """
 
 
 """ interactive mode debugging: assert db ordering is correct

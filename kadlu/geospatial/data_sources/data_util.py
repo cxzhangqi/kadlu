@@ -7,7 +7,7 @@ import sys
 import json
 import pickle
 import sqlite3
-import logging
+#import logging
 import warnings
 import configparser
 from os import path
@@ -16,12 +16,13 @@ from hashlib import md5
 from functools import reduce
 from datetime import datetime, timedelta
 from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from io import StringIO
 
 import numpy as np
 
 
-LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
-logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
+#LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
+#logging.basicConfig(format='%(asctime)s  %(message)s', level=LOGLEVEL, datefmt='%Y-%m-%d %I:%M:%S')
 
 
 # database tables for data fetching and loading
@@ -40,6 +41,10 @@ era5_tables  = [
 cfg = configparser.ConfigParser()       # read .ini into dictionary object
 cfgfile = os.path.join(dirname(dirname(dirname(dirname(__file__)))), "config.ini")
 cfg.read(cfgfile)
+
+
+
+ext = lambda filepath, extensions: isinstance(extensions, tuple) and any(x == filepath.lower()[-len(x):] for x in extensions)
 
 
 def storage_cfg(setdir=None):
@@ -197,18 +202,16 @@ def serialized(kwargs={}, seed=''):
     return True
 
 
-def dt_2_epoch(dt_arr):
+def dt_2_epoch(dt_arr, t0=datetime(2000,1,1,0,0,0)):
     """ convert datetimes to epoch hours """
-    t0 = datetime(2000, 1, 1, 0, 0, 0)
     delta = lambda dt: (dt - t0).total_seconds()/60/60
     if isinstance(dt_arr, (list, np.ndarray)): return list(map(int, map(delta, dt_arr)))
     elif isinstance(dt_arr, (datetime)): return int(delta(dt_arr))
     else: raise ValueError('input must be datetime or array of datetimes')
 
 
-def epoch_2_dt(ep_arr):
+def epoch_2_dt(ep_arr, t0=datetime(2000,1,1,0,0,0)):
     """ convert epoch hours to datetimes """
-    t0 = datetime(2000, 1, 1)
     delta = lambda ep : t0 + timedelta(hours=ep)
     if isinstance(ep_arr, (list, np.ndarray)): return list(map(delta, ep_arr))
     elif isinstance(ep_arr, (float, int)): return delta(ep_arr)
@@ -296,23 +299,6 @@ def str_def(self, info, args):
     return (f'{info}\n\nfunction input arguments:\n\t{args}\n\nclass functions:\n\t'
             + '\n\t'.join(fcns) + '\n')
 
-#def era5_cfg(key=None, url=None):
-def era5_cfg(key="20822:2d1c1841-7d27-4f72-bb8a-9680a073b4c3", url="https://cds.climate.copernicus.eu/api/v2"):
-    if 'cdsapi' not in cfg.sections():
-        cfg.add_section('cdsapi')
-
-    if key is not None:
-        cfg.set('cdsapi', 'key', key)
-        with open(cfgfile, 'w') as f:
-            cfg.write(f)
-
-    if url is not None:
-        cfg.set('cdsapi', 'url', url)
-        with open(cfgfile, 'w') as f:
-            cfg.write(f)
-
-    return 
-
 
 def ll_2_regionstr(south, north, west, east, regions, default=[]):
     """ convert input bounds to region strings with seperating axis theorem """
@@ -355,6 +341,18 @@ class Boundary():
                     self.west  > other.east or
                     self.north < other.south or
                     self.south > other.north)
+
+
+class Capturing(list):
+    # https://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio
+        sys.stdout = self._stdout
 
 
 @contextmanager
